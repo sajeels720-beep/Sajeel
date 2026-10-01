@@ -1,0 +1,152 @@
+@import "@fontsource-variable/bricolage-grotesque/wdth.css";
+@import "@fontsource-variable/instrument-sans/wght.css";
+@import "tailwindcss";
+
+/* ============ DESIGN TOKENS ============
+   Palette is pulled from the school itself: the royal-blue badge ring,
+   the navy-and-gold uniform tie, the sky-blue shield, and the red/yellow
+   tables and green desks seen in the classroom videos. */
+@theme {
+  --color-ink: #0e1838;          /* deep navy, from the tie */
+  --color-ink-2: #17224a;
+  --color-royal: #262c86;        /* badge ring */
+  --color-sky: #3a8bda;          /* shield */
+  --color-sun: #f6c432;          /* badge gold */
+  --color-sun-deep: #e0a812;
+  --color-paper: #f7f3ea;        /* warm exercise-book paper */
+  --color-paper-2: #efe8d9;
+  --color-chalk: #fffdf8;
+  --color-crayon: #e2492f;       /* red classroom tables */
+  --color-desk: #2c7a5a;         /* green classroom desks */
+  --color-muted: #5b6178;
+  --color-line: rgb(14 24 56 / 0.12);
+
+  --font-display: "Bricolage Grotesque Variable", "Arial Narrow", system-ui, sans-serif;
+  --font-sans: "Instrument Sans Variable", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-urdu: "Noto Nastaliq Urdu", "Jameel Noori Nastaleeq", serif;
+
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
+
+  --radius-card: 1.75rem;
+}
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+    scroll-padding-top: 5.5rem;
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    html {
+      scroll-behavior: smooth;
+    }
+  }
+  body {
+    background: var(--color-paper);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    font-size: 1.0625rem;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    overflow-x: clip;
+    text-rendering: optimizeLegibility;
+  }
+  ::selection {
+    background: var(--color-sun);
+    color: var(--color-ink);
+  }
+  :focus-visible {
+    outline: 3px solid var(--color-sun);
+    outline-offset: 3px;
+    border-radius: 6px;
+  }
+  img,
+  video {
+    display: block;
+    max-width: 100%;
+  }
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-display);
+    text-wrap: balance;
+  }
+  p {
+    text-wrap: pretty;
+  }
+}
+
+@layer components {
+  .display {
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-stretch: 82%;
+    letter-spacing: -0.035em;
+    line-height: 0.86;
+  }
+  .heading {
+    font-family: var(--font-display);
+    font-weight: 750;
+    font-stretch: 88%;
+    letter-spacing: -0.03em;
+    line-height: 0.95;
+  }
+  .eyebrow {
+    font-family: var(--font-sans);
+    font-size: 0.78rem;
+    font-weight: 600;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+  }
+  .urdu {
+    font-family: var(--font-urdu);
+    font-weight: 600;
+    direction: rtl;
+    line-height: 2.1;
+  }
+  .container-x {
+    width: 100%;
+    max-width: 88rem;
+    margin-inline: auto;
+    padding-inline: 1rem;
+  }
+  @media (min-width: 640px) {
+    .container-x {
+      padding-inline: 2rem;
+    }
+  }
+  @media (min-width: 1024px) {
+    .container-x {
+      padding-inline: 3rem;
+    }
+  }
+  /* Faint ruled-paper texture used behind light sections. */
+  .ruled {
+    background-image: repeating-linear-gradient(
+      to bottom,
+      transparent 0,
+      transparent 39px,
+      rgb(14 24 56 / 0.045) 39px,
+      rgb(14 24 56 / 0.045) 40px
+    );
+  }
+  .grain::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0.06;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}
