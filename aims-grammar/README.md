@@ -5,15 +5,22 @@ Built with React, Vite, Tailwind CSS v4 and Motion.
 
 ## Run it
 
+> **Don't double-click `aims-grammar/index.html`.** That's the source template. It only works
+> through the dev server, so opening it directly shows a blank page.
+> To look at the finished site without installing anything, open **`dist/index.html`** instead.
+
+Install Node.js 20+ from nodejs.org, then:
+
 ```bash
 cd aims-grammar
-npm install
-npm run dev      # local preview at http://localhost:5173
-npm run build    # production files in dist/
+npm install      # first time only
+npm run dev      # live preview at http://localhost:5173 that updates as you edit
+npm run build    # writes the finished site to dist/
 ```
 
-`dist/` is a plain static site. Upload it to any host, or connect the repo to
-Netlify or Vercel with **aims-grammar** as the base/root directory.
+`dist/` is a plain static site. Double-click `dist/index.html` to view it, upload the contents
+of `dist/` to any host, or connect the repo to Netlify or Vercel with **aims-grammar** as the
+base/root directory.
 
 ## Editing details
 
