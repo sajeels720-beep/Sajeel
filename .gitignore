@@ -1,0 +1,6 @@
+# Local secrets (the watch skill can read API keys from ./.env)
+.env
+
+# Python bytecode from running skill scripts
+__pycache__/
+*.pyc
