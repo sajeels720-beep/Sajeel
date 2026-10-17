@@ -26,14 +26,17 @@ Tested sizes (Leviathan demo, H = 1.9; ratios transfer to any scale)
     crystals big / small ....... size 0.24H-0.45H (thickness 0.25) / 0.02H-0.07H
 
 API (most used)
-    blockout:  ellipsoid, tube, metaball_blockout, join, boolean, voxel_remesh, smooth
+    blockout:  loft (trace side/top profiles), tube, ellipsoid, metaball_blockout, join,
+               boolean, voxel_remesh, smooth
     brushes:   dab(mode=draw|inflate|blob|grab|pinch|flatten), stroke, crease, smooth
     paths:     path_spline, path_line, path_ring, resample, snap (project onto surface)
     masks:     mask_normal, mask_axis, mask_sphere, mask_near, mask_noise (multiply them)
-    detail:    scutes, scales, folds, skin, bumps, grow_around, displace
+    detail:    scutes, scales, folds, skin, bumps, grow_around, cracks, displace
     parts:     teeth, crystals, eye, tooth_mesh, crystal_mesh, instance_join
     look-dev:  clay_material, light_rig, camera, dark_world, render_setup, render_still
     viewport:  viewport_clay, frame_view   (then take a connector screenshot)
+    preview:   render_preview (fast matcap render from any angle; works headless)
+    scatter:   scatter (random surface points weighted by a mask)
     utility:   stats, edge_length, bounds, save_version, apply_modifiers, collection,
                archive_others (hide everything else in an OLD collection; never deletes)
 """
@@ -45,8 +48,9 @@ import bpy
 import numpy as np
 from mathutils import Euler, Matrix, Vector
 from mathutils.bvhtree import BVHTree
+from mathutils.kdtree import KDTree
 
-VERSION = "1.0"
+VERSION = "1.1"
 
 
 def install(source_text):
@@ -263,14 +267,35 @@ def mask_axis(obj, axis, lo, hi, feather):
     return a * b
 
 
+def _kdtree(P):
+    kd = KDTree(len(P))
+    for i, p in enumerate(P):
+        kd.insert(p, i)
+    kd.balance()
+    return kd
+
+
+def _range_field(P, centers, radius, values, kind, combine="max", kd=None):
+    """Per-vertex field from many radial stamps, touching only nearby vertices."""
+    kd = kd or _kdtree(P)
+    out = np.zeros(len(P))
+    rad = np.broadcast_to(np.asarray(radius, float), (len(centers),))
+    val = np.broadcast_to(np.asarray(values, float), (len(centers),))
+    for c, r, v in zip(np.asarray(centers, float), rad, val):
+        hits = kd.find_range(c, r)
+        if not hits:
+            continue
+        idx = np.fromiter((h[1] for h in hits), np.int64, len(hits))
+        d = np.fromiter((h[2] for h in hits), float, len(hits))
+        w = falloff(d / r, kind) * v
+        out[idx] = np.maximum(out[idx], w) if combine == "max" else out[idx] + w
+    return out
+
+
 def mask_near(obj, points, radius, kind="smooth"):
     """Weight by distance to a point cloud (e.g. crystal bases, eye sockets)."""
-    P = co(obj)
     pts = np.asarray(points, float).reshape(-1, 3)
-    w = np.zeros(len(P))
-    for c in pts:
-        w = np.maximum(w, falloff(np.linalg.norm(P - c, axis=1) / radius, kind))
-    return w
+    return np.clip(_range_field(co(obj), pts, radius, 1.0, kind), 0, 1)
 
 
 def mask_noise(obj, size, seed=0, contrast=1.5):
@@ -400,18 +425,42 @@ def path_ring(center, normal, radius, n=48, squash=1.0, closed=True):
 
 
 def path_spline(ctrl, n=64):
-    """Catmull-Rom through control points."""
+    """Catmull-Rom curve through control points, returned as exactly n points
+    evenly spaced by arc length."""
     p = np.asarray(ctrl, float)
     p = np.vstack([p[0], p, p[-1]])
     out = []
     for i in range(1, len(p) - 2):
         p0, p1, p2, p3 = p[i - 1], p[i], p[i + 1], p[i + 2]
-        for t in np.linspace(0, 1, max(2, n // (len(p) - 3)), endpoint=False):
+        for t in np.linspace(0, 1, 32, endpoint=False):
             t2, t3 = t * t, t * t * t
             out.append(0.5 * ((2 * p1) + (-p0 + p2) * t + (2 * p0 - 5 * p1 + 4 * p2 - p3) * t2
                               + (-p0 + 3 * p1 - 3 * p2 + p3) * t3))
     out.append(p[-2])
-    return np.array(out)
+    dense = np.array(out)
+    L = np.concatenate([[0], np.cumsum(np.linalg.norm(np.diff(dense, axis=0), axis=1))])
+    s_ = np.linspace(0, L[-1], max(2, n))
+    return np.stack([np.interp(s_, L, dense[:, k]) for k in range(3)], 1)
+
+
+def scatter(obj, n, mask=None, seed=0, min_dist=0.0):
+    """n random surface points (local) and their normals, density proportional to mask.
+    min_dist > 0 rejects points closer than that (Poisson-like spacing)."""
+    P, N = co(obj), normals(obj)
+    w = np.ones(len(P)) if mask is None else np.clip(np.asarray(mask, float), 0, None)
+    if w.sum() <= 0:
+        return np.zeros((0, 3)), np.zeros((0, 3))
+    rng = np.random.default_rng(seed)
+    idx = rng.choice(len(P), size=min(len(P), n * (4 if min_dist else 1)), replace=False, p=w / w.sum())
+    if min_dist:
+        keep = []
+        for i in idx:
+            if all(np.linalg.norm(P[i] - P[j]) >= min_dist for j in keep):
+                keep.append(i)
+            if len(keep) >= n:
+                break
+        idx = np.array(keep, dtype=np.int64)
+    return P[idx], N[idx]
 
 
 def snap(obj, points, offset=0.0):
@@ -583,6 +632,20 @@ def scutes(obj, path, row, col, height, groove=0.12, dome=0.75, brick=0.5, vary=
     return h
 
 
+def cracks(obj, size, width=0.08, depth=0.01, coverage=0.45, seed=0, mask=None):
+    """Fracture lines on hard surfaces (crystals, rock, ceramic): cell borders of 3D
+    Voronoi noise, kept only where a low-frequency noise allows (coverage 0..1), and
+    pushed inward along normals. Needs a dense mesh: apply_modifiers() first."""
+    P = co(obj)
+    F1, F2, _ = worley(P, size, jitter=1.0, seed=seed)
+    line = np.clip(1.0 - (F2 - F1) / max(width, 1e-6), 0, 1) ** 2
+    keep = np.clip((fbm(P, size * 2.2, octaves=2, seed=seed + 11) + 1) / 2 - (1 - coverage) + 0.5, 0, 1)
+    keep = np.clip((keep - 0.5) * 6 + 0.5, 0, 1)
+    h = -depth * line * keep
+    displace(obj, h, mask)
+    return h
+
+
 def folds(obj, direction, spacing, depth, width=0.18, wobble=0.35, mask=None, seed=0):
     """Parallel creases across `direction` every `spacing` units (neck rings,
     palate ridges, belly folds). wobble bends them organically."""
@@ -601,9 +664,17 @@ def skin(obj, size, height, octaves=4, ridged=False, mask=None, seed=0):
 
 
 def bumps(obj, points, radius, height, kind="sphere", symmetry_x=True):
-    """Nodules / bead rows / warts at given points."""
-    for p in np.asarray(points, float):
-        dab(obj, p, radius, height / radius, mode="inflate", kind=kind, symmetry_x=symmetry_x)
+    """Nodules, warts, osteoderms, bead rows at given points (radius/height can be
+    per-point arrays). One displacement pass, so hundreds of bumps stay fast."""
+    pts = np.asarray(points, float).reshape(-1, 3)
+    rad = np.broadcast_to(np.asarray(radius, float), (len(pts),))
+    hgt = np.broadcast_to(np.asarray(height, float), (len(pts),))
+    if symmetry_x:
+        m = np.abs(pts[:, 0]) > 1e-6
+        pts = np.vstack([pts, pts[m] * (-1, 1, 1)])
+        rad = np.concatenate([rad, rad[m]])
+        hgt = np.concatenate([hgt, hgt[m]])
+    displace(obj, _range_field(co(obj), pts, rad, hgt, kind))
 
 
 def grow_around(obj, points, radius, height, kind="smooth"):
@@ -657,24 +728,61 @@ def ellipsoid(name, center, radii, rot=(0, 0, 0), segments=48, col=None):
     return obj
 
 
-def tube(name, path, radii, segments=32, squash=None, col=None):
-    """Sweep a circle along a polyline with per-point radius (necks, tails, tentacles,
-    horns). squash: optional per-point (sx, sy) to flatten the section (e.g. hood)."""
+def tube(name, path, radii, segments=32, squash=None, col=None, side=None):
+    """Sweep an ellipse along a polyline with per-point radius (necks, tails, jaws, horns).
+    squash: per-point (sx, sy) section scale; sx acts along `side`, sy along the
+    remaining axis. side: world axis for the section's first axis (e.g. (1,0,0) so a
+    vertical neck is wide in X and deep in Y). Without side, parallel transport is used."""
     pts = [Vector(p) for p in np.asarray(path, float)]
     rad = np.broadcast_to(np.asarray(radii, float), (len(pts),))
+    sq = None if squash is None else np.broadcast_to(np.asarray(squash, float), (len(pts), 2))
     bm = bmesh.new()
     tang = [(pts[min(i + 1, len(pts) - 1)] - pts[max(i - 1, 0)]).normalized() for i in range(len(pts))]
-    nrm = tang[0].orthogonal().normalized()
+    a = tang[0].orthogonal().normalized()
     loops = []
     for i, (p, t) in enumerate(zip(pts, tang)):
-        nrm = (nrm - t * nrm.dot(t)).normalized()          # parallel transport
-        bin_ = t.cross(nrm)
-        sx, sy = squash[i] if squash is not None else (1.0, 1.0)
-        loops.append([bm.verts.new(p + (nrm * math.cos(a) * sx + bin_ * math.sin(a) * sy) * rad[i])
-                      for a in np.linspace(0, 2 * math.pi, segments, endpoint=False)])
-    for a, b in zip(loops[:-1], loops[1:]):
-        for s in range(segments):
-            bm.faces.new((a[s], a[(s + 1) % segments], b[(s + 1) % segments], b[s]))
+        if side is not None:
+            a = Vector(side) - t * Vector(side).dot(t)
+            a = a.normalized() if a.length > 1e-6 else t.orthogonal().normalized()
+        else:
+            a = (a - t * a.dot(t)).normalized()          # parallel transport
+        b = t.cross(a)
+        sx, sy = sq[i] if sq is not None else (1.0, 1.0)
+        loops.append([bm.verts.new(p + (a * math.cos(u) * sx + b * math.sin(u) * sy) * rad[i])
+                      for u in np.linspace(0, 2 * math.pi, segments, endpoint=False)])
+    for l0, l1 in zip(loops[:-1], loops[1:]):
+        for k in range(segments):
+            bm.faces.new((l0[k], l0[(k + 1) % segments], l1[(k + 1) % segments], l1[k]))
+    bm.faces.new(list(reversed(loops[0])))
+    bm.faces.new(loops[-1])
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+    me = bpy.data.meshes.new(name)
+    bm.to_mesh(me)
+    bm.free()
+    obj = link(bpy.data.objects.new(name, me), col)
+    shade_smooth(obj)
+    return obj
+
+
+def loft(name, stations, rings=60, segments=48, power=2.5, col=None):
+    """Closed mesh from cross-sections stacked along Y - the code version of modeling
+    over a side-view reference. stations: rows of (y, z_bottom, z_top, half_width)
+    traced from a side profile (z) and a top view (width); rows are interpolated to
+    `rings` smooth sections. power: 2 = ellipse, 2.5-3 = boxier (jaws, skulls)."""
+    st = np.asarray(sorted(stations, key=lambda r: r[0]), float)
+    ys = np.linspace(st[0, 0], st[-1, 0], rings)
+    zb, zt, hw = (np.interp(ys, st[:, 0], st[:, k]) for k in (1, 2, 3))
+    u = np.linspace(0, 2 * math.pi, segments, endpoint=False)
+    cx = np.sign(np.cos(u)) * np.abs(np.cos(u)) ** (2.0 / power)
+    cz = np.sign(np.sin(u)) * np.abs(np.sin(u)) ** (2.0 / power)
+    bm = bmesh.new()
+    loops = []
+    for y, b, t, w in zip(ys, zb, zt, hw):
+        zc, hh = (b + t) / 2, max((t - b) / 2, 1e-4)
+        loops.append([bm.verts.new((w * x, y, zc + hh * z)) for x, z in zip(cx, cz)])
+    for l0, l1 in zip(loops[:-1], loops[1:]):
+        for k in range(segments):
+            bm.faces.new((l0[k], l0[(k + 1) % segments], l1[(k + 1) % segments], l1[k]))
     bm.faces.new(list(reversed(loops[0])))
     bm.faces.new(loops[-1])
     bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
@@ -827,18 +935,21 @@ def teeth(name, gum_path, body, length=(0.05, 0.12), radius_ratio=0.16, directio
 
 
 def crystals(name, body, points, size=(0.05, 0.3), direction=None, tilt=20, broken=0.4,
-             embed=0.25, seed=0, col=None, facet_noise=0.012, thickness=0.22):
+             embed=0.25, seed=0, col=None, facet_noise=0.012, thickness=0.22, symmetry_x=True,
+             lengths=None):
     """Quartz clusters erupting from a surface. Returns (object, base_locations);
     pass base_locations to grow_around() so flesh climbs the bases.
-    points: local positions on/near body.
+    points: local positions on/near body. size: (min, max) random length range;
+    lengths: optional exact length per point. thickness: radius/length, scalar or per point.
     direction: None (surface normal), one vector, or one vector per point.
     Modifier stack like the video: Bevel -> Subdivision (Simple) -> Displace (Voronoi)
     for subtly irregular facets; edges are marked sharp so facets stay clean."""
     rng = random.Random(seed)
     locs, nors = snap(body, points)
     plc = []
+    th = np.broadcast_to(np.asarray(thickness, float), (len(locs),))
     for i, (p, n) in enumerate(zip(locs, nors)):
-        L = rng.uniform(*size)
+        L = float(lengths[i]) if lengths is not None else rng.uniform(*size)
         if direction is None:
             d = Vector(n)
         else:
@@ -846,12 +957,14 @@ def crystals(name, body, points, size=(0.05, 0.3), direction=None, tilt=20, brok
             d = Vector(dd[i] if dd.ndim == 2 else dd).normalized()
         d = (d + Vector((rng.uniform(-1, 1), rng.uniform(-1, 1), rng.uniform(-1, 1))) * math.tan(math.radians(tilt))).normalized()
         plc.append({"loc": tuple(Vector(p) - d * L * embed), "dir": tuple(d), "up": (0, 0, 1),
-                    "scale": L, "twist": rng.uniform(0, 60), "seed": seed * 997 + i})
-    obj = instance_join(name, lambda s: crystal_mesh(thickness, 1.0, 0.35, 6, 0.06,
+                    "scale": L, "twist": rng.uniform(0, 60), "seed": seed * 997 + i, "th": float(th[i])})
+    th_by_seed = {q["seed"]: q["th"] for q in plc}
+    obj = instance_join(name, lambda s: crystal_mesh(th_by_seed.get(s, float(th[0])), 1.0, 0.35, 6, 0.06,
                                                      random.Random(s).random() < broken, s),
-                        plc, col, smooth=None)
+                        plc, col, smooth=None, symmetry_x=symmetry_x)
+    Lmax = float(np.max(lengths)) if lengths is not None else size[1]
     bev = obj.modifiers.new("Bevel", "BEVEL")
-    bev.width = 0.006 * size[1]
+    bev.width = 0.006 * Lmax
     bev.segments = 2
     bev.limit_method = "ANGLE"
     bev.harden_normals = False
@@ -861,13 +974,13 @@ def crystals(name, body, points, size=(0.05, 0.3), direction=None, tilt=20, brok
     tex = bpy.data.textures.new(name + "_facets", "VORONOI")
     tex.distance_metric = "DISTANCE"
     tex.color_mode = "INTENSITY"
-    tex.noise_scale = max(size[1], 1e-3) * 0.25
+    tex.noise_scale = max(Lmax, 1e-3) * 0.25
     tex.weight_1, tex.weight_2, tex.weight_3, tex.weight_4 = 1.0, 0.0, 0.0, 0.0
     dsp = obj.modifiers.new("Facets", "DISPLACE")
     dsp.texture = tex
     dsp.texture_coords = "LOCAL"
     dsp.direction = "NORMAL"
-    dsp.strength = facet_noise * size[1]
+    dsp.strength = facet_noise * Lmax
     dsp.mid_level = 0.5
     return obj, locs
 
@@ -985,10 +1098,13 @@ def area_light(name, target, az, el, dist, power, size, color=(1, 1, 1), col=Non
     return ob
 
 
-def light_rig(target_obj, key=3.0, fill=0.8, back=6.0, top=1.5, flip=False):
-    """Video rig: soft white key (front-left high), pale cyan fill (HSV .526/.31/1)
-    from the other side, strong back/rim light and a light above the head.
-    Values are irradiance ratios; powers scale with distance so any model size works."""
+def light_rig(target_obj, key=3.0, fill=0.8, back=6.0, top=1.5, flip=False,
+              key_az=-55, key_el=40, fill_az=70, fill_el=5, back_az=160, back_el=30,
+              fill_color=(0.69, 0.95, 1.0)):
+    """Video rig: soft white key, pale-cyan fill (HSV .526/.31/1), strong back/rim light
+    and a light above the head. Values are irradiance ratios; powers scale with distance
+    so any model size works. Azimuths: 0 = model front (-Y), 90 = +X side. Keep the fill
+    on the side opposite the key and away from the camera, or it flattens the form."""
     lo, hi, c, R = bounds(target_obj)
     col = collection("LIGHTS")
     s = -1 if flip else 1
@@ -997,9 +1113,9 @@ def light_rig(target_obj, key=3.0, fill=0.8, back=6.0, top=1.5, flip=False):
     def watts(irr):  # area light, irradiance ~ P / (pi d^2)
         return irr * math.pi * d * d
     rig = [
-        area_light("Key_lgt", c, -55 * s, 40, d, watts(key), 1.2 * R, (1, 0.98, 0.95), col),
-        area_light("Fill_lgt", c, 70 * s, 5, d, watts(fill), 0.6 * R, (0.69, 0.95, 1.0), col),
-        area_light("Back_lgt", c, 160 * s, 30, d, watts(back), 0.5 * R, (1, 1, 1), col),
+        area_light("Key_lgt", c, key_az * s, key_el, d, watts(key), 1.2 * R, (1, 0.98, 0.95), col),
+        area_light("Fill_lgt", c, fill_az * s, fill_el, d, watts(fill), 0.6 * R, fill_color, col),
+        area_light("Back_lgt", c, back_az * s, back_el, d, watts(back), 0.5 * R, (1, 1, 1), col),
         area_light("Top_lgt", c + Vector((0, 0, R * 0.5)), 0, 85, d, watts(top), 0.5 * R, (1, 1, 1), col),
     ]
     return rig
@@ -1085,6 +1201,90 @@ def render_still(path, samples=None):
 # --------------------------------------------------------------------------
 # Live viewport helpers (interactive Blender only; no-ops in background)
 # --------------------------------------------------------------------------
+def render_preview(path, target_obj=None, az=-35, el=8, lens=50, res=(640, 640), fill=0.85,
+                   focus=None, distance=None, matcap=None, objects=None, engine="WORKBENCH",
+                   ortho_scale=None):
+    """Fast matcap-style render from a given angle, like a viewport screenshot.
+    engine="WORKBENCH" (fast, needs a GPU/OpenGL) or "CYCLES" (CPU-safe fallback for
+    headless machines: grey clay override + headlight + AO). ortho_scale: use an
+    orthographic camera (scene units across the longer image side) centred on `focus`,
+    to line renders up with a reference image. Restores the scene after."""
+    sc = bpy.context.scene
+    old = (sc.render.engine, sc.camera, sc.render.resolution_x, sc.render.resolution_y,
+           sc.render.resolution_percentage, sc.render.filepath)
+    vl = bpy.context.view_layer
+    old_override = vl.material_override
+    extra = []
+    sc.render.engine = "BLENDER_WORKBENCH" if engine == "WORKBENCH" else "CYCLES"
+    sh = sc.display.shading
+    sh.light = "MATCAP"
+    names = [l.name for l in bpy.context.preferences.studio_lights if l.type == "MATCAP"]
+    pick = matcap if matcap in names else next(
+        (n for n in ("basic_grey.exr", "basic_1.exr", "clay_studio.exr") if n in names), None)
+    if pick:
+        sh.studio_light = pick
+    sh.color_type = "SINGLE"
+    sh.single_color = (0.8, 0.8, 0.8)
+    sh.show_cavity = True
+    sh.cavity_type = "BOTH"
+    sh.curvature_ridge_factor = sh.curvature_valley_factor = 1.2
+    sc.display.render_aa = "8"
+    if target_obj is not None:
+        lo, hi, c, R = bounds(target_obj)
+    else:
+        objs = objects or [o for o in sc.objects if o.type == "MESH" and o.visible_get()]
+        Ps = []
+        for o in objs:
+            Bv = np.array([o.matrix_world @ Vector(v) for v in o.bound_box])
+            Ps.append(Bv)
+        Ps = np.vstack(Ps)
+        lo, hi = Ps.min(0), Ps.max(0)
+        c, R = (lo + hi) / 2, float(np.linalg.norm(hi - lo) / 2)
+    center = Vector(focus) if focus is not None else Vector(c)
+    cam_data = bpy.data.cameras.new("_preview_cam")
+    cam_data.lens = lens
+    if ortho_scale:                      # orthographic: match a reference image's framing exactly
+        cam_data.type = "ORTHO"
+        cam_data.ortho_scale = ortho_scale
+    cam = bpy.data.objects.new("_preview_cam", cam_data)
+    sc.collection.objects.link(cam)
+    half = math.atan(18.0 * min(res) / max(res) / lens)
+    dist = distance if distance is not None else R / math.sin(half) / fill
+    cam.location = center + look_dir(az, el) * dist
+    _aim(cam, center)
+    cam_data.clip_end = dist * 10
+    sc.camera = cam
+    sc.render.resolution_x, sc.render.resolution_y = res
+    sc.render.resolution_percentage = 100
+    sc.render.filepath = path
+    if engine != "WORKBENCH":
+        old_cy = (sc.cycles.samples, sc.cycles.use_denoising, sc.world)
+        sc.cycles.samples, sc.cycles.use_denoising = 12, True
+        vl.material_override = clay_material("_preview_clay", color=(0.5, 0.5, 0.5), ao_distance=R * 0.04)
+        head = bpy.data.lights.new("_preview_head", "SUN")
+        head.energy, head.angle = 3.0, math.radians(25)
+        hob = bpy.data.objects.new("_preview_head", head)
+        sc.collection.objects.link(hob)
+        hob.location = cam.location
+        hob.rotation_euler = (center - (cam.location + Vector((0, 0, dist * 0.6)))).to_track_quat("-Z", "Y").to_euler()
+        w = bpy.data.worlds.new("_preview_world")
+        _nodes(w).nodes["Background"].inputs["Strength"].default_value = 0.35
+        sc.world = w
+        extra = [(hob, head), w]
+    try:
+        bpy.ops.render.render(write_still=True)
+    finally:
+        (sc.render.engine, sc.camera, sc.render.resolution_x, sc.render.resolution_y,
+         sc.render.resolution_percentage, sc.render.filepath) = old
+        vl.material_override = old_override
+        if engine != "WORKBENCH":
+            sc.cycles.samples, sc.cycles.use_denoising, sc.world = old_cy
+            bpy.data.objects.remove(extra[0][0]); bpy.data.lights.remove(extra[0][1]); bpy.data.worlds.remove(extra[1])
+        bpy.data.objects.remove(cam)
+        bpy.data.cameras.remove(cam_data)
+    return path
+
+
 def _views3d():
     wm = bpy.context.window_manager
     for win in (wm.windows if wm else []):

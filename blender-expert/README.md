@@ -6,8 +6,10 @@ A prompt plus a small Python toolkit that make Claude (with the Blender connecto
 |---|---|
 | `PROMPT.md` | The master prompt: quality bar, the artist's pipeline with on-screen settings, phase-by-phase workflow with screenshot checks, and a tested size table. |
 | `claude_sculpt_kit.py` | Toolkit Claude uses to sculpt through code: brushes (draw, inflate, grab, crease, smooth), belly plates, scales, skin, teeth, crystals, and a clay/lighting/camera presentation rig. |
-| `examples/leviathan_demo.py` | A full worked example that builds a Leviathan-style bust phase by phase. |
-| `images/kit_example_renders.jpg` | What the example produces (an automated ~80 s build, before any iteration). |
+| `examples/leviathan_demo.py` | A quick worked example that builds a Leviathan-style bust phase by phase (~60 s). |
+| `examples/leviathan_study.py` | A reference-matched rebuild of the artist's design: head and jaws lofted from profiles measured off his turntable, crystal collar, crocodile belly grid, cracks, and his lighting setup. |
+| `images/leviathan_rebuild_progress.jpg` | His final render, the first automated try, and the reference-matched rebuild side by side. |
+| `images/kit_example_renders.jpg` | Close-ups of what the quick example produces. |
 
 ## Setup (once)
 
@@ -27,10 +29,14 @@ Claude starts with a short design brief and a block-out for you to approve, then
 
 ## What to expect
 
+![His render, the first try, and the reference-matched rebuild](images/leviathan_rebuild_progress.jpg)
+
+The biggest jump in quality came from **matching the reference**: measuring proportions from his turntable views, lofting the head from his side profile, and comparing renders side by side after every change (PROMPT.md, Phase 0b). The rebuild follows his design, but his 16-hour hand sculpt is still far richer in wrinkles, skin folds and flowing scales.
+
 Claude sculpts with code, not a stylus. The kit and workflow get much more detail and structure than ad-hoc scripts: layered scales, plates that follow the form, creases, teeth, crystals and a proper clay presentation. A 16-hour hand-sculpted piece by a professional still sets a higher bar for anatomy and nuance. You get the best results by collaborating: approve the block-out, comment on screenshots, and add hero details by hand in Multires where you want them.
 
 Long final renders: Claude previews at low samples, then asks you to press **F12** for the full-quality render rather than blocking Blender.
 
 ## Tested
 
-Everything except the live-viewport helpers runs headless on **Blender 4.5.14 LTS** and **5.2.2 LTS**: the bootstrap install from Downloads, every phase of the example, the Cycles renders, and the automatic switch to Object Mode. `viewport_clay()` and `frame_view()` only act in a live Blender window. Their property names were checked against both versions' API, but they were not run in a live window.
+Everything except the live-viewport helpers runs headless on **Blender 4.5.14 LTS** and **5.2.2 LTS**: the bootstrap install from Downloads, every phase of both examples, the Cycles renders, and the automatic switch to Object Mode. `render_preview()` uses Workbench (needs a GPU) or `engine="CYCLES"` as a CPU fallback; only the Cycles path was verified here. `viewport_clay()` and `frame_view()` only act in a live Blender window. Their property names were checked against both versions' API, but they were not run in a live window.

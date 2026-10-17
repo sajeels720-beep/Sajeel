@@ -75,11 +75,18 @@ print("KIT:", getattr(K, "VERSION", "NOT INSTALLED"), "| Blender", bpy.app.versi
 
 ## 4. Workflow with quality gates
 
-For every phase: state the plan in 2–4 lines, do it, then **verify**. Verifying means `K.viewport_clay()` (matcap + cavity), then `K.frame_view(obj, az, el, zoom, focus)` from front, ¾ left, profile and top/back, plus two close-ups of the focal area. Capture a screenshot of each and critique it like an art director: name what is wrong specifically ("the jaw hinge is too far forward", "belly plates are too uniform in size", "the crest silhouette reads as a flat fan from the side"), fix it, and re-check. Don't start the next phase until the gate passes.
+For every phase: state the plan in 2–4 lines, do it, then **verify**. Verifying means `K.viewport_clay()` (matcap + cavity), then `K.frame_view(obj, az, el, zoom, focus)` from front, ¾ left, profile and top/back, plus two close-ups of the focal area. (`K.render_preview()` renders the same views to image files, with `engine="CYCLES"` on machines without a GPU.) Capture a screenshot of each and critique it like an art director: name what is wrong specifically ("the jaw hinge is too far forward", "belly plates are too uniform in size", "the crest silhouette reads as a flat fan from the side"), fix it, and re-check. Don't start the next phase until the gate passes.
 
 **Phase 0 — Design brief (before touching Blender).** Write: subject and story (one sentence), silhouette idea, the 3–5 anatomical landmarks, the focal point, the one contrasting design element, the detail map (where big, medium and small detail and the rest areas go), and the target use (render, game or 3D print, plus face budget). For anything non-trivial, show me this brief and wait for my OK.
 
-**Phase 1 — Gesture block-out** (mesh about H/60). Build from primitives that match the anatomy: `K.tube()` along a `K.path_spline()` for necks, tails and tentacles; `K.ellipsoid()` for skull, snout, jaw, brows, cheeks, hood; `K.boolean()` to cut the mouth; then `K.join()`, `K.voxel_remesh()` and `K.smooth()`. Push the gesture: S-curves, tilt, open jaw. Gate: the silhouette reads from all 4 angles and proportions are right. Show me and wait for approval before detailing.
+**Phase 0b — Reference matching (whenever I give you images or a video).** This step matters more than any other for looking "like the reference". Without it, results look generic.
+1. Collect front, side, top/back and the hero ¾ view (turntable frames are ideal).
+2. Measure proportions in units of H from the side and front views: snout tip, skull top, lip line, jaw hinge and tip, eye, neck depth and width at several heights, extent of every major element. Write the numbers down.
+3. Trace the side profile (top and bottom edge) and the top-view width into `K.loft()` stations. Build the head, jaws and torso from those lofts instead of guessing with balls.
+4. At every gate, render the same views (`K.render_preview(..., ortho_scale=…, focus=…)` for front/side, or put the reference as a viewport background image and match the camera). Compare side by side, list the differences in order of visual impact, and fix the biggest first.
+5. Check each element's direction in more than one view. Spikes or columns can look right from the hero angle and be wrong from the front.
+
+**Phase 1 — Gesture block-out** (mesh about H/60). Build from shapes that match the anatomy: `K.loft()` for heads, jaws and torsos traced from profiles; `K.tube(..., squash=, side=)` along a `K.path_spline()` for necks, tails and tentacles with oval sections; flat, blended `K.ellipsoid()` masses for brows, temples and hoods; `K.boolean()` for cuts; then `K.join()`, `K.voxel_remesh()` and `K.smooth()`. Push the gesture: S-curves, tilt, open jaw. Gate: the silhouette reads from all 4 angles and proportions are right. Show me and wait for approval before detailing.
 
 **Phase 2 — Primary and secondary forms** (voxel about H/90). Use the brushes like the artist did: `K.dab(obj, center, radius, strength, mode="grab", vector=(dx, dy, dz))` for proportions, `"inflate"`/`"blob"` for masses, negative `"inflate"` for sockets and nostrils, `K.crease()` with negative depth for ridges (brow, cheekbone) and positive depth for grooves (lip line, cheek folds, neck rings with `K.path_ring()`), and `K.smooth()` to clean up between passes. Gate: anatomy is believable in plain matcap, with no detail yet.
 
@@ -106,16 +113,25 @@ Gate: close-ups show a clear size hierarchy, plates follow the form, and there a
 
 | Element | Kit call | Values (fractions of H) |
 |---|---|---|
-| Final sculpt mesh | `voxel_remesh` | voxel H/420 (≈1.3 M faces for a neck bust) |
-| Belly plates | `scutes(path=spine)` | row H/17, col H/11, height H/85, groove 0.1, wobble 0.25 |
-| Side plates | `scales` | size H/27, height H/190, jitter 0.6 |
-| Head pebble scales | `scales` | size H/47, height H/300, jitter 0.95 |
+| Final sculpt mesh | `voxel_remesh` | voxel H/420–H/360 (≈1.3–1.7 M faces for a neck bust) |
+| Belly plates | `scutes(path=spine)` | row H/17–H/10, col H/11–H/9.5, height H/85–H/55, groove 0.1; `brick=0` for a crocodile grid, 0.5 for staggered |
+| Side plates | `scales` | size H/27–H/16, height H/190–H/110, jitter 0.6–0.7 |
+| Head pebble scales | `scales` | size H/47–H/29, height H/300–H/165, jitter 0.95; plus `bumps()` osteoderms on top |
 | Eye-ring scales | `scales` | size H/105, height H/600 |
 | Back crust | `skin(ridged=True)` | size H/17, height H/85, × `mask_noise` |
 | Pores | `skin` | size H/240, height H/2400 |
 | Wrinkles / folds | `crease` | radius H/55–H/27, depth H/160–H/63, pinch 0.3–0.5 |
 | Teeth | `teeth` | length H/27–H/7, fangs at 2 positions, bend 0.25 |
-| Crystals | `crystals` | big 0.24H–0.45H (thickness 0.25); shards 0.02H–0.07H (tilt 35) |
+| Crystals / columns | `crystals` | big 0.24H–0.8H (thickness 0.2–0.34, `broken` 0.95 for flat tops, `lengths=` per column); shards 0.02H–0.11H (tilt 35–40); `cracks()` after `apply_modifiers()` |
+
+### Failure modes to catch at every gate (each one happened in testing)
+
+- **Cartoon head:** balls stuck on for cheeks or brows, a nostril blob, an eye too big and too glossy. Use lofts traced from the profile, keep added masses flat and blended, and make the eye small and deep-set under a heavy brow.
+- **Picket fence:** spikes, columns or teeth evenly spaced, equal length, same angle. Jitter length, angle and spacing, add a second smaller layer, and cluster the biggest pieces at the focal area.
+- **Flat, tinted lighting:** a fill light near the camera axis. Keep the fill opposite the key and away from the camera, so the rim does the separating.
+- **Blown-out clay:** clay base colour about 0.35 linear. Check that no large area is clipped white, or the detail disappears.
+- **Loose framing:** the subject small in frame. Match the reference crop, and use a closer camera or wider lens for a heroic feel.
+- **Weak ending:** a body that ends in a visible stump or curl. Let it fall into shadow (focused key light, bottom fade) or crop it with the frame.
 
 ## 6. Other subjects: same philosophy, different vocabulary
 
