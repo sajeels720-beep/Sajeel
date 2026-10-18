@@ -27,7 +27,13 @@ SCRIPT = [  # voiceover_NN: (start s, end s, caption groups) - 1-4 words, broken
     (29.6, 32.0, ["so that's where", "your brain feels it"]),
     (32.0, 36.8, ["leaving you", "with a frozen brain", "that isn't frozen", "at all"]),
 ]
-MIN_GAP = 0.15                               # shortest breath between two recorded lines (s)
+# Pacing (his narration runs almost without gaps). A recorded line gets its own length plus a
+# breath; the shots under it stretch or tighten to match, never faster than MAX_SPEEDUP.
+GAP = 0.12                                   # breath between two recorded lines (s)
+BEATS = {2: 0.3, 4: 0.3, 8: 0.3, 11: 0.5}    # longer beat after these lines: before "Then", "You see",
+                                             # "But", and a moment on the last shot
+MAX_SPEEDUP = 1.25                           # shots under a short line play at most 25% faster
+VO_TEMPO = 1.05                              # voiceover sped up 5% (same pitch): tighter, sounds natural
 SILENCE_DB = -45                             # quieter than this counts as silence
 AUDIO_EXT = (".wav", ".mp3", ".m4a", ".aac", ".flac", ".ogg")
 
@@ -79,19 +85,21 @@ def find_audio(folder):
 
 
 class Timeline:
-    """Line i plays over the planned interval from its start to the next line's start. When
-    its recording (plus the planned pause after it, at least MIN_GAP) is longer, that interval
-    and every shot in it stretch to fit; later lines and shots move back. Nothing gets shorter."""
+    """Line i plays over the planned interval from its start to the next line's start. With a
+    recording, that interval becomes the line's length (at VO_TEMPO) plus its breath (GAP, or
+    BEATS), and every shot in it stretches or tightens to fit; later lines and shots move with
+    it. Lines without a recording keep their planned timing."""
 
     def __init__(self, vo_lengths=None):
-        vo_lengths = vo_lengths or {}
+        vo_lengths = {n: d / VO_TEMPO for n, d in (vo_lengths or {}).items()}
         starts = [t0 for t0, _, _ in SCRIPT] + [LENGTH]
         self.planned = list(zip(starts[:-1], starts[1:]))
-        self.speech = dict(vo_lengths)
+        self.speech = vo_lengths
         self.new, t = [], 0.0
-        for i, ((a, b), (_, t1, _)) in enumerate(zip(self.planned, SCRIPT)):
-            need = vo_lengths[i + 1] + max(b - t1, MIN_GAP) if i + 1 in vo_lengths else 0.0
-            length = max(b - a, need)
+        for n, (a, b) in enumerate(self.planned, start=1):
+            length = b - a
+            if n in vo_lengths:
+                length = max(vo_lengths[n] + BEATS.get(n, GAP), length / MAX_SPEEDUP)
             self.new.append((t, t + length))
             t += length
         self.length = t
@@ -124,5 +132,5 @@ class Timeline:
         rows = []
         for n, ((a, b), (A, B)) in enumerate(zip(self.planned, self.new), start=1):
             extra = (B - A) - (b - a)
-            rows.append(f"line {n:2d}: {A:5.2f}-{B:5.2f} s" + (f"  (+{extra:.2f} s)" if extra > 0.005 else ""))
+            rows.append(f"line {n:2d}: {A:5.2f}-{B:5.2f} s" + (f"  ({extra:+.2f} s)" if abs(extra) > 0.005 else ""))
         return "\n".join(rows) + f"\ntotal {self.length:.2f} s (planned {LENGTH} s)"

@@ -13,7 +13,7 @@ import argparse
 import os
 import subprocess
 
-from timeline import SILENCE_DB, Timeline, find_audio, loudness
+from timeline import SILENCE_DB, VO_TEMPO, Timeline, find_audio, loudness
 
 RATE = 48000
 VOICE_LUFS = -20                             # every voiceover line is brought to this level first
@@ -64,7 +64,7 @@ def main():
             continue
         k, ms = new_input(files["vo"][n]), int(tl.line_start(n) * 1000)
         chains.append(f"[{k}:a]{fmt},silenceremove=start_periods=1:start_threshold={SILENCE_DB}dB,"
-                      f"volume={gain(files['vo'][n]):.2f}dB,adelay={ms}|{ms}[vo{n}]")
+                      f"atempo={VO_TEMPO},volume={gain(files['vo'][n]):.2f}dB,adelay={ms}|{ms}[vo{n}]")
         vo.append(f"[vo{n}]")
     if vo:
         chains.append("".join(vo) + f"amix=inputs={len(vo)}:normalize=0,asplit=2[voice][duck]")
