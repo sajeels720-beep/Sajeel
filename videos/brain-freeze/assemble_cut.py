@@ -2,7 +2,10 @@
 timings, holding a shot's last frame where the voiceover pauses. Optional caption guide
 (2-4 white bold words at ~75% height, his style) to check timing before the real edit.
 
-usage: python3 assemble_cut.py SHOTS_DIR OUT.mp4 [--captions] [--width 1080] [--fps 30] [--font F.ttf]
+usage: python3 assemble_cut.py SHOTS_DIR OUT.mp4 [--captions [--voiceover AUDIO_DIR]] [--width 1080]
+                                [--fps 30] [--font F.ttf]
+With --voiceover, each line's captions follow the real recording (as placed by mix_audio.py)
+instead of the planned times.
 SHOTS_DIR holds one folder per shot (shot01 ... shot19b), each with f_0001.png ... directly
 inside it (Blender's output) or in a frames/ subfolder.
 Needs ffmpeg. Missing shots become labelled placeholders. Works on Windows, macOS and Linux.
@@ -10,6 +13,7 @@ Needs ffmpeg. Missing shots become labelled placeholders. Works on Windows, macO
 import argparse
 import glob
 import os
+import re
 import shutil
 import subprocess
 import tempfile
@@ -34,6 +38,7 @@ SCRIPT = [  # (start s, end s, caption groups) - 1-4 words, broken where he woul
     (29.6, 32.0, ["so that's where", "your brain feels it"]),
     (32.0, 36.8, ["leaving you", "with a frozen brain", "that isn't frozen", "at all"]),
 ]
+LENGTH = 36.8
 FONTS = [  # first bold sans found is used for captions and placeholder labels
     r"C:\Windows\Fonts\arialbd.ttf", r"C:\Windows\Fonts\segoeuib.ttf",
     "/System/Library/Fonts/Supplemental/Arial Bold.ttf", "/Library/Fonts/Arial Bold.ttf",
@@ -41,13 +46,50 @@ FONTS = [  # first bold sans found is used for captions and placeholder labels
 ]
 
 
-def caption_filters(tmp, height):
+def speech_length(path, floor_db=-45):
+    """Seconds of speech in a recording, without the silence before and after it (the same
+    threshold mix_audio.py trims the start with)."""
+    log = subprocess.run(["ffmpeg", "-hide_banner", "-nostats", "-i", path, "-af",
+                          f"silencedetect=noise={floor_db}dB:d=0.15", "-f", "null", "-"],
+                         capture_output=True, text=True).stderr
+    h, m, sec = re.search(r"Duration: (\d+):(\d+):([\d.]+)", log).groups()
+    total = int(h) * 3600 + int(m) * 60 + float(sec)
+    starts = [float(x) for x in re.findall(r"silence_start: (-?[\d.]+)", log)]
+    ends = [float(x) for x in re.findall(r"silence_end: ([\d.]+)", log)]
+    begin = ends[0] if starts and starts[0] <= 0.02 and ends else 0.0
+    finish = starts[-1] if len(starts) > len(ends) else total     # silence running to the end
+    return max(finish - begin, 0.1)
+
+
+def voiceover_spans(folder):
+    """Caption windows per script line from the recorded voiceover_NN files."""
+    from mix_audio import VO_START, find_files
+    vo = find_files(folder)["vo"]
+    spans = []
+    for i, (t0, t1, _) in enumerate(SCRIPT):
+        n = i + 1
+        if VO_START[i] != t0:
+            raise SystemExit("mix_audio.VO_START and SCRIPT start times differ")
+        if n in vo:
+            t1 = t0 + speech_length(vo[n])
+            nxt = SCRIPT[i + 1][0] if i + 1 < len(SCRIPT) else LENGTH
+            if t1 > nxt:
+                print(f"voiceover_{n:02d} runs {t1 - nxt:.2f} s past the next line: retime the cut or trim it")
+                t1 = nxt
+        spans.append((t0, t1))
+    return spans
+
+
+def caption_filters(tmp, height, spans=None):
     """drawtext filters: each line's groups share its time in proportion to their length.
+    spans: (start, end) per line, e.g. measured from the recorded voiceover.
     Text files and the font sit in tmp, which is ffmpeg's working folder, so the filter
     only holds relative names (Windows drive colons would break the filter syntax)."""
     filters = []
     k = 0
-    for t0, t1, groups in SCRIPT:
+    for i, (t0, t1, groups) in enumerate(SCRIPT):
+        if spans:
+            t0, t1 = spans[i]
         weights = [len(g) for g in groups]
         t = t0
         for g, w in zip(groups, weights):
@@ -72,6 +114,7 @@ def main():
     ap.add_argument("--width", type=int, default=1080)
     ap.add_argument("--fps", type=int, default=30)
     ap.add_argument("--font", help="bold .ttf for captions (default: Arial Bold / DejaVu Sans Bold)")
+    ap.add_argument("--voiceover", help="folder with voiceover_01 ... _11: captions follow the recording")
     a = ap.parse_args()
     W, H, fps = a.width, a.width * 16 // 9, a.fps
     font = next((f for f in ([a.font] if a.font else FONTS) if os.path.isfile(f)), None)
@@ -101,7 +144,8 @@ def main():
             shutil.copyfile(font, os.path.join(tmp, "font.ttf"))
         last = "[cut]"
         if a.captions:
-            graph += ";[cut]" + ",".join(caption_filters(tmp, H)) + "[capt]"
+            spans = voiceover_spans(a.voiceover) if a.voiceover else None
+            graph += ";[cut]" + ",".join(caption_filters(tmp, H, spans)) + "[capt]"
             last = "[capt]"
         cmd = ["ffmpeg", "-v", "error", "-y", *inputs, "-filter_complex", graph, "-map", last, "-r", str(fps),
                "-c:v", "libx264", "-preset", "medium", "-crf", "18", "-pix_fmt", "yuv420p", "-movflags", "+faststart",

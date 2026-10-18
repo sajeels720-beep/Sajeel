@@ -69,7 +69,14 @@ The cut places every shot at its script time and holds the last frame through th
 python3 videos/brain-freeze/mix_audio.py videos/brain-freeze/audio brain_freeze.mp4 brain_freeze_with_sound.mp4
 ```
 
-It places every voiceover line, sound effect and loop at its time and level, dips the music under the voice and sets the loudness YouTube expects (-14 LUFS). Any file that is missing is simply left out. Your final captions can then go on in your editor.
+It places every voiceover line, sound effect and loop at its time and level, dips the music under the voice and sets the loudness YouTube expects (-14 LUFS). Any file that is missing is simply left out.
+
+**Captions in the final video.** Build the edit with burned-in captions that follow your recording (each group of words appears while it is spoken), then add the sound:
+
+```bash
+python3 videos/brain-freeze/assemble_cut.py videos/brain-freeze/renders brain_freeze_captions.mp4 --captions --voiceover videos/brain-freeze/audio
+python3 videos/brain-freeze/mix_audio.py videos/brain-freeze/audio brain_freeze_captions.mp4 brain_freeze_final.mp4
+```
 
 ## Shot list
 
