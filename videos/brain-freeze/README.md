@@ -6,7 +6,8 @@ A 36.8-second vertical Short in the style of Zack D. Films, built entirely from 
 - `shots/`: one script per shot (20 shots; shot 19 is split into 19a and 19b).
 - `scenes/`: shared sets (ice cream, mouth interior, vessels, blood vessel tunnel, nerves, park bench, the protagonist, head cutaway, x-ray head).
 - `assets/`: the logo-free T-shirt texture (derived from a CC0 MakeHuman asset).
-- `assemble_cut.py`: edits the rendered shots into the final timeline; `mix_audio.py` adds the voiceover, sound effects and music.
+- `assemble_cut.py`: edits the rendered shots into the final timeline; `mix_audio.py` adds the voiceover, sound effects and music; `timeline.py` holds the shared timing, so when a recorded line runs long, the shots, captions and sounds after it all move back together.
+- `audio/`: your recorded voiceover lines (and later the sound effects and music).
 - `VOICEOVER.md` and `SOUND_EFFECTS.md`: what to record and generate, with file names, times and levels.
 - `../production/vfx_kit.py`: the video toolkit. `../production/setup_assets.py` is the one-time asset installer.
 - `../MASTER_PROMPT.md`: your master prompt, revised for this style.

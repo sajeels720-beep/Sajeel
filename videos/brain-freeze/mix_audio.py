@@ -1,20 +1,23 @@
 """Mix the voiceover, sound effects and music into the assembled brain-freeze video at the
-times and levels in VOICEOVER.md and SOUND_EFFECTS.md, duck the music under the voice and
-bring the result to YouTube loudness (-14 LUFS).
+times and levels in VOICEOVER.md and SOUND_EFFECTS.md, following the same timeline as
+`assemble_cut.py --voiceover` (lines that run long push everything after them back). Every
+line is brought to the same loudness, the music dips under the voice, and the result is set
+to YouTube loudness (-14 LUFS).
 
 usage: python3 mix_audio.py AUDIO_DIR VIDEO.mp4 OUT.mp4
 AUDIO_DIR holds voiceover_01 ... voiceover_11, sfx_NN_name and music_01 files (.wav, .mp3,
-.m4a ...); any of them may be missing. Needs ffmpeg.
+.m4a ...); any of them may be missing. Build VIDEO.mp4 with assemble_cut.py --voiceover AUDIO_DIR.
+Needs ffmpeg.
 """
 import argparse
 import os
-import re
 import subprocess
 
-LENGTH = 36.8
+from timeline import SILENCE_DB, Timeline, find_audio, loudness
+
 RATE = 48000
-VO_START = [0.0, 3.0, 5.6, 8.4, 11.0, 14.8, 18.8, 22.0, 25.9, 29.6, 32.0]   # voiceover_01 ... _11
-SFX = {  # number: [(start s, level dB relative to the voice), ...]
+VOICE_LUFS = -20                             # every voiceover line is brought to this level first
+SFX = {  # number: [(planned time s, level dB relative to the voice), ...]
     2: [(0.5, -8)], 3: [(1.55, -10)], 4: [(2.6, -6), (36.5, -6)], 5: [(3.05, -16)], 6: [(5.55, -6)],
     7: [(5.8, -12)], 8: [(7.1, -6)], 9: [(7.2, -14)], 10: [(8.5, -8), (32.0, -14)],
     11: [(11.0, -10), (14.8, -12)], 12: [(13.0, -8)], 13: [(13.1, -10)],
@@ -22,31 +25,11 @@ SFX = {  # number: [(start s, level dB relative to the voice), ...]
     17: [(18.85, -4)], 18: [(20.6, -14)], 19: [(22.0, -8)], 20: [(23.95, -8)], 21: [(26.05, -8)],
     22: [(29.65, -8)], 23: [(30.35, -12)], 24: [(32.0, -16)], 25: [(34.35, -4)],
 }
-BEDS = {  # looped beds: number: ([(start, end), ...], level dB)
-    1: ([(0.0, 11.0), (29.6, LENGTH)], -26),                   # park ambience
+BEDS = {  # looped beds: number: ([(planned start, planned end), ...], level dB)
+    1: ([(0.0, 11.0), (29.6, 36.8)], -26),                     # park ambience
     15: ([(14.8, 22.8)], -16),                                 # heartbeat
 }
-MUSIC_DB = -24
-AUDIO_EXT = (".wav", ".mp3", ".m4a", ".aac", ".flac", ".ogg")
-
-
-def find_files(folder):
-    """{"vo": {n: path}, "sfx": {n: path}, "music": path} from loosely named files
-    (voiceover_01.mp3, Voiceover 1.wav, sfx_02_spoon_scoop.wav, music_01.wav ...)."""
-    found = {"vo": {}, "sfx": {}, "music": None}
-    for root, _, files in os.walk(folder):
-        for f in sorted(files):
-            if not f.lower().endswith(AUDIO_EXT):
-                continue
-            name, path = f.lower(), os.path.join(root, f)
-            num = re.search(r"(\d+)", name)
-            if name.startswith("music"):
-                found["music"] = found["music"] or path
-            elif name.startswith("sfx") and num:
-                found["sfx"].setdefault(int(num.group(1)), path)
-            elif ("voice" in name or name.startswith("vo")) and num:
-                found["vo"].setdefault(int(num.group(1)), path)
-    return found
+MUSIC_DB = -18
 
 
 def main():
@@ -55,49 +38,55 @@ def main():
     ap.add_argument("video")
     ap.add_argument("out")
     a = ap.parse_args()
-    files = find_files(a.audio_dir)
+    files = find_audio(a.audio_dir)
+    tl = Timeline.from_folder(a.audio_dir)
+    length = tl.length
     inputs, chains, mix = ["-i", os.path.abspath(a.video)], [], []
     fmt = f"aformat=sample_rates={RATE}:channel_layouts=stereo"
-    n_in = 1                                                          # input 0 is the video
+    count = [1]                                                       # input 0 is the video
 
     def new_input(path, loop=False):
-        nonlocal n_in
         inputs.extend((["-stream_loop", "-1"] if loop else []) + ["-i", os.path.abspath(path)])
-        n_in += 1
-        return n_in - 1
+        count[0] += 1
+        return count[0] - 1
+
+    def gain(path, db=0.0):                                           # match the voice level, then offset
+        return VOICE_LUFS - loudness(path) + db
 
     vo = []
-    for n, t in enumerate(VO_START, start=1):
-        if n in files["vo"]:
-            k = new_input(files["vo"][n])
-            ms = int(t * 1000)
-            chains.append(f"[{k}:a]{fmt},silenceremove=start_periods=1:start_threshold=-45dB,"
-                          f"adelay={ms}|{ms}[vo{n}]")
-            vo.append(f"[vo{n}]")
+    for n in sorted(files["vo"]):
+        if not 1 <= n <= len(tl.new):
+            continue
+        k, ms = new_input(files["vo"][n]), int(tl.line_start(n) * 1000)
+        chains.append(f"[{k}:a]{fmt},silenceremove=start_periods=1:start_threshold={SILENCE_DB}dB,"
+                      f"volume={gain(files['vo'][n]):.2f}dB,adelay={ms}|{ms}[vo{n}]")
+        vo.append(f"[vo{n}]")
     if vo:
         chains.append("".join(vo) + f"amix=inputs={len(vo)}:normalize=0,asplit=2[voice][duck]")
         mix.append("[voice]")
     for n, places in SFX.items():
         if n not in files["sfx"]:
             continue
+        g = gain(files["sfx"][n])
         for j, (t, db) in enumerate(places):
-            k = new_input(files["sfx"][n])
-            ms = int(t * 1000)
-            chains.append(f"[{k}:a]{fmt},volume={db}dB,adelay={ms}|{ms}[s{n}_{j}]")
+            k, ms = new_input(files["sfx"][n]), int(tl.warp(t) * 1000)
+            chains.append(f"[{k}:a]{fmt},volume={g + db:.2f}dB,adelay={ms}|{ms}[s{n}_{j}]")
             mix.append(f"[s{n}_{j}]")
     for n, (spans, db) in BEDS.items():
         if n not in files["sfx"]:
             continue
+        g = gain(files["sfx"][n])
         for j, (t0, t1) in enumerate(spans):
-            k = new_input(files["sfx"][n], loop=True)
-            d, ms = t1 - t0, int(t0 * 1000)
+            start, end = tl.warp(t0), min(tl.warp(t1), length)
+            k, d, ms = new_input(files["sfx"][n], loop=True), end - start, int(start * 1000)
             chains.append(f"[{k}:a]{fmt},atrim=0:{d:.3f},asetpts=PTS-STARTPTS,afade=t=in:d=0.6,"
-                          f"afade=t=out:st={max(d - 0.8, 0):.3f}:d=0.8,volume={db}dB,adelay={ms}|{ms}[b{n}_{j}]")
+                          f"afade=t=out:st={max(d - 0.8, 0):.3f}:d=0.8,volume={g + db:.2f}dB,"
+                          f"adelay={ms}|{ms}[b{n}_{j}]")
             mix.append(f"[b{n}_{j}]")
     if files["music"]:
         k = new_input(files["music"], loop=True)
-        chains.append(f"[{k}:a]{fmt},atrim=0:{LENGTH},asetpts=PTS-STARTPTS,afade=t=out:st={LENGTH - 1.2}:d=1.2,"
-                      f"volume={MUSIC_DB}dB[mraw]")
+        chains.append(f"[{k}:a]{fmt},atrim=0:{length:.3f},asetpts=PTS-STARTPTS,"
+                      f"afade=t=out:st={length - 1.2:.3f}:d=1.2,volume={gain(files['music'], MUSIC_DB):.2f}dB[mraw]")
         if vo:                                                        # dip the music while the voice talks
             chains.append("[mraw][duck]sidechaincompress=threshold=0.02:ratio=5:attack=30:release=400[music]")
         else:
@@ -108,17 +97,15 @@ def main():
     if not mix:
         raise SystemExit(f"No audio files found in {a.audio_dir}")
     chains.append("".join(mix) + f"amix=inputs={len(mix)}:normalize=0:duration=longest,"
-                  f"apad=whole_dur={LENGTH},atrim=0:{LENGTH},loudnorm=I=-14:TP=-1.5:LRA=11,"
+                  f"apad=whole_dur={length:.3f},atrim=0:{length:.3f},loudnorm=I=-14:TP=-1.5:LRA=11,"
                   f"aresample={RATE}[aout]")
     cmd = ["ffmpeg", "-v", "error", "-y", *inputs, "-filter_complex", ";".join(chains), "-map", "0:v",
            "-map", "[aout]", "-c:v", "copy", "-c:a", "aac", "-b:a", "192k", "-shortest", "-movflags", "+faststart",
            os.path.abspath(a.out)]
     subprocess.run(cmd, check=True)
+    print(tl.report())
     print("voiceover lines:", sorted(files["vo"]), "| sound effects:", sorted(files["sfx"]),
           "| music:", bool(files["music"]))
-    missing = [n for n in range(1, 12) if n not in files["vo"]]
-    if missing:
-        print("missing voiceover lines:", missing)
     print("wrote", a.out)
 
 
