@@ -17,6 +17,7 @@ import bpy
 from mathutils import Vector
 
 import mouth_set as MS
+import park_set as PS
 import shot09_xray_vessels as S09
 import vessels as VS
 import vfx_kit as V
@@ -26,7 +27,7 @@ OPEN = (4, 13)
 
 
 def build():
-    parts, ves, brain = S09.build_xray_set(SECONDS, xray=1.0)
+    parts, ves, brain = S09.build_xray_set(SECONDS, xray=1.0, turn=-45)   # no park bin behind the push
     mat = ves["mat"]
     for ob in ves["levels"]:                                       # rush open past normal width, then settle
         cu = ob.data
@@ -49,6 +50,13 @@ def build():
     V.animate_socket(MS.control(mat, "PulseS"), [(1, 0.0), (OPEN[0], 0.0), (OPEN[0] + 2, 3.0), (OPEN[0] + 13, 3.0),
                                                  (OPEN[0] + 14, 0.0)])
 
+    # continuity with shot 10: the same trapped sparks (hidden once the walls turn opaque), the dimmed
+    # sky brightening again as the warm blood rushes in, no lump
+    arteries = [p[:22] for p, r, lv in ves["paths"] if lv == 0][:1]
+    VS.sparks(arteries, count=16, radius=0.00016, start=1, end=48, drift=0.04)
+    bpy.data.materials["Spark_Warm"].node_tree.nodes["Emission"].inputs["Strength"].default_value = 20
+    V.animate_socket(PS.camera_sky(), [(1, 0.4), (OPEN[0], 0.4), (OPEN[1], 1.1)])
+    parts["lump"].hide_render = True
     brain.hide_render = brain.hide_viewport = True
     r = V.camera_rig("Cam_Shot11", lens=20, fstop=40)
     r["cam"].data.clip_start = 0.0005

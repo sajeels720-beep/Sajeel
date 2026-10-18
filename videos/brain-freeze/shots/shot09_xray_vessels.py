@@ -51,13 +51,13 @@ def clear_shell(mat):
             n.color_ramp.elements[1].color = (0, 0, 0, 1)
 
 
-def build_xray_set(seconds, xray=1.0):
+def build_xray_set(seconds, xray=1.0, turn=0.0):
     """Shared by shots 09-11: frosted mouth (end of shot 08), vessel network, brain,
-    the park sky showing through the x-ray, mouth lights."""
+    the park sky showing through the x-ray (turn spins it), mouth lights."""
     V.start_fresh()
     V.setup_shot(seconds, fps=FPS, engine="CYCLES" if PREVIEW else "EEVEE", samples=32 if PREVIEW else 64,
                  scale=50 if PREVIEW else 100)
-    PS.world()
+    PS.world(turn)
     parts = MS.build()
     muc = parts["mucosa"]
     MS.control(muc, "FrostRadius").default_value = 0.024

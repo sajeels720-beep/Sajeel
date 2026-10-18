@@ -54,6 +54,13 @@ def build_hero(name="Hero", pose=None, faceunits=True, subdiv=1):
         FS.interpolate_targets(body)
     rig = body.parent if body.parent and body.parent.type == "ARMATURE" else None
     parts = [o for o in bpy.data.objects if o.parent in (body, rig) and o is not body and o.type == "MESH"]
+    for o in parts:                                                # the smooth hair shell mirrored the sky and
+        if "short02" in o.name:                                    # grass at grazing angles: grey/green crown
+            for m in o.data.materials:
+                b = next((n for n in m.node_tree.nodes if n.bl_idname == "ShaderNodeBsdfPrincipled"), None) if m else None
+                if b is not None:
+                    b.inputs["Specular IOR Level"].default_value = 0.05
+                    b.inputs["Roughness"].default_value = 0.85
     hero = {"body": body, "rig": rig, "parts": parts}
     if pose:
         apply_pose(hero, pose)

@@ -15,7 +15,7 @@ for p in (os.path.join(ROOT, "scenes"), os.path.join(ROOT, "..", "production"),
 
 import bpy
 import numpy as np
-from mathutils import Euler, Quaternion, Vector
+from mathutils import Euler, Matrix, Quaternion, Vector
 
 import character as C
 import claude_sculpt_kit as K
@@ -27,6 +27,14 @@ PREVIEW = os.environ.get("SHOT_PREVIEW") == "1"
 FPS, SECONDS = 30, 2.2
 N = 66
 POSE = "callharvey3d_sittingnatural"
+BLISS_START = {"eyeBlinkLeft": 1.0, "eyeBlinkRight": 1.0, "mouthSmileLeft": 0.6, "mouthSmileRight": 0.6,
+               "cheekSquintLeft": 0.4, "cheekSquintRight": 0.4, "browInnerUp": 0.6, "browOuterUpLeft": 0.2,
+               "browOuterUpRight": 0.2, "mouthDimpleLeft": 0.2, "mouthDimpleRight": 0.2}
+BLISS = {"eyeBlinkLeft": 1.0, "eyeBlinkRight": 1.0, "mouthSmileLeft": 1.3, "mouthSmileRight": 1.3,
+         "cheekSquintLeft": 1.0, "cheekSquintRight": 1.0, "browInnerUp": 1.2, "browOuterUpLeft": 0.4,
+         "browOuterUpRight": 0.4, "mouthDimpleLeft": 0.4, "mouthDimpleRight": 0.4}
+BLISS_HEAD = (-16, 0, 6)                                          # head tipped back at the end (shot 04 starts here)
+END_LOOK, END_DIST = (-14, 7), 1.45                               # final camera, continued by shot 04
 
 
 def bone_world(rig, name, tail=False):
@@ -49,7 +57,7 @@ def hero_on_bench(pose=POSE):
     for k in ("table", "chunk"):
         bpy.data.objects.remove(ice[k])
     bpy.data.objects.remove(ice["scoops"]["Vanilla"])
-    lap = lap_point(hero) + Vector((-0.07, -0.05, 0.03))          # a little to his right, held up off the lap
+    lap = lap_point(hero) + Vector((-0.07, -0.07, 0.13))          # to his right at stomach height: in the safe area
     ctrl = V.link(bpy.data.objects.new("Cup_ctrl", None), ice["col"])
     for ob in list(ice["col"].objects):
         if ob is not ctrl and ob.parent is None:
@@ -58,27 +66,38 @@ def hero_on_bench(pose=POSE):
     ctrl.rotation_euler = (math.radians(-6), 0, math.radians(20))
     # spoon stands in the cup
     ice["spoon"].parent = ctrl
-    ice["spoon"].location = (0.012, 0.01, 0.12)
-    ice["spoon"].rotation_euler = (math.radians(-70), math.radians(10), 0)
+    ice["spoon"].location = (0.012, 0.0, 0.11)                    # bowl in the vanilla, handle up toward camera
+    ice["spoon"].rotation_euler = (math.radians(110), math.radians(10), 0)
     hold_cup(hero, ctrl)
     return hero, park, ice, ctrl
 
 
 def hold_cup(hero, cup, side="R"):
-    """IK the arm so the hand wraps the side of the cup."""
+    """IK the arm so the hand wraps round the cup: the wrist sits outside the wall at the
+    cup's back corner, the hand aims forward along its side (thumb up) and the fingers curl
+    round it (about local Z in this rig; X bends them sideways). The aim empty rides with
+    the target, so moving the target (shot 19b) carries the whole grip."""
     rig = hero["rig"]
+    s = -1 if side == "R" else 1
     tgt = V.link(bpy.data.objects.new(f"Hand_{side}_target", None), V.collection("RIG_TARGETS"))
-    out = Vector((-1 if side == "R" else 1, 0, 0))
-    tgt.location = cup.location + out * 0.045 + Vector((0, 0.0, 0.035))
+    tgt.location = cup.location + Vector((0.065 * s, 0.045, 0.03))
     ik = rig.pose.bones[f"lowerarm02.{side}"].constraints.new("IK")
     ik.target, ik.chain_count = tgt, 4
-    for i in (1, 2, 3):                                           # curl the fingers round the cup
+    aim = V.link(bpy.data.objects.new(f"Hand_{side}_aim", None), V.collection("RIG_TARGETS"))
+    aim.parent = tgt
+    aim.location = (0, -0.165, 0.005)
+    wrist = rig.pose.bones[f"wrist.{side}"]
+    wrist.rotation_mode = "QUATERNION"
+    wrist.rotation_quaternion = Quaternion((0, 1, 0), math.radians(-60 * s))
+    dt = wrist.constraints.new("DAMPED_TRACK")
+    dt.target, dt.track_axis = aim, "TRACK_Y"
+    for i in (1, 2, 3):
         for f in ("finger2", "finger3", "finger4", "finger5"):
             name = f"{f}-{i}.{side}"
             if name in rig.pose.bones:
                 pb = rig.pose.bones[name]
                 pb.rotation_mode = "XYZ"
-                pb.rotation_euler = (math.radians(32 if i == 1 else 40), 0, 0)
+                pb.rotation_euler = (0, 0, math.radians((50 if i == 1 else 60) * s))
     bpy.context.view_layer.update()
     return tgt
 
@@ -126,24 +145,25 @@ def build():
                  scale=50 if PREVIEW else 100)
     hero, park, ice, cup = hero_on_bench()
     rig, body = hero["rig"], hero["body"]
-    # bliss: eyes closed, smile grows, head tips back, a slow contented breath
-    C.face(body, {"eyeBlinkLeft": 1.0, "eyeBlinkRight": 1.0, "mouthSmileLeft": 0.35, "mouthSmileRight": 0.35,
-                  "browInnerUp": 0.25, "cheekSquintLeft": 0.15, "cheekSquintRight": 0.15}, frame=1)
-    C.face(body, {"eyeBlinkLeft": 1.0, "eyeBlinkRight": 1.0, "mouthSmileLeft": 0.8, "mouthSmileRight": 0.8,
-                  "browInnerUp": 0.35, "cheekSquintLeft": 0.45, "cheekSquintRight": 0.45}, frame=N)
-    key_head(rig, [(1, (0, 0, 0)), (N, (-9, 0, 4))])
+    # bliss: eyes closed, a big smile grows, brows lift, head tips back (his faces read bigger than life)
+    C.face(body, BLISS_START, frame=1)
+    C.face(body, BLISS, frame=N)
     head = (bone_world(rig, "head") + bone_world(rig, "head", tail=True)) / 2
     eyes = (bone_world(rig, "eye.L") + bone_world(rig, "eye.R")) / 2
+    key_head(rig, [(1, (0, 0, 0)), (N, BLISS_HEAD)])
     sun_rim_lights(head)
 
     r = V.camera_rig("Cam_Shot03", lens=50, fstop=2.2)
     face_dir = Vector((0, -1, 0))
     low = Vector((0, 0, -0.26))                                   # frame head to lap: the cup sits low in frame
     c0 = eyes + low + K.look_dir(-30, 4) * 1.55
-    c1 = eyes + low + K.look_dir(-14, 7) * 1.3
+    c1 = eyes + low + K.look_dir(*END_LOOK) * END_DIST
     V.cam_keys(r, [(1, c0, eyes + low, 50), (N, c1, eyes + low + Vector((0, 0, 0.03)), 50)])
-    r["cam"].data.dof.focus_object = None
-    r["cam"].data.dof.focus_distance = 1.42                      # focus on the face, not the aim point
+    fo = V.link(bpy.data.objects.new("Focus_eyes", None), V.collection("CAMERA"))
+    fo.parent, fo.parent_type, fo.parent_bone = rig, "BONE", "head"   # focus rides on the eyes as the head tips
+    bpy.context.scene.frame_set(1)
+    fo.matrix_world = Matrix.Translation(eyes)
+    r["cam"].data.dof.focus_object = fo
     V.handheld(r, amount=0.002, aim_amount=0.0015)
     V.compositor(glow=0.35, threshold=1.1, dispersion=0.006)
     if PREVIEW:

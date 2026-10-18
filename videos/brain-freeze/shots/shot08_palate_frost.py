@@ -43,6 +43,7 @@ def build():
                  scale=50 if PREVIEW else 100)
     V.gradient_world(strength=0.6, light_strength=0.3)
     parts = MS.build()
+    parts["teeth"].hide_render = True                              # only a stray tip showed in a corner
     C = MS.CONTACT
     lump, tongue, muc = parts["lump"], parts["tongue"], parts["mucosa"]
 
@@ -53,11 +54,12 @@ def build():
     V.key(tongue, "location", [(1, tuple(drop)), (HIT, (0, 0, 0))], "QUAD", "EASE_IN")
 
     # frost grows from the contact; glowing front and three ripple rings run ahead of it
-    V.animate_socket(MS.control(muc, "FrostRadius"), [(1, 0.0), (HIT, 0.004), (HIT + 6, 0.009), (60, 0.024)])
+    # the frost pops out past the lump's silhouette on the hit, then keeps spreading to the end
+    V.animate_socket(MS.control(muc, "FrostRadius"), [(HIT - 1, 0.0), (HIT + 2, 0.0085), (60, 0.024)], "LINEAR")
     V.animate_socket(MS.control(muc, "FrontGlow"), [(HIT - 1, 0.0), (HIT + 2, 1.0), (60, 0.45)])
     for i in range(3):
-        f0 = HIT + i * 6
-        V.animate_socket(MS.control(muc, f"Ring{i}_R"), [(f0, 0.005), (f0 + 24, 0.032)])
+        f0 = HIT + i * 10                                              # born outside the lump, last ring ends f53
+        V.animate_socket(MS.control(muc, f"Ring{i}_R"), [(f0, 0.008), (f0 + 24, 0.026)])
         V.animate_socket(MS.control(muc, f"Ring{i}_S"), [(1, 0.0), (f0 - 1, 0.0), (f0 + 1, 1.4 - 0.25 * i),
                                                          (f0 + 24, 0.0)])
 
@@ -68,9 +70,9 @@ def build():
     r["cam"].data.clip_start = 0.0005
     aim0, aim1 = Vector((0.0, -0.002, 0.0125)), Vector((0.0, -0.001, 0.0135))
     V.cam_keys(r, [(1, Vector((0.0035, -0.0235, -0.0025)), aim0, 18),
-                   (60, Vector((0.0025, -0.0205, -0.0015)), aim1, 18)])
+                   (60, Vector((0.0025, -0.0205, -0.0015)), aim1, 18)], "LINEAR")   # keeps moving into shot 09
     V.handheld(r, amount=0.00015, aim_amount=0.0002)
-    V.shake(r, HIT, HIT + 7, strength=0.00045)
+    V.shake(r, HIT, HIT + 7, strength=0.0008)
     V.compositor(glow=0.45, threshold=1.0, dispersion=0.006)
     if PREVIEW:
         V.fast_preview()

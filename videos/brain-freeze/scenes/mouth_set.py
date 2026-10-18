@@ -169,8 +169,8 @@ def build_lump(col, mat, center=None, radii=(0.0102, 0.0112, 0.0068)):
     c = CONTACT if center is None else Vector(center)
     lump = K.ellipsoid("IceCream_Lump_geo", (c.x, c.y, c.z - radii[2]), radii, segments=64, col=col)
     K.voxel_remesh(lump, 0.0003)
-    K.skin(lump, 0.007, 0.0012, octaves=3, seed=8)                   # soft, creamy mass
-    K.skin(lump, 0.0026, 0.0004, octaves=3, ridged=True, seed=9)     # spoon-carved ridges
+    K.skin(lump, 0.007, 0.0006, octaves=3, seed=8)                   # soft, creamy mass
+    K.skin(lump, 0.0026, 0.0007, octaves=3, ridged=True, seed=9)     # spoon-carved ridges
     K.smooth(lump, iterations=2, factor=0.35)
     P = K.co(lump)
     roof = palate_height(P[:, 0], P[:, 1]) - 0.0002
@@ -291,9 +291,9 @@ def mucosa_material(name="Mucosa", center=None, base="#E8828E", dark="#C2566A", 
     nt.links.new(_math(nt, "SUBTRACT", fr, 0.0025), mr.inputs["From Max"])
     frost_mask = mr.outputs["Result"]
     frost = nt.nodes.new("ShaderNodeBsdfPrincipled")
-    frost.inputs["Roughness"].default_value = 0.38
+    frost.inputs["Roughness"].default_value = 0.22
     V._inp(frost, "Emission Color", "Emission").default_value = (*H("#9ED6FF"), 1)
-    V._inp(frost, "Emission Strength").default_value = 0.1
+    V._inp(frost, "Emission Strength").default_value = 0.3
     for names, val in ((("Coat Weight", "Clearcoat"), 1.0), (("Coat Roughness", "Clearcoat Roughness"), 0.04)):
         sk = V._inp(frost, *names)
         if sk is not None:
@@ -304,8 +304,8 @@ def mucosa_material(name="Mucosa", center=None, base="#E8828E", dark="#C2566A", 
     nt.links.new(_math(nt, "SUBTRACT", fr, 0.009), thick.inputs["From Max"])
     fcol = nt.nodes.new("ShaderNodeMix")
     fcol.data_type = "RGBA"
-    fcol.inputs[6].default_value = (*H("#BFE6FF"), 1)               # thin frost: icy blue
-    fcol.inputs[7].default_value = (*H("#F7FBFF"), 1)               # thick frost: white
+    fcol.inputs[6].default_value = (*H("#4AAEF0"), 1)               # thin frost: clear ice blue
+    fcol.inputs[7].default_value = (*H("#9AD3F5"), 1)               # thick frost: pale ice (white read as plaster)
     nt.links.new(thick.outputs["Result"], fcol.inputs[0])
     nt.links.new(fcol.outputs[2], frost.inputs["Base Color"])
     vor = nt.nodes.new("ShaderNodeTexVoronoi")                      # crystal facets that glint
@@ -315,7 +315,7 @@ def mucosa_material(name="Mucosa", center=None, base="#E8828E", dark="#C2566A", 
     fnz.inputs["Scale"].default_value = 3000.0
     nt.links.new(geo.outputs["Position"], fnz.inputs["Vector"])
     bp = nt.nodes.new("ShaderNodeBump")
-    bp.inputs["Strength"].default_value = 0.8
+    bp.inputs["Strength"].default_value = 0.35                      # glassy facets, not stucco grain
     bp.inputs["Distance"].default_value = 0.00025
     nt.links.new(_math(nt, "ADD", vor.outputs["Distance"], _math(nt, "MULTIPLY", fnz.outputs["Fac"], 0.5)),
                  bp.inputs["Height"])
@@ -335,7 +335,7 @@ def mucosa_material(name="Mucosa", center=None, base="#E8828E", dark="#C2566A", 
         glow = _math(nt, "ADD", glow, ring)
     cyan = nt.nodes.new("ShaderNodeEmission")
     cyan.inputs["Color"].default_value = (*H("#2EC0FF"), 1)
-    nt.links.new(_math(nt, "MULTIPLY", glow, 3.5), cyan.inputs["Strength"])
+    cyan.inputs["Strength"].default_value = 3.5
     # warm glow: bright band just outside the melting frost edge + a soft warmth that fades outward
     warm_mr = nt.nodes.new("ShaderNodeMapRange")
     nt.links.new(d, warm_mr.inputs["Value"])
@@ -348,11 +348,12 @@ def mucosa_material(name="Mucosa", center=None, base="#E8828E", dark="#C2566A", 
     warm.inputs["Color"].default_value = (*H("#FF5208"), 1)
     nt.links.new(_math(nt, "MULTIPLY", warm_amt, _math(nt, "MULTIPLY", _value(nt, "Warm", 0.0), 1.6)),
                  warm.inputs["Strength"])
-    add1 = nt.nodes.new("ShaderNodeAddShader")
-    nt.links.new(surf.outputs[0], add1.inputs[0])
-    nt.links.new(cyan.outputs[0], add1.inputs[1])
+    rings_mix = nt.nodes.new("ShaderNodeMixShader")                 # rings replace the surface: added on top
+    nt.links.new(glow, rings_mix.inputs[0])                         # of the pink they turned white-lavender
+    nt.links.new(surf.outputs[0], rings_mix.inputs[1])
+    nt.links.new(cyan.outputs[0], rings_mix.inputs[2])
     add2 = nt.nodes.new("ShaderNodeAddShader")
-    nt.links.new(add1.outputs[0], add2.inputs[0])
+    nt.links.new(rings_mix.outputs[0], add2.inputs[0])
     nt.links.new(warm.outputs[0], add2.inputs[1])
     nt.links.new(add2.outputs[0], out.inputs["Surface"])
     add_xray(m)
@@ -360,8 +361,8 @@ def mucosa_material(name="Mucosa", center=None, base="#E8828E", dark="#C2566A", 
 
 
 def ice_cream_material(name="IceCream_Vanilla_Mouth"):
-    m = V.principled(name, H("#FFF7EA"), rough=0.28, sss=0.5, sss_radius=(1.0, 0.8, 0.6),
-                     sss_scale=0.003, spec=0.5, coat=0.35)
+    m = V.principled(name, H("#FFF7EA"), rough=0.18, sss=0.5, sss_radius=(1.0, 0.8, 0.6),
+                     sss_scale=0.003, spec=0.5, coat=0.6)
     V.color_variation(m, H("#F2DDB4"), scale=180, amount=0.6)                 # creamy tone variation
     V.color_variation(m, H("#5A3A26"), scale=380, amount=1.0, threshold=0.75)  # vanilla bean specks
     V.bump(m, scale=600, strength=0.25, distance=0.0002)

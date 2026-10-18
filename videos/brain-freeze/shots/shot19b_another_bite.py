@@ -49,16 +49,16 @@ def build():
     cup.location = cup.location - tgt.location
     # shrug: shoulders up, head tilts, "whatever" brows and smile
     for side, sgn in (("L", 1), ("R", -1)):
-        key_bone(rig, f"clavicle.{side}", [(1, (0, 0, 0)), (SHRUG[0], (0, 0, 0)), (SHRUG[1] - 4, (0, 0, 14 * sgn)),
-                                           (SHRUG[1] + 6, (0, 0, 3 * sgn)), (N, (0, 0, 0))])
+        key_bone(rig, f"clavicle.{side}", [(1, (0, 0, 0)), (SHRUG[0], (0, 0, 0)), (SHRUG[1] - 4, (0, 0, 22 * sgn)),
+                                           (SHRUG[1] + 6, (0, 0, 4 * sgn)), (N, (0, 0, 0))])
     S03.key_head(rig, [(1, (0, 0, 0)), (SHRUG[1] - 4, (2, 0, 8)), (LIFT[0] + 6, (-4, 0, 2)), (N, (-8, 0, 0))])
     C.face(body, {"browOuterUpLeft": 0.0, "browOuterUpRight": 0.0, "browInnerUp": 0.0, "mouthSmileLeft": 0.2,
                   "mouthSmileRight": 0.2, "jawOpen": 0.0}, frame=1)
-    C.face(body, {"browOuterUpLeft": 0.8, "browOuterUpRight": 0.8, "browInnerUp": 0.5, "mouthSmileLeft": 0.6,
-                  "mouthSmileRight": 0.6, "jawOpen": 0.0}, frame=SHRUG[1])
-    C.face(body, {"browOuterUpLeft": 0.5, "browOuterUpRight": 0.5, "browInnerUp": 0.3, "mouthSmileLeft": 0.2,
-                  "mouthSmileRight": 0.2, "jawOpen": 0.55}, frame=LIFT[1])
-    C.face(body, {"jawOpen": 0.6}, frame=N)
+    C.face(body, {"browOuterUpLeft": 1.4, "browOuterUpRight": 1.4, "browInnerUp": 0.9, "mouthSmileLeft": 1.1,   # big
+                  "mouthSmileRight": 1.1, "jawOpen": 0.0}, frame=SHRUG[1])                                        # "whatever"
+    C.face(body, {"browOuterUpLeft": 0.7, "browOuterUpRight": 0.7, "browInnerUp": 0.4, "mouthSmileLeft": 0.3,
+                  "mouthSmileRight": 0.3, "jawOpen": 0.7}, frame=LIFT[1])
+    C.face(body, {"jawOpen": 0.8}, frame=N)
     # lift the cup up toward the open mouth
     sc = bpy.context.scene
     sc.frame_set(N)

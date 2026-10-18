@@ -44,44 +44,52 @@ def build():
                  scale=50 if PREVIEW else 100)
     hero, park, ice, cup = S03.hero_on_bench()
     rig, body = hero["rig"], hero["body"]
-    bliss = {"eyeBlinkLeft": 1.0, "eyeBlinkRight": 1.0, "mouthSmileLeft": 0.8, "mouthSmileRight": 0.8,
-             "browInnerUp": 0.35, "cheekSquintLeft": 0.45, "cheekSquintRight": 0.45, "eyeWideLeft": 0.0,
-             "eyeWideRight": 0.0, "browOuterUpLeft": 0.0, "browOuterUpRight": 0.0, "jawOpen": 0.0,
-             "mouthFrownLeft": 0.0, "mouthFrownRight": 0.0, "mouthStretchLeft": 0.0, "mouthStretchRight": 0.0}
-    shock = {"eyeBlinkLeft": 0.0, "eyeBlinkRight": 0.0, "mouthSmileLeft": 0.0, "mouthSmileRight": 0.0,
-             "browInnerUp": 1.0, "cheekSquintLeft": 0.0, "cheekSquintRight": 0.0, "eyeWideLeft": 1.0,
-             "eyeWideRight": 1.0, "browOuterUpLeft": 0.7, "browOuterUpRight": 0.7, "jawOpen": 0.22,
-             "mouthFrownLeft": 0.5, "mouthFrownRight": 0.5, "mouthStretchLeft": 0.4, "mouthStretchRight": 0.4}
+    bliss = dict(S03.BLISS, eyeWideLeft=0.0, eyeWideRight=0.0, jawOpen=0.0, mouthFrownLeft=0.0,   # = shot 03's end
+                 mouthFrownRight=0.0, mouthStretchLeft=0.0, mouthStretchRight=0.0)
+    shock = {"eyeBlinkLeft": 0.0, "eyeBlinkRight": 0.0, "mouthSmileLeft": 0.0, "mouthSmileRight": 0.0,   # exaggerated
+             "browInnerUp": 1.8, "cheekSquintLeft": 0.0, "cheekSquintRight": 0.0, "eyeWideLeft": 1.8,       # like his:
+             "eyeWideRight": 1.8, "browOuterUpLeft": 1.5, "browOuterUpRight": 1.5, "jawOpen": 0.22,        # white shows
+             "mouthFrownLeft": 0.5, "mouthFrownRight": 0.5, "mouthStretchLeft": 0.4, "mouthStretchRight": 0.4,  # round the iris
+             "mouthDimpleLeft": 0.0, "mouthDimpleRight": 0.0}
     C.face(body, bliss, frame=1)
     C.face(body, bliss, frame=HIT - 1)
     C.face(body, shock, frame=HIT + 2)
     C.face(body, shock, frame=N)
-    S03.key_head(rig, [(1, (-9, 0, 4)), (HIT - 1, (-9, 0, 4)), (HIT + 3, (3, 0, -2)), (N, (2, 0, -1))])
-
     sc = bpy.context.scene
+    sc.frame_set(1)
+    e_ref = (S03.bone_world(rig, "eye.L") + S03.bone_world(rig, "eye.R")) / 2   # shot 03's framing reference
+    S03.key_head(rig, [(1, S03.BLISS_HEAD), (HIT - 1, S03.BLISS_HEAD), (HIT + 3, (3, 0, -2)), (N, (2, 0, -1))])
 
     def eyes_at(f):
         sc.frame_set(f)
         return (S03.bone_world(rig, "eye.L") + S03.bone_world(rig, "eye.R")) / 2
-    e0, e1 = eyes_at(1), eyes_at(HIT + 3)
+    e1 = eyes_at(HIT + 3)
     head = (S03.bone_world(rig, "head") + S03.bone_world(rig, "head", tail=True)) / 2
     sc.frame_set(1)
     S03.sun_rim_lights(head)
     r = V.camera_rig("Cam_Shot04", lens=50, fstop=2.8)
-    d0 = K.look_dir(-14, 7)
-    V.cam_keys(r, [(1, e0 + Vector((0, 0, -0.06)) + d0 * 1.05, e0 + Vector((0, 0, -0.05)), 50),
-                   (HIT - 1, e0 + Vector((0, 0, -0.05)) + d0 * 1.0, e0 + Vector((0, 0, -0.04)), 50),
-                   (HIT + 3, e1 + d0 * 0.5, e1, 120),                 # crash zoom
-                   (N, e1 + d0 * 0.47, e1, 125)])
+    d0 = K.look_dir(*S03.END_LOOK)
+    low, dist = Vector((0, 0, -0.26)), S03.END_DIST
+    cornea = e1 + d0 * 0.012                                          # focus on the eyes' surface, not their centres
+    V.cam_keys(r, [(1, e_ref + low + d0 * dist, e_ref + low + Vector((0, 0, 0.03)), 50),   # = shot 03's last frame
+                   (HIT - 1, e_ref + low + Vector((0, 0, 0.01)) + d0 * (dist - 0.04), e_ref + low + Vector((0, 0, 0.04)), 50),
+                   (HIT + 3, e1 + d0 * 0.5, cornea, 75),              # crash zoom to both eyes, brows and mouth
+                   (N, e1 + d0 * 0.44, cornea, 76)])                  # then keep pushing in
     for idd in (r["rig"], r["aim"], r["cam"].data):                   # snap, don't drift, into the zoom
         for fc in V.fcurves(idd):
             for kp in fc.keyframe_points:
                 if int(kp.co.x) == HIT - 1:
                     kp.interpolation, kp.easing = "EXPO", "EASE_OUT"
+                elif int(kp.co.x) == HIT + 3:
+                    kp.interpolation = "LINEAR"                       # no settle: the push never stops
+    cd = r["cam"].data
+    for f, fstop in ((HIT - 1, 2.8), (HIT + 2, 5.6)):                 # both eyes sharp in the close-up
+        cd.dof.aperture_fstop = fstop
+        cd.dof.keyframe_insert("aperture_fstop", frame=f)
     V.handheld(r, amount=0.0015, aim_amount=0.001)
-    V.shake(r, HIT, HIT + 9, strength=0.006, scale=1.2)
+    V.shake(r, HIT, HIT + 9, strength=0.01, scale=1.2)
     V.compositor(glow=0.35, threshold=1.1, dispersion=0.006)
-    flash_dispersion([(HIT - 1, 0.006), (HIT + 1, 0.07), (HIT + 6, 0.006)])
+    flash_dispersion([(HIT - 1, 0.006), (HIT + 2, 0.22), (HIT + 4, 0.15), (HIT + 9, 0.006)])   # peaks on the sharp eyes
     if PREVIEW:
         V.fast_preview(bounces=(4, 2, 2, 4, 8))
     return {"hero": hero}
