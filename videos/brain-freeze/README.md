@@ -6,7 +6,8 @@ A 36.8-second vertical Short in the style of Zack D. Films, built entirely from 
 - `shots/`: one script per shot (20 shots; shot 19 is split into 19a and 19b).
 - `scenes/`: shared sets (ice cream, mouth interior, vessels, blood vessel tunnel, nerves, park bench, the protagonist, head cutaway, x-ray head).
 - `assets/`: the logo-free T-shirt texture (derived from a CC0 MakeHuman asset).
-- `assemble_cut.py`: edits the rendered shots into the final timeline.
+- `assemble_cut.py`: edits the rendered shots into the final timeline; `mix_audio.py` adds the voiceover, sound effects and music.
+- `VOICEOVER.md` and `SOUND_EFFECTS.md`: what to record and generate, with file names, times and levels.
 - `../production/vfx_kit.py`: the video toolkit. `../production/setup_assets.py` is the one-time asset installer.
 - `../MASTER_PROMPT.md`: your master prompt, revised for this style.
 
@@ -60,7 +61,15 @@ python3 videos/brain-freeze/assemble_cut.py videos/brain-freeze/renders brain_fr
 python3 videos/brain-freeze/assemble_cut.py videos/brain-freeze/renders timing_guide.mp4 --captions
 ```
 
-The cut places every shot at its script time and holds the last frame through the voiceover pauses. `--captions` burns in his caption style (2–4 white bold words at about 75% height) so you can check timing. Do your final captions, voiceover and sound effects in your editor.
+The cut places every shot at its script time and holds the last frame through the voiceover pauses. `--captions` burns in his caption style (2–4 white bold words at about 75% height) so you can check timing.
+
+**Add the sound.** Record the lines in `VOICEOVER.md` and make the sounds in `SOUND_EFFECTS.md`, put all the files in one folder (for example `videos/brain-freeze/audio/`), then:
+
+```bash
+python3 videos/brain-freeze/mix_audio.py videos/brain-freeze/audio brain_freeze.mp4 brain_freeze_with_sound.mp4
+```
+
+It places every voiceover line, sound effect and loop at its time and level, dips the music under the voice and sets the loudness YouTube expects (-14 LUFS). Any file that is missing is simply left out. Your final captions can then go on in your editor.
 
 ## Shot list
 
