@@ -29,6 +29,7 @@ FPS, SECONDS = 30, 2.4
 N = 72
 POP, ARROW, PULSE = 3, (24, 34), 36
 RED = V.hex_lin("#FF2A22")
+DEEP_RED = (1.0, 0.02, 0.01)                                    # stays saturated red under AgX at low strength
 
 
 def surface_hit(ob, origin, direction):
@@ -50,14 +51,15 @@ def question_mark(col, at, size=0.15):
     ob = V.link(bpy.data.objects.new("Question_Mark", cu), col)
     ob.location = at
     ob.rotation_euler = (math.radians(90), 0, 0)
-    mat = V.principled("Question_Red", RED, rough=0.25, coat=0.6, emission=RED, emission_strength=1.4)
+    mat = V.principled("Question_Red", V.hex_lin("#B8080F"), rough=0.25, coat=0.6, emission=V.hex_lin("#FF0A04"),
+                       emission_strength=0.55)                   # deep red: brighter reds turn salmon under AgX
     V.assign(ob, mat)
     return ob
 
 
 def arrow(col, a, b, bulge, radius=0.006):
     pts = K.path_spline([a, (a + b) / 2 + bulge, b], 40)
-    mat = V.emission("Arrow_Red", (1.0, 0.06, 0.04), 2.0)
+    mat = V.emission("Arrow_Red", DEEP_RED, 0.9)
     shaft = V.glow_curve("Arrow_Shaft", pts, radius, mat, col=col, grow=ARROW)
     tip_dir = Vector(pts[-1]) - Vector(pts[-4])
     bpy.ops.mesh.primitive_cone_add(vertices=24, radius1=radius * 3.2, depth=radius * 7, location=tuple(b))
@@ -93,7 +95,7 @@ def build():
     start = q.location + Vector((0.0, -0.02, -0.09))
     arrow(col, np.array(start), np.array(fh + fn * 0.02), np.array((0.06, -0.08, 0.0)))
     rings = V.ripple_rings("Forehead_Ring", fh + fn * 0.003, fn, PULSE, count=3, interval=8, life=16, radius=0.045,
-                           thickness=0.06, color=RED, strength=6.0, col=col)
+                           thickness=0.06, color=DEEP_RED, strength=2.5, col=col)
     for r in rings:
         r.visible_diffuse = r.visible_glossy = False
     glow = cut["brain_mat"].node_tree.nodes["Glow"].outputs[0]

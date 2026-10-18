@@ -101,10 +101,10 @@ def frost_decal(body, centre, radius_keys, col):
     nt.nodes.clear()
     out = nt.nodes.new("ShaderNodeOutputMaterial")
     fr = nt.nodes.new("ShaderNodeBsdfPrincipled")
-    fr.inputs["Base Color"].default_value = (*V.hex_lin("#EAF6FF"), 1)
-    fr.inputs["Roughness"].default_value = 0.4
-    V._inp(fr, "Emission Color", "Emission").default_value = (*V.hex_lin("#9FD8FF"), 1)
-    V._inp(fr, "Emission Strength").default_value = 0.2
+    fr.inputs["Base Color"].default_value = (*V.hex_lin("#BFE3FF"), 1)          # icy blue, not a white plaster
+    fr.inputs["Roughness"].default_value = 0.22
+    V._inp(fr, "Emission Color", "Emission").default_value = (*V.hex_lin("#7FC8FF"), 1)
+    V._inp(fr, "Emission Strength").default_value = 0.35
     tr = nt.nodes.new("ShaderNodeBsdfTransparent")
     geo = nt.nodes.new("ShaderNodeNewGeometry")
     dist = nt.nodes.new("ShaderNodeVectorMath")
@@ -131,8 +131,20 @@ def frost_decal(body, centre, radius_keys, col):
     nt.links.new(sub.outputs[0], mr.inputs["From Max"])
     amt = nt.nodes.new("ShaderNodeMath")
     amt.operation = "MULTIPLY"
-    amt.inputs[1].default_value = 0.8                              # thin film: skin still shows through
+    amt.inputs[1].default_value = 0.65                             # thin film: skin still shows through
     nt.links.new(mr.outputs["Result"], amt.inputs[0])
+    # fade out before the decal's cut edges (brow line below, temples behind) so no straight edge shows
+    sep = nt.nodes.new("ShaderNodeSeparateXYZ")
+    nt.links.new(geo.outputs["Position"], sep.inputs[0])
+    for axis, lo, hi in (("Z", centre.z + 0.004, centre.z + 0.012), ("Y", centre.y + 0.05, centre.y + 0.032)):
+        fade = nt.nodes.new("ShaderNodeMapRange")
+        fade.inputs["From Min"].default_value, fade.inputs["From Max"].default_value = lo, hi
+        nt.links.new(sep.outputs[axis], fade.inputs["Value"])
+        prod = nt.nodes.new("ShaderNodeMath")
+        prod.operation = "MULTIPLY"
+        nt.links.new(amt.outputs[0], prod.inputs[0])
+        nt.links.new(fade.outputs["Result"], prod.inputs[1])
+        amt = prod
     mix = nt.nodes.new("ShaderNodeMixShader")
     nt.links.new(amt.outputs[0], mix.inputs[0])
     nt.links.new(tr.outputs[0], mix.inputs[1])
@@ -149,8 +161,8 @@ def build():
                  scale=50 if PREVIEW else 100)
     hero, park, ice, cup = S03.hero_on_bench()
     rig, body = hero["rig"], hero["body"]
-    shock = {"eyeWideLeft": 0.6, "eyeWideRight": 0.6, "browInnerUp": 1.0, "browOuterUpLeft": 0.7,
-             "browOuterUpRight": 0.7, "jawOpen": 0.1}
+    shock = {"eyeWideLeft": 1.8, "eyeWideRight": 1.8, "browInnerUp": 1.8, "browOuterUpLeft": 1.5,   # = shot 04's end
+             "browOuterUpRight": 1.5, "jawOpen": 0.22}
     off = {k: 0.0 for k in shock}
     C.face(body, {**{k: 0.0 for k in HS.PAIN}, **shock}, frame=1)
     C.face(body, {**{k: 0.0 for k in HS.PAIN}, **shock}, frame=HIT - 1)
@@ -171,7 +183,7 @@ def build():
         cr = V.glow_curve(f"Crack_{i:02d}", pts3, 0.0007 if j == 0 else 0.0004, core, col=col, grow=(start, start + 9),
                           taper=0.35)
         cr.visible_diffuse = cr.visible_glossy = False
-    frost_decal(body, glab, [(1, 0.0), (HIT, 0.0), (HIT + 6, 0.02), (N, 0.06)], col)
+    frost_decal(body, glab, [(1, 0.0), (HIT, 0.0), (HIT + 6, 0.02), (N, 0.05)], col)
     spark = V.emission("Ice_Sparkle", (0.85, 0.95, 1.0), 12.0)
     for k in range(34):                                            # ice sparkles burst off the forehead
         d = Vector((rng.normal(0, 1), -abs(rng.normal(0.8, 0.4)), rng.normal(0.3, 1))).normalized()

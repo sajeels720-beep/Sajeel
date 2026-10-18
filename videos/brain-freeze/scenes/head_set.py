@@ -251,9 +251,11 @@ def attach_to_head(hero, objs):
         ob.matrix_world = mw
 
 
-PAIN = {"eyeBlinkLeft": 1.0, "eyeBlinkRight": 1.0, "eyeSquintLeft": 0.6, "eyeSquintRight": 0.6,
-        "browInnerUp": 1.0, "noseSneerLeft": 0.3, "noseSneerRight": 0.3, "cheekSquintLeft": 0.3,
-        "cheekSquintRight": 0.3, "mouthStretchLeft": 0.6, "mouthStretchRight": 0.6, "jawOpen": 0.1}
+PAIN = {"eyeBlinkLeft": 1.0, "eyeBlinkRight": 1.0, "eyeSquintLeft": 1.2, "eyeSquintRight": 1.2,  # a wince you
+        "browInnerUp": 1.6, "browDownLeft": 0.6, "browDownRight": 0.6, "noseSneerLeft": 1.0,          # read at phone
+        "noseSneerRight": 1.0, "cheekSquintLeft": 1.0, "cheekSquintRight": 1.0, "mouthStretchLeft": 1.0,  # size: at 1.0
+        "mouthStretchRight": 1.0, "mouthFrownLeft": 0.6, "mouthFrownRight": 0.6, "mouthUpperUpLeft": 0.5,  # it read as
+        "mouthUpperUpRight": 0.5, "jawOpen": 0.12}                                                         # sleeping
 
 
 def cutaway_scene(hero, cut_above_eyes=0.052, tilt=12):

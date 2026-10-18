@@ -64,11 +64,11 @@ def mouth_roof(hero, col):
     K.set_co(pal, Q)
     V.assign(pal, V.principled("Palate_Pink", H("#E77C8C"), rough=0.3, sss=0.4, sss_radius=(1, 0.35, 0.3),
                                sss_scale=0.003, coat=0.4, emission=H("#FF6F86"), emission_strength=0.6))
-    lump = K.ellipsoid("IceCream_Xray", (c[0], c[1] + d * 0.1, top - 0.006), (w * 0.22, d * 0.26, 0.007),
+    lump = K.ellipsoid("IceCream_Xray", (c[0], c[1] + d * 0.1, top - 0.007), (w * 0.28, d * 0.3, 0.009),
                        segments=32, col=col)
     K.skin(lump, 0.006, 0.0012, octaves=3, seed=5)
-    V.assign(lump, V.principled("IceCream_Cold", H("#F4FBFF"), rough=0.35, emission=H("#8FD8FF"),
-                                emission_strength=1.6))
+    V.assign(lump, V.principled("IceCream_Cold", H("#DFF4FF"), rough=0.35, emission=H("#4FC3FF"),
+                                emission_strength=3.0))                 # cold cyan glow: not lost among the teeth
     return pal, lump
 
 

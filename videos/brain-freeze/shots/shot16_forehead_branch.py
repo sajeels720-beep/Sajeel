@@ -44,8 +44,8 @@ def build():
     pts = [tuple(p.co[:3]) for p in v1.data.splines[0].points]
     tip = Vector(pts[-1])
     rings = V.ripple_rings("Forehead_Flare", tip + Vector((0, -0.004, 0)), (0.1, -1, 0.25), SIGNAL[1] - 1, count=3,
-                           interval=6, life=14, radius=0.05, thickness=0.06, color=V.hex_lin("#FF2A22"),
-                           strength=6.0, col=V.collection("FX"))
+                           interval=6, life=14, radius=0.05, thickness=0.06, color=(1.0, 0.02, 0.01),
+                           strength=2.5, col=V.collection("FX"))           # deep red: brighter turns salmon
     for r in rings:
         r.visible_diffuse = r.visible_glossy = False
     glow = x["brain_mat"].node_tree.nodes["Glow"].outputs[0]

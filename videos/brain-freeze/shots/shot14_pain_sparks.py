@@ -56,11 +56,11 @@ def build():
         K._aim(ob, target)
 
     # camera: orbit around the artery
-    r = V.camera_rig("Cam_Shot14", lens=40, fstop=4.0)
+    r = V.camera_rig("Cam_Shot14", lens=40, fstop=1.4)                   # macro look: the park melts into bokeh
     keys = []
     for f in (1, 12, 24, 36, 48):
         t = (f - 1) / 47
-        az, el, dist = -60 + 50 * t, 6 - 4 * t, 2.3 - 0.35 * t
+        az, el, dist = -60 + 50 * t, -12 + 3 * t, 2.3 - 0.35 * t      # from below: sky behind, not a lawn
         keys.append((f, target + K.look_dir(az, el) * dist, target + Vector((0, 0, 0.05 * t)), 40))
     V.cam_keys(r, keys)
     V.handheld(r, amount=0.004, aim_amount=0.003)
