@@ -17,6 +17,7 @@ import bpy
 from mathutils import Vector
 
 import mouth_set as MS
+import park_set as PS
 import shot09_xray_vessels as S09
 import vessels as VS
 import vfx_kit as V
@@ -33,14 +34,20 @@ def build():
     V.animate_socket(MS.control(mat, "Cold"), [(SQUEEZE[0], 0.0), (SQUEEZE[1], 1.0)])
     V.animate_socket(MS.control(mat, "Glow"), [(SQUEEZE[0], 0.45), (SQUEEZE[1], 0.25)])
     V.animate_socket(MS.control(mat, "Clear"), [(SQUEEZE[0], 0.0), (SQUEEZE[1], 1.0)])
-    arteries = [p for p, r, lv in ves["paths"] if lv == 0]
-    VS.sparks(arteries, count=26, radius=0.00021, start=1, end=60)
+    # trapped heat: sparks on the lower half of the artery in frame, small enough to sit inside
+    # the squeezed tube, bright enough to glow through its cleared wall
+    arteries = [p[:22] for p, r, lv in ves["paths"] if lv == 0][:1]
+    VS.sparks(arteries, count=16, radius=0.00016, start=1, end=60, drift=0.04)
+    bpy.data.materials["Spark_Warm"].node_tree.nodes["Emission"].inputs["Strength"].default_value = 20
+    # the sky dims as the vessels go cold, so the dim blue vessels stay readable against it
+    V.animate_socket(PS.camera_sky(), [(SQUEEZE[0], 1.1), (SQUEEZE[1], 0.4)])
 
-    brain.hide_render = brain.hide_viewport = True                 # close-up: vessels against the dark
+    brain.hide_render = brain.hide_viewport = True                 # close-up: vessels against the sky
+    parts["lump"].hide_render = True                               # a blurred grey arc this close; clutter
     r = V.camera_rig("Cam_Shot10", lens=24, fstop=40)
     r["cam"].data.clip_start = 0.0005
     V.cam_keys(r, [(1, Vector((0.0075, -0.0125, 0.0025)), Vector((0.0115, 0.0005, 0.0135)), 24),
-                   (60, Vector((0.0082, -0.0108, 0.0038)), Vector((0.0118, 0.001, 0.0138)), 24)])
+                   (60, Vector((0.00864, -0.00939, 0.0050)), Vector((0.0118, 0.001, 0.0138)), 24)])
     V.handheld(r, amount=0.0001, aim_amount=0.00012)
     V.compositor(glow=0.6, threshold=0.9, dispersion=0.006)
     S09.preview_settings()

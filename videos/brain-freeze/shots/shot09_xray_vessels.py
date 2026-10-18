@@ -39,6 +39,18 @@ def xray_all(value=None, keys=None):
             MS.control(m, "XRay").default_value = value
 
 
+def clear_shell(mat):
+    """Turn a material's x-ray shell fully clear (no rim, no tint): the x-rayed palate's
+    folds would otherwise draw stray violet strokes across the vessels and brain."""
+    nt = mat.node_tree
+    for n in nt.nodes:
+        if n.bl_idname == "ShaderNodeBsdfTransparent":
+            n.inputs["Color"].default_value = (1, 1, 1, 1)
+        elif n.bl_idname == "ShaderNodeValToRGB" and n.inputs[0].links \
+                and n.inputs[0].links[0].from_node.bl_idname == "ShaderNodeLayerWeight":
+            n.color_ramp.elements[1].color = (0, 0, 0, 1)
+
+
 def build_xray_set(seconds, xray=1.0):
     """Shared by shots 09-11: frosted mouth (end of shot 08), vessel network, brain,
     the park sky showing through the x-ray, mouth lights."""
@@ -51,6 +63,10 @@ def build_xray_set(seconds, xray=1.0):
     MS.control(muc, "FrostRadius").default_value = 0.024
     MS.control(muc, "FrontGlow").default_value = 0.45
     xray_all(xray)
+    MS.control(parts["lump"].active_material, "XRay").default_value = 0.93 * xray   # milky ice, still there
+    for m in (muc, parts["cheek_mat"]):
+        clear_shell(m)
+    parts["cavity"].modifiers["Solidify"].use_rim = False         # its cut edge glowed as a saw-tooth
     parts["lump"].scale = (1.012, 1.012, 0.975)
     ves = VS.build()
     brain = VS.brain_underside()
@@ -66,15 +82,15 @@ def preview_settings():
 def build():
     parts, ves, brain = build_xray_set(SECONDS, xray=0.0)
     muc = parts["mucosa"]
-    xray_all(keys=[(1, 0.0), (5, 0.0), (20, 1.0)])
-    V.animate_socket(MS.control(muc, "FrontGlow"), [(1, 0.45), (14, 0.0)])
-    VS.grow(ves["levels"], [(6, 20), (12, 30), (20, 40), (28, 50)])
+    xray_all(keys=[(1, 0.0), (14, 1.0)])
+    V.animate_socket(MS.control(parts["lump"].active_material, "XRay"), [(1, 0.0), (14, 0.93)])
+    V.animate_socket(MS.control(muc, "FrontGlow"), [(1, 0.45), (8, 0.0)])
+    VS.grow(ves["levels"], [(2, 14), (10, 24), (20, 36), (31, 48)])     # each level starts as its parent arrives
     V.animate_socket(MS.control(ves["mat"], "Glow"), [(1, 0.15), (20, 0.4), (60, 0.45)])
 
     r = V.camera_rig("Cam_Shot09", lens=16, fstop=40)
     r["cam"].data.clip_start = 0.0005
-    V.cam_keys(r, [(1, Vector((0.0025, -0.0185, -0.0022)), Vector((0.0, -0.003, 0.013)), 16),
-                   (14, Vector((0.0028, -0.0195, -0.003)), Vector((0.0, -0.003, 0.016)), 16),
+    V.cam_keys(r, [(1, Vector((0.0025, -0.0205, -0.0015)), Vector((0.0, -0.001, 0.0135)), 18),   # = shot 08's end
                    (60, Vector((0.004, -0.024, -0.005)), Vector((0.0, -0.004, 0.052)), 16)])
     V.handheld(r, amount=0.00015, aim_amount=0.0002)
     V.compositor(glow=0.6, threshold=0.9, dispersion=0.006)

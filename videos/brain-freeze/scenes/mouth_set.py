@@ -365,7 +365,7 @@ def ice_cream_material(name="IceCream_Vanilla_Mouth"):
     V.color_variation(m, H("#F2DDB4"), scale=180, amount=0.6)                 # creamy tone variation
     V.color_variation(m, H("#5A3A26"), scale=380, amount=1.0, threshold=0.75)  # vanilla bean specks
     V.bump(m, scale=600, strength=0.25, distance=0.0002)
-    add_xray(m, rim="#DDE8FF", strength=1.2, tint="#F2F6FF")
+    add_xray(m, rim="#DDE8FF", strength=0.8, tint="#F2F6FF", rim_start=0.7)  # soft milky ice, no ridge lines
     return m
 
 

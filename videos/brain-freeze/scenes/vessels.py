@@ -94,7 +94,7 @@ def network(seed=7):
                 out.append((_wiggle(tw, rng, 0.0003, 12), 0.0002, 2))
         # level 1: trunk climbing from the back of the palate, converging on the midline and
         # rising into the gap between the frontal lobes
-        base = np.array([side * 0.009, 0.013, _in_palate(side * 0.009, 0.013, 0.002)])
+        base = art[0] + np.array([0.0, 0.0, 0.0006])                 # leaves the back of the palatine artery
         trunk = np.array([base, base + [side * 0.001, -0.002, 0.012], [side * 0.006, -0.004, 0.034],
                           [side * 0.0035, -0.012, 0.056], [side * 0.0016, -0.02, 0.074], [side * 0.0012, -0.03, 0.098]])
         trunk = _wiggle(K.path_spline(trunk, 40), rng, 0.0006, 48)
@@ -251,12 +251,12 @@ def brain_underside(col=None, mat=None):
     brain = K.join(halves, "Brain_Xray_geo", col)
     K.voxel_remesh(brain, 0.0012)
     P = K.co(brain)
-    n1 = K.fbm(P, 0.016, octaves=2, seed=3)                       # about [-1, 1]
-    sulci = np.exp(-(n1 / 0.07) ** 2)
-    K.displace(brain, -0.0032 * sulci)
+    n1 = K.fbm(P, 0.011, octaves=2, seed=3)                       # about [-1, 1]
+    sulci = np.exp(-(n1 / 0.09) ** 2)
+    K.displace(brain, -0.0045 * sulci)
     K.smooth(brain, iterations=2, factor=0.4)
     if mat is None:
-        mat = V.principled("Brain_Pink", H("#E58FA0"), rough=0.4, sss=0.5, sss_radius=(1.0, 0.4, 0.35),
-                           sss_scale=0.004, coat=0.2, emission=H("#FF6F8A"), emission_strength=0.6)
+        mat = V.principled("Brain_Pink", H("#E27386"), rough=0.4, sss=0.5, sss_radius=(1.0, 0.4, 0.35),
+                           sss_scale=0.004, coat=0.2, emission=H("#FF6F8A"), emission_strength=0.3)
     V.assign(brain, mat)
     return brain

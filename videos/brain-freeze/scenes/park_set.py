@@ -23,6 +23,14 @@ def world(turn=0.0):
     return hdri
 
 
+def camera_sky():
+    """Strength socket of the sky the camera sees (1.1), separate from the light it casts:
+    animate it to dim the background, e.g. so cold blue vessels stand out against it."""
+    nt = bpy.context.scene.world.node_tree
+    mix = next(n for n in nt.nodes if n.bl_idname == "ShaderNodeMixShader")
+    return mix.inputs[2].links[0].from_node.inputs["Strength"]
+
+
 def _slat(name, length, width, thick, loc, rot_x, col, mat):
     bpy.ops.mesh.primitive_cube_add(size=1.0, location=loc)
     ob = bpy.context.active_object
