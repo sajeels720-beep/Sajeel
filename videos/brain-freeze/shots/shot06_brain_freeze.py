@@ -1,4 +1,4 @@
-"""SHOT 06 (8.4-10.6 s, 66 frames @30fps) - "like your brain is freezing solid."
+"""SHOT 06 (8.4-11.0 s, 90 frames @30fps: room for a slower read of the line) - "like your brain is freezing solid."
 His brain-reveal device: the top of the head is cut away (glowing cut edge) on the wincing
 protagonist; frost races over the brain from the front and ice crystals sprout across it.
 Slow orbit from above.
@@ -23,8 +23,9 @@ import shot03_perfect as S03
 import vfx_kit as V
 
 PREVIEW = os.environ.get("SHOT_PREVIEW") == "1"
-FPS, SECONDS = 30, 2.2
-N = 66
+FPS, SECONDS = 30, 3.0
+N = 90
+FREEZE = (6, 72)                     # frost spreads until just before the line ends
 
 
 def build_frozen_head(freeze=(6, 52), crystals=True, frozen=False, face=None):
@@ -51,7 +52,7 @@ def build():
     V.start_fresh()
     V.setup_shot(SECONDS, fps=FPS, engine="CYCLES" if PREVIEW else "EEVEE", samples=32 if PREVIEW else 64,
                  scale=50 if PREVIEW else 100)
-    hero, cut, clusters = build_frozen_head()
+    hero, cut, clusters = build_frozen_head(freeze=FREEZE)
     top = cut["top"]
     S03.sun_rim_lights(top)
     cold = bpy.data.lights.new("Cold_Top_lgt", "AREA")

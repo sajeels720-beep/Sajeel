@@ -1,4 +1,4 @@
-"""SHOT 03 (3.0-5.2 s, 66 frames @30fps) - "and for a second, it's perfect."
+"""SHOT 03 (3.0-5.6 s, 90 frames @30fps: room for a slower read of the line) - "and for a second, it's perfect."
 The protagonist on a sunny park bench, ice cream cup in his lap, eyes closed, smile
 growing, head tipping back in bliss. Backlit by the sun, slow orbit, shallow depth of field.
 """
@@ -24,8 +24,8 @@ import park_set as PARK
 import vfx_kit as V
 
 PREVIEW = os.environ.get("SHOT_PREVIEW") == "1"
-FPS, SECONDS = 30, 2.2
-N = 66
+FPS, SECONDS = 30, 3.0
+N = 90
 POSE = "callharvey3d_sittingnatural"
 BLISS_START = {"eyeBlinkLeft": 1.0, "eyeBlinkRight": 1.0, "mouthSmileLeft": 0.6, "mouthSmileRight": 0.6,
                "cheekSquintLeft": 0.4, "cheekSquintRight": 0.4, "browInnerUp": 0.6, "browOuterUpLeft": 0.2,

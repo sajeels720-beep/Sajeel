@@ -72,14 +72,18 @@ def main():
     for i, (name, t0, t1) in enumerate(CUT):
         start, end = tl.warp(t0), tl.warp(t1)
         slot = round(end * fps) - round(start * fps)                  # frames, so slots tile exactly
-        stretch = (end - start) / (t1 - t0)                           # >1 where a long line needs more time
         folder = os.path.abspath(os.path.join(a.shots_dir, name))
         if os.path.isdir(os.path.join(folder, "frames")):
             folder = os.path.join(folder, "frames")
         frames = sorted(glob.glob(os.path.join(folder, "f_*.png")))
         if frames:
+            # every shot plays all its frames, fitted to its slot: slower where a line runs long
+            # (frames blended so the motion stays smooth), faster where it is short; never a
+            # frozen last frame, never a cut-off ending
+            stretch = min(max(slot / len(frames), 0.7), 1.6)
+            retime = f"minterpolate=fps={fps}:mi_mode=blend" if stretch > 1.05 else f"fps={fps}"
             inputs += ["-framerate", str(fps), "-start_number", "1", "-i", os.path.join(folder, "f_%04d.png")]
-            parts.append(f"[{i}:v]scale={W}:{H}:flags=lanczos,setsar=1,setpts=PTS*{stretch:.5f},fps={fps},"
+            parts.append(f"[{i}:v]scale={W}:{H}:flags=lanczos,setsar=1,setpts=PTS*{stretch:.5f},{retime},"
                          f"tpad=stop_mode=clone:stop_duration={slot / fps + 1:.3f},"
                          f"trim=end_frame={slot},setpts=PTS-STARTPTS[v{i}]")
         else:

@@ -1,4 +1,4 @@
-"""SHOT 14 (23.8-25.4 s, 48 frames @30fps) - "sets off pain sensors."
+"""SHOT 14 (23.8-25.9 s, 63 frames @30fps) - "sets off pain sensors."
 Close-up of the swollen artery wrapped in nerve fibres: the nerve endings fire, electric
 red sparks crackle along the fibres, red ripple rings pulse out from the endings, and the
 fibres glow. Camera orbits around the artery.
@@ -23,7 +23,8 @@ import park_set as PS
 import vfx_kit as V
 
 PREVIEW = os.environ.get("SHOT_PREVIEW") == "1"
-FPS, SECONDS = 30, 1.6
+FPS, SECONDS = 30, 2.1
+N = 63                               # fills the pause after the line: no frozen frame
 FIRE = 6
 
 
@@ -36,9 +37,9 @@ def build():
     parts = NS.build()
     nmat = parts["nerve_mat"]
     glow = nmat.node_tree.nodes["Glow"].outputs[0]
-    V.animate_socket(glow, [(1, 0.0), (FIRE, 0.0), (FIRE + 3, 3.0), (48, 2.2)])
-    V.noise_on(nmat.node_tree, 'nodes["Glow"].outputs[0].default_value', 1.2, scale=1.4, start=FIRE + 2, end=48)
-    NS.sparks(parts, FIRE, 48)
+    V.animate_socket(glow, [(1, 0.0), (FIRE, 0.0), (FIRE + 3, 3.0), (N, 2.2)])
+    V.noise_on(nmat.node_tree, 'nodes["Glow"].outputs[0].default_value', 1.2, scale=1.4, start=FIRE + 2, end=N)
+    NS.sparks(parts, FIRE, N)
     rings = V.collection("RINGS")
     for i, (c, n) in enumerate(parts["endings"][:6]):
         V.ripple_rings(f"Ring_{i}", c, n, FIRE + 2 + i * 4, count=2, interval=6, life=14, radius=0.16,
@@ -58,8 +59,8 @@ def build():
     # camera: orbit around the artery
     r = V.camera_rig("Cam_Shot14", lens=40, fstop=1.4)                   # macro look: the park melts into bokeh
     keys = []
-    for f in (1, 12, 24, 36, 48):
-        t = (f - 1) / 47
+    for f in (1, 16, 32, 48, N):
+        t = (f - 1) / (N - 1)
         az, el, dist = -60 + 50 * t, -12 + 3 * t, 2.3 - 0.35 * t      # from below: sky behind, not a lawn
         keys.append((f, target + K.look_dir(az, el) * dist, target + Vector((0, 0, 0.05 * t)), 40))
     V.cam_keys(r, keys)
