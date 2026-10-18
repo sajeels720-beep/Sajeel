@@ -48,7 +48,7 @@ def build():
     L = np.concatenate([[0], np.cumsum(np.linalg.norm(np.diff(P, axis=0), axis=1))])
     rng = np.random.default_rng(3)
     core = V.emission("Spark_Core", V.hex_lin("#FFD2C4"), 30.0)
-    red = V.emission("Spark_Red", V.hex_lin("#FF2A16"), 22.0)
+    red = V.emission("Spark_Red", (1.0, 0.03, 0.01), 4.0)            # deep red: brighter reads salmon
     sp_col = V.collection("SPARKS")
 
     def head_at(f):
@@ -60,8 +60,8 @@ def build():
         for j in range(2):
             a = h + rng.normal(0, 0.03, 3)
             b = a + rng.normal(0, 1, 3) * 0.18
-            ob = NS.lightning(f"Bolt_{f:02d}_{j}", a, b, rng, sp_col, core if j == 0 else red, jitter=0.03,
-                              radius=0.006)
+            ob = NS.lightning(f"Bolt_{f:02d}_{j}", a, b, rng, sp_col, core if j == 0 else red, segments=14,
+                              jitter=0.022, radius=0.0025)             # thin crackling arcs, not chunky zigzags
             V.visible(ob, [(1, False), (f, True), (f + 2, False)])
 
     lights = V.collection("LIGHTS")

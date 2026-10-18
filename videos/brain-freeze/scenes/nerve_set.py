@@ -189,12 +189,15 @@ def signal_nerve_material(name="Nerve_Signal"):
     nt.links.new(head, tot.inputs[0]); nt.links.new(tail_s.outputs[0], tot.inputs[1])
     amp = nt.nodes.new("ShaderNodeMath"); amp.operation = "MULTIPLY"
     nt.links.new(tot.outputs[0], amp.inputs[0]); nt.links.new(st.outputs[0], amp.inputs[1])
-    em = nt.nodes.new("ShaderNodeEmission")
-    em.inputs["Color"].default_value = (*H("#FF2414"), 1)
-    nt.links.new(amp.outputs[0], em.inputs["Strength"])
-    add = nt.nodes.new("ShaderNodeAddShader")
-    nt.links.new(b.outputs[0], add.inputs[0]); nt.links.new(em.outputs[0], add.inputs[1])
-    nt.links.new(add.outputs[0], out.inputs["Surface"])
+    em = nt.nodes.new("ShaderNodeEmission")                       # the signal replaces the yellow (added on
+    em.inputs["Color"].default_value = (1.0, 0.03, 0.01, 1)        # top of it, it read as a pale pink smear)
+    em.inputs["Strength"].default_value = 1.6                       # brighter turns salmon under AgX
+    fac = nt.nodes.new("ShaderNodeMath"); fac.operation = "MINIMUM"; fac.inputs[1].default_value = 1.0
+    nt.links.new(amp.outputs[0], fac.inputs[0])
+    mix = nt.nodes.new("ShaderNodeMixShader")
+    nt.links.new(fac.outputs[0], mix.inputs[0])
+    nt.links.new(b.outputs[0], mix.inputs[1]); nt.links.new(em.outputs[0], mix.inputs[2])
+    nt.links.new(mix.outputs[0], out.inputs["Surface"])
     return m
 
 
