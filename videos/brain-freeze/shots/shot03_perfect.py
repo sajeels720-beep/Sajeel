@@ -57,7 +57,8 @@ def hero_on_bench(pose=POSE):
     for k in ("table", "chunk"):
         bpy.data.objects.remove(ice[k])
     bpy.data.objects.remove(ice["scoops"]["Vanilla"])
-    lap = lap_point(hero) + Vector((-0.07, -0.07, 0.13))          # to his right at stomach height: in the safe area
+    lap = lap_point(hero) + Vector((-0.115, -0.07, 0.12))         # his right, stomach height: in the safe area
+                                                                  # and clear of the channel name on the shirt
     ctrl = V.link(bpy.data.objects.new("Cup_ctrl", None), ice["col"])
     for ob in list(ice["col"].objects):
         if ob is not ctrl and ob.parent is None:
