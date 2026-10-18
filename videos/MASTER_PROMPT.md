@@ -17,6 +17,7 @@ STYLE (match Zack D. Films)
 - Put the subject in a real, simple location that fits the story (park, bedroom, kitchen, street) with a bright blue sky and warm sun. Explainer and X-ray shots stay in that location: the skin turns see-through and the location stays behind, blurred by depth of field (close-ups of vessels or nerves show the blurred sky and trees). Use a soft sky-blue gradient (#7EC8E3 at the top, lighter towards the bottom) only when there is no location, such as an isolated object or diagram. Never use a dark void.
 - Bright, saturated, clean colours. Keep the subject warm-toned against cool blue backgrounds so it pops.
 - One clear subject per shot, filling the frame. Keep scenes simple and uncluttered.
+- Faces must read at phone size: push expressions past realistic (wide eyes with white around the iris, high brows, big smiles, clear winces), the way his characters react. Shape-key values above 1.0 are fine.
 - Explain with visual devices: X-ray and cutaway reveals (skin or skull turns see-through to show organs, muscles, nerves), glowing pulses travelling along nerves and vessels, red ripple rings for impacts and sounds, a glowing red "?" for confusion, thought bubbles for dreams and memories, and crash zooms on key words.
 - End with a shot that calls back to the opening.
 
@@ -31,6 +32,7 @@ MATERIALS
 - Use PBR materials with textures (Poly Haven) on real-world objects. No flat single-colour materials on them.
 - Add subtle imperfections (roughness variation, light wear) but keep his clean, bright look. No heavy grunge.
 - Explainer effects are the exception: X-ray skin, glowing vessels and nerves, icons and rings use emission, transparency and fresnel glow.
+- Keep glowing reds deep red (emission around 1-2): brighter red emission turns salmon-pink under AgX. Get the glow from the compositor glare. Glowing marks on a surface (rings, pulses) should replace the surface colour, not be added on top of it.
 - No pure black or pure white surfaces.
 
 LIGHTING
@@ -52,6 +54,7 @@ CAMERA
 - Every shot needs movement (push-in, orbit, follow or tilt). No static shots. Use a crash zoom (fast push-in plus a short shake) for sudden moments.
 - Mix angles the way he does: low angle, extreme close-up, top-down, point of view.
 - The camera must never clip through objects.
+- When the next shot continues the same angle, start it exactly on the previous shot's last framing so the cut is invisible.
 
 FINAL RENDER
 - My laptop has no dedicated GPU: render with EEVEE (render samples 32–64, motion blur on). Keep scenes light so renders stay fast.
