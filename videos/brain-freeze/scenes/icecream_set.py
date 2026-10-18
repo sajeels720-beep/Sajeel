@@ -13,9 +13,9 @@ import vfx_kit as V
 H = V.hex_lin
 CUP_H, CUP_R_TOP, CUP_R_BOT = 0.075, 0.042, 0.031
 SCOOPS = {  # name: (centre, radius, colour, speck colour, speck threshold, speck scale)
-    "Strawberry": ((-0.018, 0.0, 0.088), 0.027, "#F49AB0", "#C4234F", 0.64, 160),
-    "Mint": ((0.018, 0.004, 0.087), 0.027, "#AEE9D2", "#3B2418", 0.70, 110),
-    "Vanilla": ((0.0, 0.002, 0.118), 0.026, "#FFF1D2", "#6B4A33", 0.80, 420),
+    "Strawberry": ((-0.018, 0.0, 0.088), 0.027, "#EE6A90", "#C4234F", 0.64, 160),   # saturated: pastels
+    "Mint": ((0.018, 0.004, 0.087), 0.027, "#7FDDB5", "#3B2418", 0.70, 110),         # washed to white in
+    "Vanilla": ((0.0, 0.002, 0.118), 0.026, "#F5E2B0", "#6B4A33", 0.68, 420),        # the sun
 }
 DIG = Vector((0.008, -0.012, 0.137))          # where the spoon bites the vanilla scoop (faces the camera)
 DIG_N = Vector((0.36, -0.62, 0.70)).normalized()   # surface normal there
@@ -138,7 +138,7 @@ def build(col_name="SET_ICECREAM"):
     carved = build_scoop("Scoop_Vanilla_carved_geo", SCOOPS["Vanilla"][0], SCOOPS["Vanilla"][1], mats["Vanilla"],
                          col, seed=14)
     bite_rot = [math.degrees(a) for a in DIG_N.to_track_quat("Z", "Y").to_euler()]
-    bite = K.ellipsoid("bite_cut", tuple(DIG + DIG_N * 0.003), (0.019, 0.016, 0.0125),
+    bite = K.ellipsoid("bite_cut", tuple(DIG - DIG_N * 0.006), (0.024, 0.021, 0.017),   # as big as the chunk
                        rot=tuple(bite_rot), segments=48, col=col)
     K.boolean(carved, bite)
     K.voxel_remesh(carved, SCOOPS["Vanilla"][1] / 45)

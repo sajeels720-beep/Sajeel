@@ -42,16 +42,16 @@ def build():
     d = Vector((-0.5, 0.15, -1.0)).normalized()            # dig direction: down-left into the scoop
     toward_cam = Vector((0.0, -1.0, 0.35))
     SET.key_spoon(ctrl, [
-        (1, dig - d * 0.07, d, toward_cam),
-        (9, dig - d * 0.082 + Vector((0.004, 0.0, 0.006)), d, toward_cam),       # anticipation: pull back
-        (19, dig + d * 0.003, d, toward_cam),                                       # plunge in
+        (-6, dig - d * 0.12, d, toward_cam),                                       # already swooping in on frame 1
+        (19, dig + d * 0.016, d, toward_cam),                                       # plunge deep into the scoop
         (23, dig + d * 0.004 + Vector((-0.004, -0.002, 0.003)), Vector((-0.6, 0.1, -0.5)), Vector((0, -0.4, 1))),
-        (30, dig + Vector((-0.012, -0.032, 0.045)), Vector((-0.45, -0.5, -0.1)), Vector((0, -0.1, 1))),   # clear lift
-        (45, dig + Vector((-0.05, -0.25, 0.08)), Vector((-0.35, -0.7, 0.12)), Vector((0, 0.1, 1))),        # toward lens
-    ])
+        (30, dig + Vector((-0.012, -0.032, 0.045)), Vector((-0.6, 0.45, -0.35)), Vector((0, -0.1, 1))),   # clear lift
+        (45, dig + Vector((-0.05, -0.25, 0.08)), Vector((-0.6, 0.65, -0.2)), Vector((0, 0.1, 1))),        # toward lens
+    ])                                                     # handle exits frame right, as if held by an unseen hand
     V.visible(parts["scoops"]["Vanilla"], [(1, True), (22, False)])                 # swap while hidden
     V.visible(parts["carved"], [(1, False), (22, True)])
-    V.visible(parts["chunk"], [(1, False), (22, True)])
+    V.visible(parts["chunk"], [(1, False), (19, True)])                             # swells out of the scoop
+    V.key(parts["chunk"], "scale", [(19, (0.3, 0.3, 0.3)), (25, (1.0, 1.0, 1.0))])
 
     # light: warm key front-left, cool fill right (sky-tinted), sun rim from the HDRI
     lights = V.collection("LIGHTS")
@@ -66,11 +66,12 @@ def build():
         K._aim(ob, target)
 
     # camera: 85 mm push-in with a subtle handheld feel
-    r = V.camera_rig("Cam_Shot01", lens=85, fstop=4.5)
-    a0, a1 = Vector((0, 0, 0.115)), Vector((-0.004, -0.008, 0.13))
+    r = V.camera_rig("Cam_Shot01", lens=110, fstop=5.6)                 # extreme close-up: the bite fills the frame
+    a0, a1 = Vector((0, 0, 0.125)), Vector((-0.004, -0.008, 0.13))
     c0, c1 = a0 + K.look_dir(-15, 8) * 0.68, a1 + K.look_dir(-12, 10) * 0.6
     spoon_end = dig + Vector((-0.05, -0.25, 0.09))
-    V.cam_keys(r, [(1, c0, a0, 85), (30, c0.lerp(c1, 0.6), a1, 85), (45, c1, spoon_end, 85)])   # rack focus to spoon
+    V.cam_keys(r, [(1, c0, a0, 110), (30, c0.lerp(c1, 0.6), a1, 110), (45, c1, spoon_end, 110)])
+    r["cam"].data.dof.focus_object = ctrl                          # focus rides on the spoon bowl and the chunk
     V.handheld(r, amount=0.0006, aim_amount=0.0005)
     V.compositor(glow=0.25, threshold=1.2, dispersion=0.006)
     return parts
