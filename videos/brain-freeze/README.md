@@ -49,7 +49,9 @@ On Windows PowerShell, render all shots in a loop:
 Get-ChildItem videos\brain-freeze\shots\shot*.py | ForEach-Object { blender -b -P $_.FullName -a }
 ```
 
-Render one frame first (F12) to measure the time per frame on your laptop. There are 1,104 frames in total. As a rough guide, EEVEE on a laptop without a dedicated GPU takes 3–15 seconds per frame, which is about 1–4 hours for the whole Short.
+Render one frame first (F12) to measure the time per frame on your laptop, then multiply by the shot's frame count (1,104 frames in total). As a rough guide, EEVEE on a laptop with integrated graphics takes about 6–20 seconds per frame at 1080×1920 and 64 samples, which is about 2–6 hours for the whole Short (most likely 3–4), plus a minute or so per shot to load and compile shaders. The inside-the-mouth shots (8–12) and the character shots are the slowest; the nerve and vessel close-ups are the fastest. To roughly halve the time, set the render samples to 32.
+
+Frames already rendered are skipped, so if a render stops (crash, sleep, closing the laptop), run the same command again and it continues. Delete a shot's folder in `renders/` to render that shot from scratch.
 
 **Build the edit.** This needs Python 3 and ffmpeg on your PATH (on Windows, type `py` instead of `python3`):
 

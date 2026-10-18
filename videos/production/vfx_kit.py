@@ -758,10 +758,13 @@ def encode(frames_dir, mp4, fps=30, crf=17, start_number=1):
 
 def output_to(folder):
     """Final renders: write the animation as a PNG sequence folder/f_0001.png ... so that
-    `blender -b -P shot.py -a` (or Render > Render Animation) fills it."""
+    `blender -b -P shot.py -a` (or Render > Render Animation) fills it. Frames already in
+    the folder are skipped, so an interrupted render picks up where it stopped (delete the
+    folder to render a shot again from scratch)."""
     sc = bpy.context.scene
     os.makedirs(folder, exist_ok=True)
     sc.render.filepath = os.path.join(folder, "f_")
+    sc.render.use_overwrite = False
     sc.render.image_settings.file_format = "PNG"
     sc.render.image_settings.color_mode = "RGB"
     sc.render.use_file_extension = True
