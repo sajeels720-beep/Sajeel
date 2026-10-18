@@ -29,7 +29,12 @@ BEDS = {  # looped beds: number: ([(planned start, planned end), ...], level dB)
     1: ([(0.0, 11.0), (29.6, 36.8)], -26),                     # park ambience
     15: ([(14.8, 22.8)], -16),                                 # heartbeat
 }
-MUSIC_DB = -18
+MUSIC_DB = -12                               # under the voice; dips a further few dB while it talks
+
+
+def duration(path):
+    return float(subprocess.run(["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of",
+                                 "default=nw=1:nk=1", path], capture_output=True, text=True).stdout)
 
 
 def main():
@@ -84,11 +89,14 @@ def main():
                           f"adelay={ms}|{ms}[b{n}_{j}]")
             mix.append(f"[b{n}_{j}]")
     if files["music"]:
-        k = new_input(files["music"], loop=True)
-        chains.append(f"[{k}:a]{fmt},atrim=0:{length:.3f},asetpts=PTS-STARTPTS,"
+        # a track up to 20% shorter than the edit is slowed to fit (same pitch) instead of restarting
+        ratio = duration(files["music"]) / length
+        fit = f"atempo={ratio:.4f}," if 0.8 <= ratio < 1.0 else ""
+        k = new_input(files["music"], loop=not fit)
+        chains.append(f"[{k}:a]{fmt},{fit}atrim=0:{length:.3f},asetpts=PTS-STARTPTS,"
                       f"afade=t=out:st={length - 1.2:.3f}:d=1.2,volume={gain(files['music'], MUSIC_DB):.2f}dB[mraw]")
         if vo:                                                        # dip the music while the voice talks
-            chains.append("[mraw][duck]sidechaincompress=threshold=0.02:ratio=5:attack=30:release=400[music]")
+            chains.append("[mraw][duck]sidechaincompress=threshold=0.03:ratio=3:attack=40:release=500[music]")
         else:
             chains.append("[mraw]anull[music]")
         mix.append("[music]")
