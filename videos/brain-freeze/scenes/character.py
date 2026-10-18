@@ -70,7 +70,8 @@ def apply_pose(hero, pose):
 def face(body, values, frame=None):
     """Set ARKit face-unit shape keys, e.g. {"eyeBlinkLeft": 1, "eyeBlinkRight": 1,
     "mouthSmileLeft": 0.6}. With frame, keyframe them (on the body and every child mesh
-    that carries the same shape keys, so brows and lashes follow)."""
+    that carries the same shape keys, so brows and lashes follow). Values above 1
+    exaggerate a unit (his faces read bigger than life; brows move only ~6 mm at 1)."""
     meshes = [body] + [o for o in bpy.data.objects if o.type == "MESH" and o.data.shape_keys
                        and o is not body and (o.parent is body or o.parent is body.parent)]
     for ob in meshes:
@@ -78,6 +79,7 @@ def face(body, values, frame=None):
         for k, v in values.items():
             for key in (k, "$md-" + k, "faceunits-" + k):
                 if key in kb:
+                    kb[key].slider_max = max(kb[key].slider_max, v)
                     kb[key].value = v
                     if frame is not None:
                         kb[key].keyframe_insert("value", frame=frame)

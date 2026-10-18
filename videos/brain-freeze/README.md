@@ -12,7 +12,7 @@ A 36.8-second vertical Short in the style of Zack D. Films, built entirely from 
 
 ## One-time setup
 
-1. Blender 4.2 or newer. The scripts were tested on 5.2 LTS (full renders) and 4.5 LTS (builds).
+1. Blender 4.2 or newer. The scripts were tested on Blender 5.2 (preview renders) and 4.5 LTS (every shot builds).
 2. In Blender, open `videos/production/setup_assets.py` in the Scripting tab and press **Run Script**. It does three things:
    - installs the MPFB 2 character extension;
    - installs the CC0 MakeHuman asset packs (skins, hair, clothes, poses, face expressions);
@@ -51,7 +51,7 @@ Get-ChildItem videos\brain-freeze\shots\shot*.py | ForEach-Object { blender -b -
 
 Render one frame first (F12) to measure the time per frame on your laptop. There are 1,104 frames in total. As a rough guide, EEVEE on a laptop without a dedicated GPU takes 3–15 seconds per frame, which is about 1–4 hours for the whole Short.
 
-**Build the edit.** This needs Python 3 and ffmpeg:
+**Build the edit.** This needs Python 3 and ffmpeg on your PATH (on Windows, type `py` instead of `python3`):
 
 ```bash
 python3 videos/brain-freeze/assemble_cut.py videos/brain-freeze/renders brain_freeze.mp4
