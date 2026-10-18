@@ -14,7 +14,7 @@ PROJECT SETTINGS
 
 STYLE (match Zack D. Films)
 - Tell it in second person: "you" are the main character. Use one consistent protagonist (same face, hair and outfit in every shot) and put my channel name on their T-shirt.
-- Put the subject in a real, simple location that fits the story (park, bedroom, kitchen, street) with a bright blue sky and warm sun. For pure explainer close-ups (inside the body, anatomy, objects), use a soft sky-blue gradient background (#7EC8E3 at the top, lighter towards the bottom). Never use a dark void.
+- Put the subject in a real, simple location that fits the story (park, bedroom, kitchen, street) with a bright blue sky and warm sun. Explainer and X-ray shots stay in that location: the skin turns see-through and the location stays behind, blurred by depth of field (close-ups of vessels or nerves show the blurred sky and trees). Use a soft sky-blue gradient (#7EC8E3 at the top, lighter towards the bottom) only when there is no location, such as an isolated object or diagram. Never use a dark void.
 - Bright, saturated, clean colours. Keep the subject warm-toned against cool blue backgrounds so it pops.
 - One clear subject per shot, filling the frame. Keep scenes simple and uncluttered.
 - Explain with visual devices: X-ray and cutaway reveals (skin or skull turns see-through to show organs, muscles, nerves), glowing pulses travelling along nerves and vessels, red ripple rings for impacts and sounds, a glowing red "?" for confusion, thought bubbles for dreams and memories, and crash zooms on key words.
@@ -35,7 +35,7 @@ MATERIALS
 
 LIGHTING
 - Full environments: Poly Haven HDRI (sunny sky) plus a warm key light and a rim light to separate the subject from the background.
-- Explainer close-ups: soft, even studio lighting with gentle shadows; tint the fill light slightly with the background blue so the scene feels cohesive.
+- Explainer close-ups: keep the location's HDRI for light and background, plus soft, even studio lights with gentle shadows; tint the fill light slightly with the sky blue so the scene feels cohesive.
 - Soft, realistic shadows. Light volumetric haze for depth where it fits.
 
 ANIMATION

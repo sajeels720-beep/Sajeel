@@ -65,6 +65,7 @@ def build():
 
 if __name__ in ("__main__", "<run_path>", "shot"):
     build()
+    V.output_to(os.path.join(ROOT, "renders", os.path.basename(__file__).split("_")[0]))
     out = os.environ.get("SHOT_BLEND")
     if out:
         bpy.ops.wm.save_as_mainfile(filepath=out)

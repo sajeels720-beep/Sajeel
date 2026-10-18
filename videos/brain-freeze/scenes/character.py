@@ -6,8 +6,8 @@ Needs the MPFB extension and these CC0 asset packs installed in MPFB:
 makehuman_system_assets, shirts01, pants01, shoes01, poses01, faceunits01."""
 import os
 
+import bpy  # noqa: I001  (bpy first: it puts addon_utils on the path)
 import addon_utils
-import bpy
 
 MPFB = "bl_ext.user_default.mpfb"
 CHANNEL_NAME = os.environ.get("CHANNEL_NAME", "YOUR CHANNEL")    # printed on the T-shirt

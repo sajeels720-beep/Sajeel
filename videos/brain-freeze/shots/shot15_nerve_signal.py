@@ -1,5 +1,5 @@
 """SHOT 15 (25.9-27.8 s, 57 frames @30fps) - "But the nerve carrying that signal"
-A twisted yellow nerve rises through the dark; a glowing red signal races up it with a few
+A twisted yellow nerve rises against the blurred park sky; a glowing red signal races up it with a few
 sparks crackling at its head, and the camera tracks beside the signal.
 """
 import os
@@ -18,6 +18,7 @@ from mathutils import Vector
 
 import claude_sculpt_kit as K
 import nerve_set as NS
+import park_set as PS
 import vfx_kit as V
 
 PREVIEW = os.environ.get("SHOT_PREVIEW") == "1"
@@ -31,11 +32,7 @@ def build():
     V.start_fresh()
     V.setup_shot(SECONDS, fps=FPS, engine="CYCLES" if PREVIEW else "EEVEE", samples=32 if PREVIEW else 64,
                  scale=50 if PREVIEW else 100)
-    w, nt = V._world()
-    out = nt.nodes.new("ShaderNodeOutputWorld")
-    bg = nt.nodes.new("ShaderNodeBackground")
-    bg.inputs["Color"].default_value = (*V.hex_lin("#0B1236"), 1)
-    nt.links.new(bg.outputs[0], out.inputs[0])
+    PS.world()
 
     col = V.collection("SET_NERVE")
     mat = NS.signal_nerve_material()
@@ -95,6 +92,7 @@ def build():
 
 if __name__ in ("__main__", "<run_path>", "shot"):
     build()
+    V.output_to(os.path.join(ROOT, "renders", os.path.basename(__file__).split("_")[0]))
     out = os.environ.get("SHOT_BLEND")
     if out:
         bpy.ops.wm.save_as_mainfile(filepath=out)

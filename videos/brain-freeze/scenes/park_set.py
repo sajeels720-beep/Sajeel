@@ -14,10 +14,12 @@ H = V.hex_lin
 SUN_AZ = 165                    # same sun direction as shot 1 (behind the subject, slightly right)
 
 
-def world():
+def world(turn=0.0):
+    """The park sky and light. turn (degrees) spins the panorama, e.g. to choose what sits
+    behind a close-up; it moves the sun with it."""
     hdri = V.polyhaven("rooitou_park", "hdris", "2k")
     sun_az, _ = V.sun_azimuth(hdri)
-    V.hdri_world(hdri, strength=1.0, rot_deg=270 - sun_az - SUN_AZ, camera_strength=1.1)
+    V.hdri_world(hdri, strength=1.0, rot_deg=270 - sun_az - SUN_AZ + turn, camera_strength=1.1)
     return hdri
 
 

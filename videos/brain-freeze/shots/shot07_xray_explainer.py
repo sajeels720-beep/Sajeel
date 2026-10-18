@@ -1,6 +1,6 @@
 """SHOT 07 (11.0-12.8 s, 54 frames @30fps) - "You see, when something freezing"
-Switch to the clean explainer look: the head in profile as see-through blue glass on a soft
-sky-blue backdrop, brain above, the roof of the mouth below with the cold ice cream lump
+X-ray explainer look: the head in profile turns to see-through blue glass with the park
+blurred behind it, brain above, the roof of the mouth below with the cold ice cream lump
 glowing on it. The camera glides in toward the mouth.
 """
 import os
@@ -17,6 +17,7 @@ import bpy
 from mathutils import Vector
 
 import claude_sculpt_kit as K
+import park_set as PS
 import vfx_kit as V
 import xray_head as XH
 
@@ -40,7 +41,7 @@ def build():
     V.start_fresh()
     V.setup_shot(SECONDS, fps=FPS, engine="CYCLES" if PREVIEW else "EEVEE", samples=32 if PREVIEW else 64,
                  scale=50 if PREVIEW else 100)
-    V.gradient_world(strength=1.0, light_strength=0.6)
+    PS.world()                                                    # x-ray in the location, as he does it
     x = XH.build(nerves=False)
     eyes = x["eyes"]
     studio_lights(eyes)
@@ -56,6 +57,7 @@ def build():
 
 if __name__ in ("__main__", "<run_path>", "shot"):
     build()
+    V.output_to(os.path.join(ROOT, "renders", os.path.basename(__file__).split("_")[0]))
     out = os.environ.get("SHOT_BLEND")
     if out:
         bpy.ops.wm.save_as_mainfile(filepath=out)

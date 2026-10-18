@@ -17,22 +17,13 @@ import bpy
 from mathutils import Vector
 
 import mouth_set as MS
+import park_set as PS
 import shot08_palate_frost as S08
 import vessels as VS
 import vfx_kit as V
 
 PREVIEW = os.environ.get("SHOT_PREVIEW") == "1"
 FPS, SECONDS = 30, 2.0
-
-
-def xray_world(color="#0B1236"):
-    w, nt = V._world()
-    out = nt.nodes.new("ShaderNodeOutputWorld")
-    bg = nt.nodes.new("ShaderNodeBackground")
-    bg.inputs["Color"].default_value = (*V.hex_lin(color), 1)
-    bg.inputs["Strength"].default_value = 1.0
-    nt.links.new(bg.outputs[0], out.inputs[0])
-    return w
 
 
 def xray_mats():
@@ -50,11 +41,11 @@ def xray_all(value=None, keys=None):
 
 def build_xray_set(seconds, xray=1.0):
     """Shared by shots 09-11: frosted mouth (end of shot 08), vessel network, brain,
-    dark x-ray world, mouth lights."""
+    the park sky showing through the x-ray, mouth lights."""
     V.start_fresh()
     V.setup_shot(seconds, fps=FPS, engine="CYCLES" if PREVIEW else "EEVEE", samples=32 if PREVIEW else 64,
                  scale=50 if PREVIEW else 100)
-    xray_world()
+    PS.world()
     parts = MS.build()
     muc = parts["mucosa"]
     MS.control(muc, "FrostRadius").default_value = 0.024
@@ -93,6 +84,7 @@ def build():
 
 if __name__ in ("__main__", "<run_path>", "shot"):
     build()
+    V.output_to(os.path.join(ROOT, "renders", os.path.basename(__file__).split("_")[0]))
     out = os.environ.get("SHOT_BLEND")
     if out:
         bpy.ops.wm.save_as_mainfile(filepath=out)

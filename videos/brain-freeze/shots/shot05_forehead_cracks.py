@@ -14,8 +14,8 @@ for p in (os.path.join(ROOT, "scenes"), os.path.join(ROOT, "shots"), os.path.joi
     if p not in sys.path:
         sys.path.insert(0, p)
 
+import bpy  # noqa: I001  (bpy first: the pip bpy module only exposes bmesh after it)
 import bmesh
-import bpy
 import numpy as np
 from mathutils import Vector
 
@@ -197,6 +197,7 @@ def build():
 
 if __name__ in ("__main__", "<run_path>", "shot"):
     build()
+    V.output_to(os.path.join(ROOT, "renders", os.path.basename(__file__).split("_")[0]))
     out = os.environ.get("SHOT_BLEND")
     if out:
         bpy.ops.wm.save_as_mainfile(filepath=out)

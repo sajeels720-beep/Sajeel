@@ -647,11 +647,17 @@ def ripple_rings(name, center, normal, start, count=3, interval=5, life=18, radi
         ob = link(bpy.data.objects.new(f"{name}_{i}", cu), col)
         ob.matrix_world = Matrix.Translation(Vector(center)) @ rot
         mat = emission(f"{name}_{i}_mat", color, strength)
+        nt = mat.node_tree                                       # fade to transparent (a dimmed emission reads black)
+        tr = nt.nodes.new("ShaderNodeBsdfTransparent")
+        mix = nt.nodes.new("ShaderNodeMixShader")
+        nt.links.new(tr.outputs[0], mix.inputs[1])
+        nt.links.new(nt.nodes["Emission"].outputs[0], mix.inputs[2])
+        nt.links.new(mix.outputs[0], nt.nodes["Material Output"].inputs[0])
+        _blended(mat)
         assign(ob, mat)
         f0 = start + i * interval
         key(ob, "scale", [(f0, (0.001,) * 3), (f0 + life, (radius,) * 3)], "QUAD", "EASE_OUT")
-        em = mat.node_tree.nodes["Emission"].inputs["Strength"]
-        animate_socket(em, [(f0, strength), (f0 + int(life * 0.55), strength * 0.7), (f0 + life, 0.0)])
+        animate_socket(mix.inputs[0], [(f0, 1.0), (f0 + int(life * 0.55), 0.7), (f0 + life, 0.0)])
         visible(ob, [(1, False), (f0, True), (f0 + life + 1, False)])
         rings.append(ob)
     return rings
@@ -726,7 +732,7 @@ def compositor(glow=0.5, threshold=1.0, size=0.5, dispersion=0.008):
 def render_frames(out_dir, start=None, end=None, step=1):
     """PNG image sequence (a crash never loses finished frames). Skips frames that exist."""
     sc = bpy.context.scene
-    sc.render.use_persistent_data = True
+    sc.render.use_persistent_data = False                       # persistent data turned cells black mid-shot (Cycles)
     os.makedirs(out_dir, exist_ok=True)
     sc.render.image_settings.file_format = "PNG"
     sc.render.image_settings.color_mode = "RGB"
@@ -748,3 +754,15 @@ def encode(frames_dir, mp4, fps=30, crf=17, start_number=1):
            "-pix_fmt", "yuv420p", "-movflags", "+faststart", mp4]
     subprocess.run(cmd, check=True)
     return mp4
+
+
+def output_to(folder):
+    """Final renders: write the animation as a PNG sequence folder/f_0001.png ... so that
+    `blender -b -P shot.py -a` (or Render > Render Animation) fills it."""
+    sc = bpy.context.scene
+    os.makedirs(folder, exist_ok=True)
+    sc.render.filepath = os.path.join(folder, "f_")
+    sc.render.image_settings.file_format = "PNG"
+    sc.render.image_settings.color_mode = "RGB"
+    sc.render.use_file_extension = True
+    return folder

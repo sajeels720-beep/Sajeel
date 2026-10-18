@@ -17,6 +17,7 @@ import numpy as np
 from mathutils import Vector
 
 import claude_sculpt_kit as K
+import park_set as PS
 import shot07_xray_explainer as S07
 import vfx_kit as V
 import xray_head as XH
@@ -31,7 +32,7 @@ def build():
     V.start_fresh()
     V.setup_shot(SECONDS, fps=FPS, engine="CYCLES" if PREVIEW else "EEVEE", samples=32 if PREVIEW else 64,
                  scale=50 if PREVIEW else 100)
-    V.gradient_world(strength=1.0, light_strength=0.6)
+    PS.world()
     x = XH.build(nerves=True, side=1)
     eyes = x["eyes"]
     S07.studio_lights(eyes)
@@ -63,6 +64,7 @@ def build():
 
 if __name__ in ("__main__", "<run_path>", "shot"):
     build()
+    V.output_to(os.path.join(ROOT, "renders", os.path.basename(__file__).split("_")[0]))
     out = os.environ.get("SHOT_BLEND")
     if out:
         bpy.ops.wm.save_as_mainfile(filepath=out)
