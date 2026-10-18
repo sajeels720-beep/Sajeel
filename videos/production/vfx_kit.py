@@ -743,7 +743,8 @@ def render_frames(out_dir, start=None, end=None, step=1):
 
 def encode(frames_dir, mp4, fps=30, crf=17, start_number=1):
     cmd = ["ffmpeg", "-v", "error", "-y", "-framerate", str(fps), "-start_number", str(start_number),
-           "-i", os.path.join(frames_dir, "f_%04d.png"), "-c:v", "libx264", "-preset", "slow", "-crf", str(crf),
+           "-i", os.path.join(frames_dir, "f_%04d.png"), "-vf", "scale=trunc(iw/2)*2:trunc(ih/2)*2",   # x264 needs even sizes
+           "-c:v", "libx264", "-preset", "slow", "-crf", str(crf),
            "-pix_fmt", "yuv420p", "-movflags", "+faststart", mp4]
     subprocess.run(cmd, check=True)
     return mp4

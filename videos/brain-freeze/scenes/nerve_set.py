@@ -146,3 +146,94 @@ def sparks(parts, start, end, count=90, seed=2):
         V.visible(ob, [(1, False), (f, True), (f + life, False)])
         obs.append(ob)
     return obs
+
+
+# --------------------------------------------------------------------------
+# Nerve bundle with a travelling signal (shot 15)
+# --------------------------------------------------------------------------
+def _band(nt, x, centre, width):
+    sub = nt.nodes.new("ShaderNodeMath"); sub.operation = "SUBTRACT"
+    nt.links.new(x, sub.inputs[0]); nt.links.new(centre, sub.inputs[1])
+    div = nt.nodes.new("ShaderNodeMath"); div.operation = "DIVIDE"; div.inputs[1].default_value = width
+    nt.links.new(sub.outputs[0], div.inputs[0])
+    sq = nt.nodes.new("ShaderNodeMath"); sq.operation = "MULTIPLY"
+    nt.links.new(div.outputs[0], sq.inputs[0]); nt.links.new(div.outputs[0], sq.inputs[1])
+    neg = nt.nodes.new("ShaderNodeMath"); neg.operation = "MULTIPLY"; neg.inputs[1].default_value = -1.0
+    nt.links.new(sq.outputs[0], neg.inputs[0])
+    ex = nt.nodes.new("ShaderNodeMath"); ex.operation = "EXPONENT"
+    nt.links.new(neg.outputs[0], ex.inputs[0])
+    return ex.outputs[0]
+
+
+def signal_nerve_material(name="Nerve_Signal"):
+    """Yellow nerve fibre with a red signal travelling along it: controls 'Pulse' (position
+    along the fibre, 0..1) and 'PulseS' (strength). Uses the curve's UV (U = length)."""
+    m = V.principled(name, H("#FFC21A"), rough=0.32, sss=0.6, sss_radius=(1.0, 0.8, 0.5), sss_scale=0.03,
+                     spec=0.5, coat=0.5, emission=H("#FFB800"), emission_strength=0.25)
+    V.bump(m, scale=40.0, strength=0.2, distance=0.004)
+    nt = m.node_tree
+    out = nt.nodes["Material Output"]
+    b = V.bsdf(m)
+    pos = nt.nodes.new("ShaderNodeValue"); pos.name = pos.label = "Pulse"; pos.outputs[0].default_value = -1.0
+    st = nt.nodes.new("ShaderNodeValue"); st.name = st.label = "PulseS"; st.outputs[0].default_value = 0.0
+    uv = nt.nodes.new("ShaderNodeUVMap")
+    sep = nt.nodes.new("ShaderNodeSeparateXYZ")
+    nt.links.new(uv.outputs["UV"], sep.inputs[0])
+    head = _band(nt, sep.outputs["X"], pos.outputs[0], 0.012)
+    lag = nt.nodes.new("ShaderNodeMath"); lag.operation = "SUBTRACT"; lag.inputs[1].default_value = 0.03
+    nt.links.new(pos.outputs[0], lag.inputs[0])
+    tail = _band(nt, sep.outputs["X"], lag.outputs[0], 0.035)
+    tail_s = nt.nodes.new("ShaderNodeMath"); tail_s.operation = "MULTIPLY"; tail_s.inputs[1].default_value = 0.3
+    nt.links.new(tail, tail_s.inputs[0])
+    tot = nt.nodes.new("ShaderNodeMath"); tot.operation = "ADD"
+    nt.links.new(head, tot.inputs[0]); nt.links.new(tail_s.outputs[0], tot.inputs[1])
+    amp = nt.nodes.new("ShaderNodeMath"); amp.operation = "MULTIPLY"
+    nt.links.new(tot.outputs[0], amp.inputs[0]); nt.links.new(st.outputs[0], amp.inputs[1])
+    em = nt.nodes.new("ShaderNodeEmission")
+    em.inputs["Color"].default_value = (*H("#FF2414"), 1)
+    nt.links.new(amp.outputs[0], em.inputs["Strength"])
+    add = nt.nodes.new("ShaderNodeAddShader")
+    nt.links.new(b.outputs[0], add.inputs[0]); nt.links.new(em.outputs[0], add.inputs[1])
+    nt.links.new(add.outputs[0], out.inputs["Surface"])
+    return m
+
+
+def bundle_path(n=260):
+    """Centre line of the nerve: rises along +Z with a lazy S-bend (metres)."""
+    t = np.linspace(0, 1, n)
+    return np.stack([0.4 * np.sin(t * 2.8 * math.pi) * (0.6 + 0.4 * t), 0.25 * np.cos(t * 1.8 * math.pi),
+                     -3.2 + 8.4 * t], 1)
+
+
+def nerve_bundle(col, mat, fibres=7, twist=1.6, spread=0.055, radius=0.03, seed=1):
+    """Twisted bundle of fibres following bundle_path(): one curve object, one spline per
+    fibre, so a shader pulse runs along all of them together."""
+    rng = np.random.default_rng(seed)
+    P = bundle_path()
+    T = np.gradient(P, axis=0)
+    T /= np.linalg.norm(T, axis=1)[:, None]
+    A = np.cross(T, [1.0, 0, 0])
+    A /= np.linalg.norm(A, axis=1)[:, None]
+    B = np.cross(T, A)
+    L = np.concatenate([[0], np.cumsum(np.linalg.norm(np.diff(P, axis=0), axis=1))])
+    cu = bpy.data.curves.new("Nerve_Bundle", "CURVE")
+    cu.dimensions = "3D"
+    cu.bevel_depth = radius
+    cu.bevel_resolution = 4
+    cu.resolution_u = 4
+    cu.use_fill_caps = True
+    for k in range(fibres):
+        ph = 2 * math.pi * k / fibres
+        r = spread * (0.55 if k == 0 else 1.0) * rng.uniform(0.85, 1.1)
+        ang = ph + L * twist * 2 * math.pi / 6.4 * (1 if k % 2 else 0.9)
+        pts = P + (A * np.cos(ang)[:, None] + B * np.sin(ang)[:, None]) * r
+        sp = cu.splines.new("NURBS")
+        sp.points.add(len(pts) - 1)
+        for i, p in enumerate(pts):
+            sp.points[i].co = (*p, 1.0)
+            sp.points[i].radius = rng.uniform(0.85, 1.15) if i == 0 else sp.points[i - 1].radius
+        sp.order_u = 4
+        sp.use_endpoint_u = True
+    ob = V.link(bpy.data.objects.new("Nerve_Bundle", cu), col)
+    V.assign(ob, mat)
+    return ob, P
