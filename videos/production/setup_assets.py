@@ -74,8 +74,19 @@ def install_packs(cache):
         print("installed", name)
 
 
+def script_dir():
+    """This file's folder. Run from Blender's Text Editor, __file__ is only the text's
+    name, so the folder comes from where the text was opened."""
+    path = globals().get("__file__", "")
+    if not os.path.isfile(path):
+        opened = [t.filepath for t in bpy.data.texts if os.path.basename(t.filepath) == "setup_assets.py"]
+        if opened:
+            path = bpy.path.abspath(opened[0])
+    return os.path.dirname(os.path.abspath(path))
+
+
 def brain():
-    here = os.path.dirname(os.path.abspath(__file__))
+    here = script_dir()
     sys.path[:0] = [here, os.path.join(here, "..", "..", "blender-expert"),
                     os.path.join(here, "..", "brain-freeze", "scenes")]
     import head_set
