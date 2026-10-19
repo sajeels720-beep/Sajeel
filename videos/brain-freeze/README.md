@@ -58,13 +58,12 @@ Frames already rendered are skipped, so if a render stops (crash, sleep, closing
 **Build the edit.** This needs Python 3 and ffmpeg on your PATH (on Windows, type `py` instead of `python3`):
 
 ```bash
-python3 videos/brain-freeze/assemble_cut.py videos/brain-freeze/renders brain_freeze.mp4
-python3 videos/brain-freeze/assemble_cut.py videos/brain-freeze/renders timing_guide.mp4 --captions
+python3 videos/brain-freeze/assemble_cut.py videos/brain-freeze/renders brain_freeze.mp4 --voiceover videos/brain-freeze/audio
 ```
 
-The cut places every shot at its script time and holds the last frame through the voiceover pauses. `--captions` burns in his caption style (2–4 white bold words at about 75% height) so you can check timing.
+Your voiceover recordings set the pace: every shot is fitted to the line it plays under, so the picture never freezes, and the still frames where a camera move eases in or out are left out at the cuts. Without `--voiceover`, the cut follows the planned script times. `--captions` burns in his caption style (2–4 white bold words at about 75% height).
 
-**Add the sound.** Record the lines in `VOICEOVER.md` and make the sounds in `SOUND_EFFECTS.md`, put all the files in one folder (for example `videos/brain-freeze/audio/`), then:
+**Add the sound.** Record the lines in `VOICEOVER.md` and make the sounds in `SOUND_EFFECTS.md`, put all the files in one folder (for example `videos/brain-freeze/audio/`), build the edit with `--voiceover` and that folder as above, then:
 
 ```bash
 python3 videos/brain-freeze/mix_audio.py videos/brain-freeze/audio brain_freeze.mp4 brain_freeze_with_sound.mp4

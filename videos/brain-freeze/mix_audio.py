@@ -45,7 +45,7 @@ def main():
     a = ap.parse_args()
     files = find_audio(a.audio_dir)
     tl = Timeline.from_folder(a.audio_dir)
-    length = tl.length
+    length = duration(a.video)                                        # sound runs exactly as long as the picture
     inputs, chains, mix = ["-i", os.path.abspath(a.video)], [], []
     fmt = f"aformat=sample_rates={RATE}:channel_layouts=stereo"
     count = [1]                                                       # input 0 is the video

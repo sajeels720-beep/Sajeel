@@ -1,5 +1,6 @@
 """Assemble the brain-freeze Short from rendered shot folders (PNG sequences) at the script
-timings, holding a shot's last frame where the voiceover pauses. Optional captions (2-4 white
+timings. Every shot is fitted to its slot, so the picture never freezes, and the still frames
+where a camera move eases in or out are left out at the cuts. Optional captions (2-4 white
 bold words at ~75% height, his style).
 
 usage: python3 assemble_cut.py SHOTS_DIR OUT.mp4 [--captions] [--voiceover AUDIO_DIR] [--width 1080]
@@ -25,6 +26,28 @@ FONTS = [  # first bold sans found is used for captions and placeholder labels
     "/System/Library/Fonts/Supplemental/Arial Bold.ttf", "/Library/Fonts/Arial Bold.ttf",
     "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", "/usr/share/fonts/TTF/DejaVuSans-Bold.ttf",
 ]
+
+
+def motion(folder, count):
+    """How much each frame differs from the next (mean grey change on a 45x80 copy)."""
+    raw = subprocess.run(["ffmpeg", "-v", "error", "-start_number", "1", "-i", os.path.join(folder, "f_%04d.png"),
+                          "-frames:v", str(count), "-vf", "scale=45:80,format=gray", "-f", "rawvideo", "-"],
+                         capture_output=True, check=True).stdout
+    size = 45 * 80
+    frames = [raw[k:k + size] for k in range(0, len(raw) - size + 1, size)]
+    return [sum(abs(p - q) for p, q in zip(f, g)) / size for f, g in zip(frames, frames[1:])]
+
+
+def still_edges(steps, limit=4, share=0.2):
+    """Frames to leave out at the start and end of a shot while its camera move is still easing
+    in or out (moving less than `share` of the shot's typical motion), at most `limit` each: a
+    cut then lands on movement instead of a short stop."""
+    if len(steps) < 3 * limit:
+        return 0, 0
+    slow = share * sorted(steps)[len(steps) // 2]
+    head = next((k for k, d in enumerate(steps[:limit]) if d >= slow), limit)
+    tail = next((k for k, d in enumerate(reversed(steps[-limit:])) if d >= slow), limit)
+    return head, tail
 
 
 def caption_filters(tmp, height, tl):
@@ -77,20 +100,26 @@ def main():
             folder = os.path.join(folder, "frames")
         frames = sorted(glob.glob(os.path.join(folder, "f_*.png")))
         if frames:
-            # every shot plays all its frames, fitted to its slot: slower where a line runs long
-            # (frames blended so the motion stays smooth), faster where it is short; never a
-            # frozen last frame, never a cut-off ending
-            stretch = min(max(slot / len(frames), 0.7), 1.6)
+            # every shot plays all its moving frames, fitted to its slot: slower where a line runs
+            # long (frames blended so the motion stays smooth), faster where it is short; never a
+            # frozen last frame, never a cut-off ending. Its first and last kept frames land on
+            # the slot's first and last frames, and frames are renumbered (frame N at N/fps) so
+            # the slots tile exactly and the picture never drifts off the voice.
+            head, tail = still_edges(motion(folder, len(frames)))
+            keep = len(frames) - head - tail
+            stretch = min(max((slot - 1) / max(keep - 1, 1), 0.7), 1.6)
             retime = f"minterpolate=fps={fps}:mi_mode=blend" if stretch > 1.05 else f"fps={fps}"
-            inputs += ["-framerate", str(fps), "-start_number", "1", "-i", os.path.join(folder, "f_%04d.png")]
-            parts.append(f"[{i}:v]scale={W}:{H}:flags=lanczos,setsar=1,setpts=PTS*{stretch:.5f},{retime},"
+            inputs += ["-framerate", str(fps), "-start_number", str(1 + head), "-i", os.path.join(folder, "f_%04d.png")]
+            # (two spare copies of the last frame, cut off again below, let the blend reach it)
+            parts.append(f"[{i}:v]trim=end_frame={keep},tpad=stop_mode=clone:stop=2,scale={W}:{H}:flags=lanczos,"
+                         f"setsar=1,settb=AVTB,setpts=N*{stretch:.8f}/{fps}/TB,{retime},"
                          f"tpad=stop_mode=clone:stop_duration={slot / fps + 1:.3f},"
-                         f"trim=end_frame={slot},setpts=PTS-STARTPTS[v{i}]")
+                         f"trim=end_frame={slot},settb=1/{fps},setpts=N[v{i}]")
         else:
             inputs += ["-f", "lavfi", "-i", f"color=c=0x101418:s={W}x{H}:r={fps}:d={slot / fps:.3f}"]
             label = (f"drawtext=fontfile=font.ttf:text='{name} - not rendered':fontcolor=white:fontsize={H // 30}:"
                      f"x=(w-text_w)/2:y=(h-text_h)/2," if font else "")
-            parts.append(f"[{i}:v]{label}trim=end_frame={slot},setpts=PTS-STARTPTS[v{i}]")
+            parts.append(f"[{i}:v]{label}trim=end_frame={slot},settb=1/{fps},setpts=N[v{i}]")
     graph = ";".join(parts) + ";" + "".join(f"[v{i}]" for i in range(len(CUT))) + f"concat=n={len(CUT)}:v=1:a=0[cut]"
     out = os.path.abspath(a.out)
     with tempfile.TemporaryDirectory() as tmp:
