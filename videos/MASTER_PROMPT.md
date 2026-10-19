@@ -14,7 +14,7 @@ PROJECT SETTINGS
 
 STYLE (match Zack D. Films)
 - Tell it in second person: "you" are the main character. Use one consistent protagonist (same face, hair and outfit in every shot) and put my channel name, "Jay3Dfilms" (written exactly like that), on their T-shirt.
-- Put the subject in a real, simple location that fits the story (park, bedroom, kitchen, street) with a bright blue sky and warm sun. Explainer and X-ray shots stay in that location: the skin turns see-through and the location stays behind, blurred by depth of field (close-ups of vessels or nerves show the blurred sky and trees). Use a soft sky-blue gradient (#7EC8E3 at the top, lighter towards the bottom) only when there is no location, such as an isolated object or diagram. Never use a dark void.
+- Put the subject in a real, simple location that fits the story (park, bedroom, kitchen, street) with a bright blue sky and warm sun. X-ray views of the whole head or body stay in that location: the skin turns see-through and the location stays behind, blurred by depth of field. Close-ups inside the body (vessels, nerves, blood, organs) sit inside the body: warm, dark, out-of-focus tissue and a few blurred vessels behind them, never the outdoor location (a vessel in front of a park reads as a pole standing in the park). Vessels curve, taper and branch; never show one as a straight, upright tube. Use a soft sky-blue gradient (#7EC8E3 at the top, lighter towards the bottom) only when there is no location and no body, such as an isolated object or diagram. Never use an empty black void.
 - Bright, saturated, clean colours. Keep the subject warm-toned against cool blue backgrounds so it pops.
 - One clear subject per shot, filling the frame. Keep scenes simple and uncluttered.
 - Faces must read at phone size: push expressions past realistic (wide eyes with white around the iris, high brows, big smiles, clear winces), the way his characters react. Shape-key values above 1.0 are fine.
@@ -37,7 +37,7 @@ MATERIALS
 
 LIGHTING
 - Full environments: Poly Haven HDRI (sunny sky) plus a warm key light and a rim light to separate the subject from the background.
-- Explainer close-ups: keep the location's HDRI for light and background, plus soft, even studio lights with gentle shadows; tint the fill light slightly with the sky blue so the scene feels cohesive.
+- Explainer close-ups: keep the location's HDRI for the light (inside-the-body close-ups replace only what the camera sees with the tissue backdrop), plus soft, even studio lights with gentle shadows; tint the fill light slightly with the sky blue so the scene feels cohesive.
 - Soft, realistic shadows. Light volumetric haze for depth where it fits.
 
 ANIMATION
