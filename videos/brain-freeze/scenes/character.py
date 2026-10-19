@@ -10,7 +10,7 @@ import bpy  # noqa: I001  (bpy first: it puts addon_utils on the path)
 import addon_utils
 
 MPFB = "bl_ext.user_default.mpfb"
-CHANNEL_NAME = os.environ.get("CHANNEL_NAME", "YOUR CHANNEL")    # printed on the T-shirt
+CHANNEL_NAME = os.environ.get("CHANNEL_NAME", "Jay3Dfilms")      # printed on the T-shirt, exactly as written
 
 HERO = {
     "phenotype": {"gender": 1.0, "age": 0.5, "muscle": 0.56, "weight": 0.47, "proportions": 0.65, "height": 0.55,
@@ -139,11 +139,12 @@ def recolor_shirt(parts, color=SHIRT_COLOR):
     return None
 
 
-def chest_print(hero, text=None, size=0.05, height=0.78):
+def chest_print(hero, text=None, size=0.05, height=0.815):
     """Channel name across the chest (call in the rest pose, before apply_pose).
-    height: fraction of body height for the text centre."""
+    height: fraction of body height for the text centre (upper chest, above the cup he
+    holds in his lap in shots 3, 4 and 19b)."""
     from mathutils import Vector
-    text = (text or CHANNEL_NAME).upper()
+    text = text or CHANNEL_NAME
     body, rig = hero["body"], hero["rig"]
     shirt = shirt_object(hero["parts"])
     top = max((body.matrix_world @ v.co).z for v in body.data.vertices)
@@ -154,17 +155,17 @@ def chest_print(hero, text=None, size=0.05, height=0.78):
     cu.body = text
     cu.align_x, cu.align_y = "CENTER", "CENTER"
     words = text.split()
-    lines = [text]
     if len(text) > 8 and len(words) > 1:                          # two lines for longer names
         half = (len(words) + 1) // 2
-        lines = [" ".join(words[:half]), " ".join(words[half:])]
-        cu.body = "\n".join(lines)
-    size = min(size, 0.21 / (0.62 * max(len(ln) for ln in lines)))   # keep it within the front of the chest
+        cu.body = " ".join(words[:half]) + "\n" + " ".join(words[half:])
+    ob = bpy.data.objects.new("Chest_Print", cu)
+    bpy.context.scene.collection.objects.link(ob)
+    cu.size = 1.0                                                 # measure the set text at size 1
+    xs = [c[0] for c in ob.evaluated_get(bpy.context.evaluated_depsgraph_get()).bound_box]
+    size = min(size, 0.21 / (max(xs) - min(xs)))                  # keep it within the front of the chest
     cu.size = size
     cu.offset = size * 0.035                                      # thicker strokes: reads as a bold print
     cu.extrude = 0.0003
-    ob = bpy.data.objects.new("Chest_Print", cu)
-    bpy.context.scene.collection.objects.link(ob)
     ob.rotation_euler = (1.5708, 0, 0)                            # stand the text up, facing -Y
     ob.location = (0.0, front.y - 0.004, z)
     dg = bpy.context.evaluated_depsgraph_get()

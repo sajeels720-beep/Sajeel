@@ -13,7 +13,7 @@ PROJECT SETTINGS
 - Keep the main action inside the safe zone: avoid the top 10% and the bottom 25% of the frame, where captions and YouTube buttons go. Captions sit at about 75% of the frame height.
 
 STYLE (match Zack D. Films)
-- Tell it in second person: "you" are the main character. Use one consistent protagonist (same face, hair and outfit in every shot) and put my channel name on their T-shirt.
+- Tell it in second person: "you" are the main character. Use one consistent protagonist (same face, hair and outfit in every shot) and put my channel name, "Jay3Dfilms" (written exactly like that), on their T-shirt.
 - Put the subject in a real, simple location that fits the story (park, bedroom, kitchen, street) with a bright blue sky and warm sun. Explainer and X-ray shots stay in that location: the skin turns see-through and the location stays behind, blurred by depth of field (close-ups of vessels or nerves show the blurred sky and trees). Use a soft sky-blue gradient (#7EC8E3 at the top, lighter towards the bottom) only when there is no location, such as an isolated object or diagram. Never use a dark void.
 - Bright, saturated, clean colours. Keep the subject warm-toned against cool blue backgrounds so it pops.
 - One clear subject per shot, filling the frame. Keep scenes simple and uncluttered.

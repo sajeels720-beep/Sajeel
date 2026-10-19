@@ -23,7 +23,7 @@ A 36.8-second vertical Short in the style of Zack D. Films, built entirely from 
    It needs internet and about 450 MB of downloads.
 3. The Poly Haven sky and textures download automatically the first time a shot is built. They are saved to `~/vfx_assets` (set `VFX_ASSETS` to use a different folder).
 
-**Your channel name on the T-shirt.** Set the environment variable `CHANNEL_NAME` before building (for example `CHANNEL_NAME="Brain Facts Daily"`), or edit `CHANNEL_NAME` near the top of `scenes/character.py`. It defaults to "YOUR CHANNEL". The shirt colour is `SHIRT_COLOR` in the same file.
+**Your channel name on the T-shirt.** The shirt says "Jay3Dfilms", printed exactly as written, on the upper chest above the ice cream cup. To change it, set the environment variable `CHANNEL_NAME` before building (for example `CHANNEL_NAME="Brain Facts Daily"`), or edit `CHANNEL_NAME` near the top of `scenes/character.py`. The shirt colour is `SHIRT_COLOR` in the same file.
 
 ## Look at a shot in Blender
 

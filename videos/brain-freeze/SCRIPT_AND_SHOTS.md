@@ -41,7 +41,7 @@ Difficulty is for Claude driving Blender: **E** = easy (objects, effects, camera
 |---|---|---|---|---|---|---|
 | 1 | 0.0–1.5 | "You take a giant bite" | Extreme close-up: a spoon carves a huge chunk out of a 3-scoop cup (strawberry, mint, vanilla) with drips in the sun | Slow push-in, shallow depth of field, slow motion | Spoon scrape, summer ambience | E |
 | 2 | 1.5–3.0 | "of ice cream," | POV: the overloaded spoon flies toward the lens; the frame goes dark as it "enters your mouth" | Lens-level, fast | Whoosh, crunch | E |
-| 3 | 3.0–5.2 | "and for a second, it's perfect." | Protagonist on a sunny park bench (bright T-shirt with **your channel name**, like his branded tee), eyes closed, blissful | Slow orbit, sun flare | Happy "mmm", music swells | H |
+| 3 | 3.0–5.2 | "and for a second, it's perfect." | Protagonist on a sunny park bench (bright T-shirt with **Jay3Dfilms**, like his branded tee), eyes closed, blissful | Slow orbit, sun flare | Happy "mmm", music swells | H |
 | 4 | 5.6–7.0 | "Then a stabbing pain" | Crash zoom to the eyes snapping wide open | Crash zoom + camera shake | Sharp sting hit, quick chromatic flash | H (or M with just eyelids moving) |
 | 5 | 7.0–8.4 | "shoots through your forehead," | Close-up of the forehead: icy blue cracks shoot out from between the eyebrows, frost particles burst | Slight push-in, shake | Ice crack | M |
 | 6 | 8.4–10.6 | "like your brain is freezing solid." | Head cutaway (like his brain reveal): the skull top turns see-through and the brain freezes over with growing ice crystals | Slow orbit | Freezing crackle, cold wind | M |
