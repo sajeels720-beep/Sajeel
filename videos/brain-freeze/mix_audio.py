@@ -10,6 +10,7 @@ AUDIO_DIR holds voiceover_01 ... voiceover_11, sfx_NN_name and music_01 files (.
 Needs ffmpeg.
 """
 import argparse
+import math
 import os
 import subprocess
 
@@ -80,11 +81,23 @@ def main():
     for n, (spans, db) in BEDS.items():
         if n not in files["sfx"]:
             continue
-        g = gain(files["sfx"][n])
+        src = files["sfx"][n]
+        g, seg = gain(src), duration(src)
         for j, (t0, t1) in enumerate(spans):
             start, end = tl.warp(t0), min(tl.warp(t1), length)
-            k, d, ms = new_input(files["sfx"][n], loop=True), end - start, int(start * 1000)
-            chains.append(f"[{k}:a]{fmt},atrim=0:{d:.3f},asetpts=PTS-STARTPTS,afade=t=in:d=0.6,"
+            d, ms = end - start, int(start * 1000)
+            # repeats overlap by a second and crossfade, so the loop never clicks at the seam
+            copies = max(1, math.ceil((d - 1.0) / (seg - 1.0))) if seg > 2.0 else 1
+            last = None
+            for c in range(copies):
+                k = new_input(src, loop=seg <= 2.0)
+                chains.append(f"[{k}:a]{fmt}[b{n}_{j}_{c}]")
+                if last is None:
+                    last = f"[b{n}_{j}_{c}]"
+                else:
+                    chains.append(f"{last}[b{n}_{j}_{c}]acrossfade=d=1:c1=tri:c2=tri[b{n}_{j}_x{c}]")
+                    last = f"[b{n}_{j}_x{c}]"
+            chains.append(f"{last}atrim=0:{d:.3f},asetpts=PTS-STARTPTS,afade=t=in:d=0.6,"
                           f"afade=t=out:st={max(d - 0.8, 0):.3f}:d=0.8,volume={g + db:.2f}dB,"
                           f"adelay={ms}|{ms}[b{n}_{j}]")
             mix.append(f"[b{n}_{j}]")
