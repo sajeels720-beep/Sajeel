@@ -124,7 +124,7 @@ def main():
     if not mix:
         raise SystemExit(f"No audio files found in {a.audio_dir}")
     chains.append("".join(mix) + f"amix=inputs={len(mix)}:normalize=0:duration=longest,"
-                  f"apad=whole_dur={length:.3f},atrim=0:{length:.3f},loudnorm=I=-14:TP=-2.0:LRA=11,"
+                  f"apad=whole_dur={length:.3f},atrim=0:{length:.3f},loudnorm=I=-14:TP=-3.0:LRA=11,"
                   f"aresample={RATE}[aout]")
     cmd = ["ffmpeg", "-v", "error", "-y", *inputs, "-filter_complex", ";".join(chains), "-map", "0:v",
            "-map", "[aout]", "-c:v", "copy", "-c:a", "aac", "-b:a", "192k", "-shortest", "-movflags", "+faststart",
