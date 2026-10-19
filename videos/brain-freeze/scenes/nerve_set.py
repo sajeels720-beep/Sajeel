@@ -1,7 +1,8 @@
-"""Pain-sensor close-up (shot 14): a swollen artery with nerve fibres spiralling around it
-and nerve endings resting on its wall. Electric sparks crackle along the fibres, the
-endings flash and send out red ripple rings. Stylised large scale in metres (artery
-radius 0.2) so depth of field behaves like a normal macro shot."""
+"""Pain-sensor close-up (shot 14): a swollen artery inside the head, curving across the
+frame and splitting into branches, with nerve fibres spiralling around it and nerve
+endings resting on its wall. Electric sparks crackle along the fibres, the endings flash
+and send out red ripple rings. Stylised large scale in metres (artery radius about 0.2) so
+depth of field behaves like a normal macro shot."""
 import math
 
 import bpy
@@ -13,12 +14,23 @@ import vfx_kit as V
 
 H = V.hex_lin
 R_VESSEL = 0.2
+BRANCHES = (  # (where it leaves the artery, direction, length, radius at the root, at the end)
+    (0.36, (-0.25, 0.1, 1.0), 1.8, 0.12, 0.07),                   # splits off upward
+    (0.68, (0.7, 0.35, -0.6), 1.6, 0.09, 0.05),                   # down and off to the right
+    (0.18, (0.15, 1.0, 0.35), 2.4, 0.065, 0.04),                  # back into the tissue
+)
 
 
 def axis_point(t):
-    """Centre line of the artery, t in [0, 1]: rises along +Z (fills a vertical frame)
-    with a gentle bend."""
-    return np.array([0.22 * math.sin(t * math.pi) - 0.1, 0.1 * (t - 0.5), -1.6 + 3.2 * t])
+    """Centre line of the artery, t in [0, 1]: crosses the frame on a diagonal (lower left
+    to upper right) in a lazy S and drifts in depth - an artery, not a post."""
+    s = math.sin(t * 2 * math.pi)
+    return np.array([-1.3 + 2.6 * t + 0.22 * s, 0.25 * math.sin(t * math.pi) - 0.1, -1.1 + 2.2 * t - 0.26 * s])
+
+
+def radius_at(t):
+    """Swollen with blood: wider upstream, narrowing downstream, with soft bulges."""
+    return R_VESSEL * (1.12 - 0.25 * t) * (1.0 + 0.06 * math.sin(t * 9.0))
 
 
 def frame_at(t):
@@ -33,7 +45,33 @@ def frame_at(t):
 
 def surface_point(t, ang, lift=0.0):
     p, tan, a, b = frame_at(t)
-    return p + (a * math.cos(ang) + b * math.sin(ang)) * (R_VESSEL + lift)
+    return p + (a * math.cos(ang) + b * math.sin(ang)) * (radius_at(t) + lift)
+
+
+def branch_path(t, direction, length, n=48):
+    """A branch leaving the artery at t: starts on its centre line (so the two fuse), leaves
+    at an acute angle to the flow, then bends toward its own direction."""
+    p0, tan, _, _ = frame_at(t)
+    d = np.asarray(direction, float)
+    d /= np.linalg.norm(d)
+    lean = tan * 0.45 + d * 0.55
+    ctrl = [p0, p0 + lean * radius_at(t) * 2.2, p0 + d * length * 0.45 + tan * length * 0.12,
+            p0 + d * length + tan * length * 0.2 + np.cross(d, tan) * length * 0.12]
+    return K.path_spline(np.array(ctrl), n)
+
+
+def artery_mesh(col, voxel=0.012):
+    """The artery and its branches as one fused, smooth surface with soft lumps."""
+    ts = np.linspace(0, 1, 160)
+    parts = [K.tube("Artery_main", [axis_point(t) for t in ts], [radius_at(t) for t in ts], segments=64, col=col)]
+    for i, (t, d, length, r0, r1) in enumerate(BRANCHES):
+        path = branch_path(t, d, length)
+        parts.append(K.tube(f"Artery_branch_{i}", path, np.linspace(r0, r1, len(path)), segments=40, col=col))
+    artery = K.join(parts, "Artery_geo", col)
+    K.voxel_remesh(artery, voxel)
+    K.smooth(artery, iterations=8, factor=0.5)                    # rounds the branch joints off
+    K.skin(artery, 0.12, 0.008, octaves=3, seed=3)
+    return artery
 
 
 def artery_material():
@@ -58,9 +96,7 @@ def nerve_material():
 def build(col_name="SET_NERVES", seed=6):
     rng = np.random.default_rng(seed)
     col = V.collection(col_name)
-    ts = np.linspace(0, 1, 120)
-    artery = K.tube("Artery_geo", [axis_point(t) for t in ts], R_VESSEL, segments=96, col=col)
-    K.skin(artery, 0.12, 0.008, octaves=3, seed=3)
+    artery = artery_mesh(col)
     V.assign(artery, artery_material())
     nmat = nerve_material()
     fibres, endings = [], []

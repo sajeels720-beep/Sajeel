@@ -1,6 +1,6 @@
 """SHOT 15 (25.9-27.8 s, 57 frames @30fps) - "But the nerve carrying that signal"
-A twisted yellow nerve rises against the blurred park sky; a glowing red signal races up it with a few
-sparks crackling at its head, and the camera tracks beside the signal.
+A twisted yellow nerve rises through the inside of the head, past out-of-focus vessels; a glowing red
+signal races up it with a few sparks crackling at its head, and the camera tracks beside the signal.
 """
 import os
 import sys
@@ -16,6 +16,7 @@ import bpy
 import numpy as np
 from mathutils import Vector
 
+import body_set as BS
 import claude_sculpt_kit as K
 import nerve_set as NS
 import park_set as PS
@@ -32,11 +33,16 @@ def build():
     V.start_fresh()
     V.setup_shot(SECONDS, fps=FPS, engine="CYCLES" if PREVIEW else "EEVEE", samples=32 if PREVIEW else 64,
                  scale=50 if PREVIEW else 100)
-    PS.world()
+    PS.world()                                                     # the light it had in the park
+    BS.backdrop(turn=-30)                                          # what the camera sees: inside the head
 
     col = V.collection("SET_NERVE")
     mat = NS.signal_nerve_material()
     bundle, P = NS.nerve_bundle(col, mat)
+    # vessels beyond the nerve, along the stretch the camera travels (it looks past the signal
+    # from the front, slightly below)
+    BS.background_vessels(V.collection("SET_TISSUE"), (0.0, 0.0, -0.3), spread=(6.0, 3.0, 10.0),
+                          away=(-0.5, 0.77, 0.41))
     pos = mat.node_tree.nodes["Pulse"].outputs[0]
     V.animate_socket(pos, [(1, SPAN[0] - 0.05), (GO[0], SPAN[0]), (GO[1], SPAN[1]), (N, SPAN[1] + 0.03)])
     for fc in V.fcurves(mat.node_tree):                      # constant speed while it races
@@ -75,7 +81,7 @@ def build():
         ob.parent = None
 
     # camera tracks beside the signal: slightly behind and to the side, looking ahead of it
-    r = V.camera_rig("Cam_Shot15", lens=30, fstop=2.8)
+    r = V.camera_rig("Cam_Shot15", lens=30, fstop=1.6)                  # the vessels behind blur softly
     keys = []
     for f in list(range(1, N + 1, 4)) + [N]:
         fc = min(max(f, GO[0]), GO[1] + 4)

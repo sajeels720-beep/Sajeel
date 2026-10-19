@@ -16,6 +16,7 @@ for p in (os.path.join(ROOT, "scenes"), os.path.join(ROOT, "shots"), os.path.joi
 import bpy
 from mathutils import Vector
 
+import body_set as BS
 import mouth_set as MS
 import park_set as PS
 import shot08_palate_frost as S08
@@ -53,11 +54,13 @@ def clear_shell(mat):
 
 def build_xray_set(seconds, xray=1.0, turn=0.0):
     """Shared by shots 09-11: frosted mouth (end of shot 08), vessel network, brain,
-    the park sky showing through the x-ray (turn spins it), mouth lights."""
+    soft tissue of the inside of the head showing through the x-ray (the park light still
+    lights it; turn spins that light), mouth lights."""
     V.start_fresh()
     V.setup_shot(seconds, fps=FPS, engine="CYCLES" if PREVIEW else "EEVEE", samples=32 if PREVIEW else 64,
                  scale=50 if PREVIEW else 100)
     PS.world(turn)
+    BS.backdrop()                                                 # inside the head, not the park
     parts = MS.build()
     muc = parts["mucosa"]
     MS.control(muc, "FrostRadius").default_value = 0.024

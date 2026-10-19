@@ -1,7 +1,8 @@
 """SHOT 14 (23.8-25.9 s, 63 frames @30fps) - "sets off pain sensors."
-Close-up of the swollen artery wrapped in nerve fibres: the nerve endings fire, electric
-red sparks crackle along the fibres, red ripple rings pulse out from the endings, and the
-fibres glow. Camera orbits around the artery.
+Close-up inside the head of the swollen artery, curving across the frame and branching,
+wrapped in nerve fibres: the nerve endings fire, electric red sparks crackle along the
+fibres, red ripple rings pulse out from the endings, and the fibres glow. Out-of-focus
+vessels and tissue behind. Camera drifts around the artery.
 """
 import math
 import os
@@ -17,6 +18,7 @@ for p in (os.path.join(ROOT, "scenes"), os.path.join(ROOT, "..", "production"),
 import bpy
 from mathutils import Vector
 
+import body_set as BS
 import claude_sculpt_kit as K
 import nerve_set as NS
 import park_set as PS
@@ -32,7 +34,8 @@ def build():
     V.start_fresh()
     V.setup_shot(SECONDS, fps=FPS, engine="CYCLES" if PREVIEW else "EEVEE", samples=32 if PREVIEW else 64,
                  scale=50 if PREVIEW else 100)
-    PS.world(turn=270)                                            # trees and sky behind, no bins or houses
+    PS.world(turn=270)                                            # the light it had in the park
+    BS.backdrop(turn=40)                                          # what the camera sees: inside the head
 
     parts = NS.build()
     nmat = parts["nerve_mat"]
@@ -47,6 +50,7 @@ def build():
 
     lights = V.collection("LIGHTS")
     target = Vector(NS.axis_point(0.5))
+    BS.background_vessels(V.collection("SET_TISSUE"), target, away=-K.look_dir(-15, 6))
     for name, az, el, dist, power, size, color in (("Key_lgt", -40, 35, 2.4, 70, 1.2, (1.0, 0.92, 0.85)),
                                                    ("Rim_lgt", 160, 15, 2.4, 140, 1.0, (0.55, 0.65, 1.0)),
                                                    ("Fill_lgt", 60, -10, 2.6, 14, 1.5, (0.8, 0.85, 1.0))):
@@ -56,12 +60,12 @@ def build():
         ob.location = target + K.look_dir(az, el) * dist
         K._aim(ob, target)
 
-    # camera: orbit around the artery
-    r = V.camera_rig("Cam_Shot14", lens=40, fstop=1.4)                   # macro look: the park melts into bokeh
+    # camera: drifts around the artery as it crosses the frame, from slightly above
+    r = V.camera_rig("Cam_Shot14", lens=40, fstop=1.4)                   # macro look: the vessels behind blur
     keys = []
     for f in (1, 16, 32, 48, N):
         t = (f - 1) / (N - 1)
-        az, el, dist = -60 + 50 * t, -12 + 3 * t, 2.3 - 0.35 * t      # from below: sky behind, not a lawn
+        az, el, dist = -35 + 40 * t, 8 - 4 * t, 2.45 - 0.35 * t
         keys.append((f, target + K.look_dir(az, el) * dist, target + Vector((0, 0, 0.05 * t)), 40))
     V.cam_keys(r, keys)
     V.handheld(r, amount=0.004, aim_amount=0.003)
