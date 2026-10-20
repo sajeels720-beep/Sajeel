@@ -61,10 +61,41 @@ def build_hero(name="Hero", pose=None, faceunits=True, subdiv=1):
                 if b is not None:
                     b.inputs["Specular IOR Level"].default_value = 0.05
                     b.inputs["Roughness"].default_value = 0.85
+    clear_corneas(parts)
     hero = {"body": body, "rig": rig, "parts": parts}
     if pose:
         apply_pose(hero, pose)
     return hero
+
+
+def clear_corneas(parts):
+    """MPFB's eye material makes the outer layer (cornea) refractive. Cycles looks through
+    it, but EEVEE shows the sky probe there instead, so the eyes read as mirror balls of the
+    park. Make the cornea fully see-through instead (alpha 0 on the outer layer only); the
+    inner layer's clear coat still gives the wet highlight."""
+    for o in parts:
+        for m in o.data.materials:
+            nodes = m.node_tree.nodes if m and m.node_tree else []
+            eye = next((n for n in nodes if n.bl_idname == "ShaderNodeGroup" and n.node_tree
+                        and "OuterLayerAlpha" in n.inputs), None)
+            if eye is None:
+                continue
+            eye.inputs["OuterLayerTransmission"].default_value = 0.0
+            eye.inputs["OuterLayerAlpha"].default_value = 0.0
+            nt = eye.node_tree
+            bsdf = nt.nodes.get("Principled BSDF")
+            tmix = nt.nodes.get("TransmissionMix")
+            if bsdf is None or tmix is None or nt.nodes.get("OuterLayerAlphaMix") or not bsdf.inputs["Alpha"].is_linked:
+                continue
+            outer_alpha = bsdf.inputs["Alpha"].links[0].from_socket
+            nt.links.remove(bsdf.inputs["Alpha"].links[0])
+            amix = nt.nodes.new("ShaderNodeMix")                 # same layer split as the transmission
+            amix.name, amix.data_type = "OuterLayerAlphaMix", "FLOAT"
+            nt.links.new(tmix.inputs["Factor"].links[0].from_socket, amix.inputs["Factor"])
+            outer_first = tmix.inputs["Color1"].is_linked        # Color1 holds the outer layer's value
+            nt.links.new(outer_alpha, amix.inputs["A" if outer_first else "B"])
+            amix.inputs["B" if outer_first else "A"].default_value = 1.0
+            nt.links.new(amix.outputs["Result"], bsdf.inputs["Alpha"])
 
 
 def apply_pose(hero, pose):
