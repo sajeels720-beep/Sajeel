@@ -92,7 +92,8 @@ def clear_corneas(parts):
             nt.links.remove(bsdf.inputs["Alpha"].links[0])
             amix = nt.nodes.new("ShaderNodeMix")                 # same layer split as the transmission
             amix.name, amix.data_type = "OuterLayerAlphaMix", "FLOAT"
-            nt.links.new(tmix.inputs["Factor"].links[0].from_socket, amix.inputs["Factor"])
+            fac = tmix.inputs.get("Factor") or tmix.inputs.get("Fac")    # renamed between Blender 4.5 and 5.x
+            nt.links.new(fac.links[0].from_socket, amix.inputs["Factor"])
             outer_first = tmix.inputs["Color1"].is_linked        # Color1 holds the outer layer's value
             nt.links.new(outer_alpha, amix.inputs["A" if outer_first else "B"])
             amix.inputs["B" if outer_first else "A"].default_value = 1.0

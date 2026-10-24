@@ -114,6 +114,25 @@ def tune_eyes(parts, iris=IRIS):
                         n.inputs[name].default_value = (*col, 1)
 
 
+def tune_teeth(parts):
+    """Warm, slightly translucent enamel: with the plain CC0 material, the teal studio light
+    turned the teeth blue-grey inside the mouth."""
+    for o in parts:
+        if "teeth" not in o.name:
+            continue
+        for m in o.data.materials:
+            _multiply_texture(m, H("#FFF0DC"), "teeth")
+            b = _principled(m)
+            if b is None:
+                continue
+            b.inputs["Roughness"].default_value = 0.35
+            for name, val in (("Subsurface Weight", 0.35), ("Subsurface Scale", 0.003)):
+                if name in b.inputs:
+                    b.inputs[name].default_value = val
+            if "Subsurface Radius" in b.inputs:
+                b.inputs["Subsurface Radius"].default_value = (1.0, 0.6, 0.35)
+
+
 def recolor_shirt(parts, color=SHIRT_COLOR):
     """Logo-free texture, tinted only where the shirt mask is white (the jeans keep their colour)."""
     shirt = C.shirt_object(parts)
@@ -149,6 +168,7 @@ def build(name="Heroine", pose=None, faceunits=True, subdiv=1, brand=True, print
     tune_skin(hero, **(skin or {}))
     tune_hair(hero["parts"])
     tune_eyes(hero["parts"])
+    tune_teeth(hero["parts"])
     if brand:
         recolor_shirt(hero["parts"])
         hero["print"] = C.chest_print(hero, height=print_height, size=0.042, ink=PRINT_INK)
@@ -168,3 +188,51 @@ def arms_down(hero, angle=38.0):
         pb.rotation_mode = "XYZ"
         pb.rotation_euler[2] = math.radians(sign * angle)
     bpy.context.view_layer.update()
+
+
+def nose_shapes(hero):
+    """Extra CC0 MakeHuman targets as animatable shape keys for the sneeze acting:
+    "flare" (nostrils flare) and "nostrils_wide". Animate them with character.face()."""
+    from bl_ext.user_default.mpfb.services.targetservice import TargetService
+    body = hero["body"]
+    for target, name in (("nose-flaring-incr", "flare"), ("nose-nostrils-width-incr", "nostrils_wide")):
+        if body.data.shape_keys and name in body.data.shape_keys.key_blocks:
+            continue
+        path = TargetService.target_full_path(target)
+        if path:
+            key = TargetService.load_target(body, path, weight=0.0, name=name)
+            key.slider_max = 2.0
+
+
+def nose_tip(hero):
+    """Base-mesh index of the nose tip: the most forward vertex on the face's centre line."""
+    import numpy as np
+    body = hero["body"]
+    rig = hero["rig"]
+    P = np.array([tuple(body.matrix_world @ v.co) for v in body.data.vertices])
+    z0 = (rig.matrix_world @ rig.pose.bones["head"].head).z
+    sel = np.where((np.abs(P[:, 0]) < 0.004) & (P[:, 2] > z0 + 0.04) & (P[:, 2] < z0 + 0.16))[0]
+    return int(sel[np.argmin(P[sel, 1])])
+
+
+def surface_point(hero, index):
+    """Posed world position and normal of a base-mesh vertex on the rendered (smoothed)
+    skin at the current frame: shape keys and pose applied, and moved to where the
+    subdivision surface lies, so things can touch the skin."""
+    import numpy as np
+    from mathutils import Vector
+    body = hero["body"]
+    key = f"_subdiv_{index}"
+    if key not in hero:                       # nearest smoothed vertex to the cage vertex (topology never changes)
+        cage = C.evaluated_points(body)[index]
+        ev = body.evaluated_get(bpy.context.evaluated_depsgraph_get())
+        me = ev.to_mesh()
+        Q = np.array([tuple(ev.matrix_world @ v.co) for v in me.vertices])
+        hero[key] = int(np.argmin(np.linalg.norm(Q - cage, axis=1)))
+        ev.to_mesh_clear()
+    ev = body.evaluated_get(bpy.context.evaluated_depsgraph_get())
+    me = ev.to_mesh()
+    v = me.vertices[hero[key]]
+    p, n = ev.matrix_world @ v.co, (ev.matrix_world.to_3x3() @ v.normal).normalized()
+    ev.to_mesh_clear()
+    return Vector(p), Vector(n)
