@@ -221,6 +221,58 @@ def backdrop(glow_dir=(0.45, 0.55, 0.7), horizon=-13.0, camera_strength=1.0, lig
     return w
 
 
+TISSUE = ("#1E0508", "#4E0F17", "#8E2F3A")       # video 1's inside-the-body look: shadow, flesh, lit fold
+
+
+def tissue(turn=0.0, scale=2.4, colors=TISSUE, camera_strength=1.0, light_strength=0.35):
+    """Inside the body (the throat and eardrum close-ups): warm, dark, out-of-focus folds of
+    tissue, a little lighter from above, as in video 1. The same colours light the scene,
+    softer. turn (degrees) picks which part of the pattern sits behind the subject.
+    Returns the world; its "Backdrop_Camera" node's Strength is what the camera sees."""
+    w, nt = V._world()
+    tc = nt.nodes.new("ShaderNodeTexCoord")
+    mp = nt.nodes.new("ShaderNodeMapping")
+    mp.inputs["Rotation"].default_value = (math.radians(20), 0.0, math.radians(turn))
+    nt.links.new(tc.outputs["Generated"], mp.inputs["Vector"])
+    noise = _node(nt, "ShaderNodeTexNoise", Scale=scale, Detail=2.0, Roughness=0.5, Distortion=0.6)
+    nt.links.new(mp.outputs["Vector"], noise.inputs["Vector"])
+    ramp = nt.nodes.new("ShaderNodeValToRGB")
+    els = ramp.color_ramp.elements
+    els[0].position, els[0].color = 0.36, (*H(colors[0]), 1)
+    els[1].position, els[1].color = 0.70, (*H(colors[2]), 1)
+    els.new(0.52).color = (*H(colors[1]), 1)
+    nt.links.new(noise.outputs["Fac"], ramp.inputs["Fac"])
+    sep = nt.nodes.new("ShaderNodeSeparateXYZ")
+    nt.links.new(tc.outputs["Generated"], sep.inputs[0])
+    lift = _map(nt, sep.outputs["Z"], -0.9, 0.9, 0.6, 1.25, smooth=False)
+    shade = nt.nodes.new("ShaderNodeMix")
+    shade.data_type, shade.blend_type = "RGBA", "MULTIPLY"
+    shade.inputs[0].default_value = 1.0
+    nt.links.new(ramp.outputs["Color"], shade.inputs[6])
+    comb = nt.nodes.new("ShaderNodeCombineXYZ")
+    for k in ("X", "Y", "Z"):
+        nt.links.new(lift, comb.inputs[k])
+    nt.links.new(comb.outputs[0], shade.inputs[7])
+    _finish(nt, shade.outputs[2], camera_strength, light_strength)
+    return w
+
+
+def tissue_lights(subject, cam_loc, scale=1.0, key=1.0, rim=1.0, col=None):
+    """Light for the inside-the-body close-ups: a soft warm key from above the camera and a
+    pink rim from behind, so wet surfaces catch highlights against the dark tissue."""
+    col = col or V.collection("LIGHTS")
+    s = Vector(subject)
+    to_cam = (Vector(cam_loc) - s).normalized()
+    side = to_cam.cross(Vector((0, 0, 1))).normalized()
+    d = 2.0 * scale
+    return {
+        "key": _area("Key_Light", s + (to_cam * 0.8 - side * 0.5 + Vector((0, 0, 0.9))).normalized() * d, s,
+                     1.4 * scale, 160 * key * scale ** 2, H("#FFE6D6"), col),
+        "rim": _area("Rim_Light", s + (-to_cam + side * 0.6 + Vector((0, 0, 0.5))).normalized() * d, s,
+                     1.0 * scale, 220 * rim * scale ** 2, H("#FF9AA8"), col),
+    }
+
+
 def _area(name, loc, target, size, power, color, col):
     ld = bpy.data.lights.new(name, "AREA")
     ld.shape, ld.size, ld.size_y = "DISK", size, size

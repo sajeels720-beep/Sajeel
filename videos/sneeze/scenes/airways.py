@@ -24,8 +24,10 @@ NASAL_FLAT = [(1.6, 1.0), (1.3, 1.6), (1.1, 2.1), (1.1, 1.9), (1.0, 1.0)]   # (s
 PHARYNX = [(-0.1, -0.012), (-0.111, -0.04), (-0.108, -0.072), (-0.098, -0.098)]
 ORAL = [(-0.026, -0.036), (-0.045, -0.04), (-0.072, -0.047), (-0.1, -0.055)]   # starts behind the lips (1.3 cm)
 LARYNX = [(-0.098, -0.098), (-0.09, -0.112), (-0.084, -0.127)]
-EAR_MIDDLE = (-0.122, 0.012, 0.045)                 # middle ear, each side (x mirrored)
-EUSTACHIAN = [(-0.101, -0.010, 0.012), (-0.112, 0.0, 0.03), EAR_MIDDLE]
+EAR_MIDDLE = (-0.099, 0.006, 0.033)                 # middle ear, each side (x mirrored): just inside her ear
+                                                    # canal (its opening, the floor of her ear's bowl, is at
+                                                    # (-0.101, 0.009, 0.060), measured on her "ears" vertex group)
+EUSTACHIAN = [(-0.096, -0.014, 0.011), (-0.098, -0.005, 0.022), EAR_MIDDLE]
 
 
 # --------------------------------------------------------------------------
@@ -89,8 +91,8 @@ def materials():
         "bronchi": V.emission("Bronchi_Glow", H("#FFC3CE"), 1.1),
         "cartilage": V.principled("Cartilage", H("#F4C8CF"), rough=0.35, sss=0.2, sss_radius=(1, 0.5, 0.5),
                                   sss_scale=0.002, coat=0.3, emission=H("#F7B5C1"), emission_strength=0.35),
-        "eardrum": V.principled("Eardrum", H("#F2C9B5"), rough=0.3, sss=0.4, sss_radius=(1, 0.5, 0.4),
-                                sss_scale=0.002, emission=H("#FFB59A"), emission_strength=0.3),
+        "eardrum": V.principled("Eardrum", H("#F4C6C2"), rough=0.3, sss=0.4, sss_radius=(1, 0.5, 0.4),
+                                sss_scale=0.002, emission=H("#FF9A8E"), emission_strength=0.3),   # a warm pink glow
     }
 
 
@@ -370,6 +372,50 @@ def _curves(name, lines, mat, col, min_points=2):
     return V.link(bpy.data.objects.new(name, cv), col)
 
 
+def _body_bvh(hero):
+    """Her posed skin as a BVH (world space), for finding where things reach the surface."""
+    from mathutils.bvhtree import BVHTree
+    body = hero["body"]
+    dg = bpy.context.evaluated_depsgraph_get()
+    ev = body.evaluated_get(dg)
+    me = ev.to_mesh()
+    M = body.matrix_world
+    bvh = BVHTree.FromPolygons([M @ v.co for v in me.vertices], [tuple(p.vertices) for p in me.polygons])
+    ev.to_mesh_clear()
+    return bvh
+
+
+def eardrum(name, centre, normal, radius=0.0045, cone=0.0012, bulge=0.0034, rings=10, segments=40, col=None):
+    """The eardrum: a thin round membrane facing `normal` (out of her head), drawn in a little
+    at its centre like a shallow cone (as a real one is); shape key "Bulge" domes it out
+    towards the ear canal (the trapped air pushing from inside)."""
+    n = Vector(normal).normalized()
+    t1 = n.orthogonal().normalized()
+    t2 = n.cross(t1)
+    c = Vector(centre)
+    base, out = [c - n * cone], [c + n * bulge]
+    for i in range(1, rings + 1):
+        t = i / rings
+        for k in range(segments):
+            a = 2 * math.pi * k / segments
+            p = c + (t1 * math.cos(a) + t2 * math.sin(a)) * radius * t
+            base.append(p - n * cone * (1 - t))
+            out.append(p + n * bulge * (1 - t * t))
+    faces = [(0, 1 + k, 1 + (k + 1) % segments) for k in range(segments)]
+    for i in range(rings - 1):
+        r0, r1 = 1 + i * segments, 1 + (i + 1) * segments
+        faces += [(r0 + k, r1 + k, r1 + (k + 1) % segments, r0 + (k + 1) % segments) for k in range(segments)]
+    me = bpy.data.meshes.new(name)
+    me.from_pydata([tuple(p) for p in base], [], faces)
+    ob = V.link(bpy.data.objects.new(name, me), col)
+    K.shade_smooth(ob)
+    ob.shape_key_add(name="Basis")
+    sk = ob.shape_key_add(name="Bulge")
+    for v, p in zip(sk.data, out):
+        v.co = p
+    return ob
+
+
 def windpipe(path, col, mats, radius=0.0085, ring_gap=0.0042):
     """Windpipe: a see-through tube with C-shaped cartilage rings (open at the back, +Y)."""
     P = K.path_spline(path, 60)
@@ -463,17 +509,28 @@ def build(hero, nose, col_name="XRAY_AIRWAYS", puffed=1.0, seed=7, ears=True):
 
     # ear tubes, middle ears and eardrums (for the ear shots)
     ears_on, ears = ears, {}
+    body_bvh = _body_bvh(hero)
     for name, sx in (("R", -1), ("L", 1)):
         pts = [hf(f, u, sx * x) for f, u, x in EUSTACHIAN]
         et = K.tube(f"Eustachian_{name}", K.path_spline([tuple(p) for p in pts], 24), 0.0022, segments=10, col=col)
         V.assign(et, mats["glass"])
         mid = hf(*EAR_MIDDLE[:2], sx * EAR_MIDDLE[2])
-        drum = K.ellipsoid(f"Eardrum_{name}", tuple(mid + (hf(0, 0, sx) - hf(0, 0, 0)) * 0.006),
-                           (0.0045, 0.0045, 0.0007), segments=24, col=col)
-        drum.rotation_euler = (hf(0, 0, sx) - hf(0, 0, 0)).to_track_quat("Z", "Y").to_euler()
+        out = (hf(0, 0, sx) - hf(0, 0, 0)).normalized()               # out of her head on this side
+        cavity = K.ellipsoid(f"Middle_Ear_{name}", tuple(mid), (0.0042, 0.0042, 0.0042), segments=24, col=col)
+        V.assign(cavity, mats["glass"])
+        drum_c = mid + out * 0.0055
+        drum = eardrum(f"Eardrum_{name}", drum_c, out, col=col)
         V.assign(drum, mats["eardrum"])
-        ears[name] = {"tube": et, "drum": drum, "path": pts, "middle": mid}
-        for o in (et, drum):
+        hit = body_bvh.ray_cast(drum_c + out * 0.004, out, 0.06)       # where the ear canal reaches her skin
+        opening = hit[0] - out * 0.0012 if hit[0] is not None else drum_c + out * 0.022
+        up = (hf(0, 1, 0) - hf(0, 0, 0)).normalized()
+        bend = drum_c + (opening - drum_c) * 0.55 + up * 0.0015 + (hf(1, 0, 0) - hf(0, 0, 0)).normalized() * 0.0012
+        canal = K.tube(f"Ear_Canal_{name}", K.path_spline([tuple(drum_c + out * 0.0004), tuple(bend), tuple(opening)], 24),
+                       0.0034, segments=16, col=col)
+        V.assign(canal, mats["glass"])
+        ears[name] = {"tube": et, "drum": drum, "cavity": cavity, "canal": canal, "path": pts, "middle": mid,
+                      "drum_centre": drum_c, "out": out, "opening": opening}
+        for o in (et, drum, cavity, canal):
             o.hide_render = o.hide_viewport = not ears_on
 
     # the air's routes (centre lines, world space), all running the way the air goes
@@ -486,7 +543,7 @@ def build(hero, nose, col_name="XRAY_AIRWAYS", puffed=1.0, seed=7, ears=True):
         "nasal": [Vector(p) for p in reversed(nasal)],                     # back of the nose -> pinched nostrils
         "oral": [pharynx[2]] + [Vector(p) for p in reversed(oral)],        # throat -> shut lips
         "nostrils": nostrils, "nose_end": nasal[0] + fwd * 0.004, "lips_end": oral[0] + fwd * 0.004,
-        "ear_R": ears["R"]["path"], "ear_L": ears["L"]["path"],
+        "ear_R": ears["R"]["path"], "ear_L": ears["L"]["path"],         # top of the throat -> middle ear
     }
     glow = V.link(bpy.data.objects.new("Air_GlowPoint", None), col)
     glow.empty_display_size = 0.01
@@ -494,6 +551,8 @@ def build(hero, nose, col_name="XRAY_AIRWAYS", puffed=1.0, seed=7, ears=True):
     for m in (mats["glass"], mats["lung"]):
         add_air_glow(m, glow)
     walls = [cast, tube] + [o for o in col.objects if o.name.startswith("Bronchus_")]
+    if ears_on:
+        walls += [o for d in ears.values() for o in (d["tube"], d["cavity"])]
     return {"col": col, "mats": mats, "cast": cast, "windpipe": tube, "rings": rings, "lungs": lungs,
             "trees": trees, "ears": ears, "paths": paths, "head": hf, "carina": Vector((0, y_car, z_car)),
             "hila": hila, "branches": branches, "glow": glow, "walls": walls, "forward": fwd}
@@ -513,7 +572,7 @@ def attach(hero, aw):
         e.matrix_world = Matrix.Identity(4)
         roots[key] = e
     bpy.context.view_layer.update()
-    head = [aw["cast"]] + [o for d in aw["ears"].values() for o in (d["tube"], d["drum"])]
+    head = [aw["cast"]] + [o for d in aw["ears"].values() for o in (d["tube"], d["drum"], d["cavity"], d["canal"])]
     chest = [aw["windpipe"], aw["rings"], aw["glow"]] + list(aw["lungs"].values()) + \
             [o for o in aw["col"].objects if o.name.startswith("Bronchus_")]
     for group, objs in (("head", head), ("chest", chest)):

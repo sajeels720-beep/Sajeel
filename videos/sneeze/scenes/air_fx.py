@@ -461,3 +461,44 @@ def swirl(aw, n_frames, col, parent, rng, count=72, width=(0.0011, 0.0019), core
                    stretch=stretch)
         comets.append(ob)
     return comets
+
+
+def stream(aw, routes, n_frames, col, parent, rng, count=60, launch=(-12, 30), speed=(0.006, 0.009),
+           width=(0.0006, 0.001), pile=0.012, stretch=1.6, name="Air_Stream"):
+    """A stream of air up narrow passages: comets leave the start of `routes` (a list of
+    point lists, each the way the air goes) one after another, rush along them and pile up
+    at the far end, jostling (the air trapped against an eardrum). Returns the comets and
+    the arrival frame of the first comet at each route's end."""
+    bvh = walls(aw["walls"])
+    chans = [Channel(r, bvh, n=160, max_room=0.012) for r in routes]
+    mat = material(name)
+    comets, first = [], [None] * len(chans)
+    for k in range(count):
+        ci = k % len(chans)
+        ch = chans[ci]
+        L = ch.length
+        t0 = launch[0] + (launch[1] - launch[0]) * rng.uniform() ** 1.3
+        v = rng.uniform(*speed)
+        stop = L - rng.uniform(0.0, pile)
+        th0, helix, rho = rng.uniform(0, 2 * math.pi), rng.uniform(-60, 60), rng.uniform(0.1, 0.6)
+        jig, ph = rng.uniform(0.0008, 0.002), rng.uniform(0, 2 * math.pi)
+        w0 = rng.uniform(*width)
+        track, widths = [], []
+        for i in range(n_frames):
+            t = i + 1 - t0
+            if t <= 0:
+                track.append(None)
+                widths.append(0.0)
+                continue
+            s = v * t
+            if s >= stop:                                         # arrived: jostling in the crowd at the end
+                t_arr = t0 + stop / v
+                first[ci] = t_arr if first[ci] is None else min(first[ci], t_arr)
+                late = t - stop / v
+                s = stop - jig * abs(math.sin(0.7 * late + ph)) * (1 - math.exp(-late / 3))
+            track.append(ch.at(s, th0 + helix * s + 0.3 * max(0.0, t - stop / v), rho))
+            widths.append(w0 * _smooth(t / 3.0))
+        ob = comet(f"{name}_{k:02d}", track, widths, mat, col, parent, stretch=stretch, max_len=0.012)
+        if ob is not None:
+            comets.append(ob)
+    return comets, first
