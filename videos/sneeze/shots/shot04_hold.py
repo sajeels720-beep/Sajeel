@@ -44,7 +44,7 @@ def build():
     r = V.camera_rig("Cam_Shot04", lens=HOLD.CU_LENS, fstop=8)
     a0 = anchor + HOLD.CU_AIM + Vector((0.0, 0.0, -0.004))
     a1 = anchor + HOLD.CU_AIM
-    c0 = a0 + K.look_dir(-26, 4) * 0.64
+    c0 = a0 + K.look_dir(-26, 4) * 0.70
     c1 = a1 + K.look_dir(*HOLD.CU_LOOK) * HOLD.CU_END_DIST
     V.cam_keys(r, [(1, c0, a0, HOLD.CU_LENS), (n, c1, a1, HOLD.CU_LENS)])
     focus = V.link(bpy.data.objects.new("Focus_Shot04", None), V.collection("CAMERA"))

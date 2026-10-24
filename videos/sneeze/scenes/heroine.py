@@ -177,16 +177,56 @@ def build(name="Heroine", pose=None, faceunits=True, subdiv=1, brand=True, print
     return hero
 
 
-def arms_down(hero, angle=38.0):
-    """From MPFB's A-pose rest, lower both upper arms to hang by her sides."""
+def _aim_bone(rig, name, direction):
+    """Turn a pose bone (in place, shortest rotation) so it points along a world direction."""
+    from mathutils import Matrix, Vector
+    pb = rig.pose.bones[name]
+    M = rig.matrix_world @ pb.matrix
+    y = M.to_3x3().col[1].normalized()
+    R = y.rotation_difference(Vector(direction).normalized()).to_matrix()
+    W = Matrix.Translation(M.translation) @ (R @ M.to_3x3()).to_4x4()
+    pb.matrix = rig.matrix_world.inverted() @ W
+    bpy.context.view_layer.update()
+
+
+def _turn_hand(rig, side, fingers, palm):
+    """Turn the wrist so the fingers point along `fingers` and the palm faces `palm` (world)."""
+    from mathutils import Matrix, Vector
+    import acting as A
+    pb = rig.pose.bones[f"wrist.{side}"]
+    W = rig.matrix_world @ pb.matrix
+    b = lambda n: rig.matrix_world @ rig.pose.bones[f"{n}.{side}"].head
+    f = (b("finger3-1") - b("wrist")).normalized()
+    across = (b("finger5-1") - b("finger2-1")).normalized()
+    p = f.cross(across).normalized() * (1.0 if side == "R" else -1.0)
+    fd = Vector(fingers).normalized()
+    pd = (Vector(palm) - fd * Vector(palm).dot(fd)).normalized()
+    cur = Matrix((f, (p - f * p.dot(f)).normalized(), f.cross((p - f * p.dot(f)).normalized()))).transposed()
+    want = Matrix((fd, pd, fd.cross(pd))).transposed()
+    R = want @ cur.transposed()
+    pb.matrix = rig.matrix_world.inverted() @ (Matrix.Translation(W.translation) @ (R @ W.to_3x3()).to_4x4())
+    bpy.context.view_layer.update()
+
+
+def arms_down(hero, side_out=0.12, back=0.05, elbow_bend=8.0):
+    """A natural standing pose from MPFB's A-pose: upper arms hanging by her sides (a little
+    out so they clear the hips), elbows almost straight, hands hanging with the palms towards
+    her thighs and the fingers relaxed. (Rotating only the upper arms left the forearms
+    reaching forward: the arms looked tilted.)"""
     import math
+    import acting as A
     rig = hero["rig"]
-    for side, sign in (("L", -1.0), ("R", 1.0)):
-        pb = rig.pose.bones.get(f"upperarm01.{side}")
-        if pb is None:
-            continue
-        pb.rotation_mode = "XYZ"
-        pb.rotation_euler[2] = math.radians(sign * angle)
+    bpy.context.view_layer.update()
+    for side, sx in (("L", 1.0), ("R", -1.0)):
+        upper = (sx * side_out, back, -1.0)
+        bend = math.radians(elbow_bend)
+        fore = (sx * side_out * 0.6, -math.sin(bend), -math.cos(bend))
+        for name in ("upperarm01", "upperarm02"):
+            _aim_bone(rig, f"{name}.{side}", upper)
+        for name in ("lowerarm01", "lowerarm02"):
+            _aim_bone(rig, f"{name}.{side}", fore)
+        _turn_hand(rig, side, fingers=(sx * 0.04, -0.12, -1.0), palm=(-sx, 0.15, 0.0))
+        A.curl(rig, side, A.RELAXED)
     bpy.context.view_layer.update()
 
 

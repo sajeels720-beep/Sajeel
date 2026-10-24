@@ -34,7 +34,7 @@ POP = 5                                          # the "!" appears
 ZOOM_LENS = 100
 
 
-def warning_icon(col, cam, aim, lens, screen=(0.6, 0.35), depth=0.42, height=0.3):
+def warning_icon(col, cam, aim, lens, screen=(0.7, 0.38), depth=0.48, height=0.25):
     """His red "!": a chunky, glossy 3D exclamation mark (a rounded tapered bar and a ball)
     facing the camera at a screen position (x right, y up, -1..1), `depth` meters in front of
     the lens, `height` of the frame tall. Returns (empty, location, normal towards camera)."""
@@ -75,11 +75,11 @@ def build():
     r = V.camera_rig("Cam_Shot05", lens=HOLD.CU_LENS, fstop=8)
     a0 = anchor + HOLD.CU_AIM
     c0 = a0 + K.look_dir(*HOLD.CU_LOOK) * HOLD.CU_END_DIST
-    right = K.look_dir(-20 + 90, 0)                                  # the camera's right, roughly
-    a1 = anchor + Vector((0.0, 0.01, 0.018)) + right * 0.014        # her eyes, with blue to the right of her head
-    c1 = a1 + K.look_dir(-20, 3) * 0.50
+    right = K.look_dir(-18 + 90, 0)                                  # the camera's right, roughly
+    a1 = anchor + Vector((0.0, 0.01, 0.016)) + right * 0.016        # her eyes, with blue to the right of her head
+    c1 = a1 + K.look_dir(-18, 3) * 0.60                              # crash: about 1.25x tighter in 5 frames
     a2 = a1 + Vector((0.0, 0.0, 0.001))
-    c2 = a2 + K.look_dir(-19, 3) * 0.485
+    c2 = a2 + K.look_dir(-17, 3) * 0.58
     V.cam_keys(r, [(ZOOM[0], c0, a0, HOLD.CU_LENS), (ZOOM[1], c1, a1, ZOOM_LENS), (n, c2, a2, ZOOM_LENS + 5)])
     focus = V.link(bpy.data.objects.new("Focus_Shot05", None), V.collection("CAMERA"))
     focus.location = anchor + Vector((0.0, 0.016, 0.018))

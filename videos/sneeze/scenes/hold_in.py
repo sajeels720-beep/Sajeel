@@ -24,10 +24,14 @@ import vfx_kit as V
 
 H = V.hex_lin
 SHOTS = {"03": (1, 60), "04": (61, 123), "05": (124, 171)}
-CU_LOOK, CU_END_DIST, CU_LENS = (-22, 3), 0.52, 85       # shot 04 ends where shot 05 starts (invisible cut)
+CU_LOOK, CU_END_DIST, CU_LENS = (-22, 3), 0.62, 85       # shot 04 ends where shot 05 starts (invisible cut)
 CU_AIM = Vector((0.0, 0.0, -0.012))                      # from the nose (at take frame 60)
 CONTACT = 34                                   # the fingers close on her nose
-HIT = 72                                       # the sneeze hits inside
+PINCH_UP = Vector((0.2, 0.3, 1.0))             # wrist -> fingers: the hand comes up from below the nose, a little from her right
+ELBOW_POLE = -75                               # IK pole angle: elbow low in front of her right side
+SHRUG = [(1, 0.0), (27, 0.0), (33, 1.0), (60, 1.0), (72, 1.0), (75, 1.3), (85, 1.0), (171, 1.0)]  # 72: the hit
+SHRUG_UP, SHRUG_FWD = 9.0, 12.0                # degrees the right collarbone lifts and rolls forward at 1.0
+HIT = 72                                       # the sneeze hits inside (also in SHRUG below)
 
 S2_END = {"noseSneerLeft": 0.8, "noseSneerRight": 0.8, "flare": 0.9, "nostrils_wide": 0.35, "mouthPressLeft": 0.25,
           "mouthPressRight": 0.25, "cheekSquintLeft": 0.55, "cheekSquintRight": 0.55, "eyeSquintLeft": 0.6,
@@ -85,15 +89,16 @@ FACE = [  # (take frame, face units); anything not listed is 0 at that key
                 browOuterUp=1.0)),
 ]
 BONES = {  # pose bone: [(take frame, (x, y, z) degrees)]; +x bends forward (chin down) on head/neck/spine
+    # after the pinch she stays bowed a little into her hand, shoulders hunched (holding it in)
     "head": [(1, (-4, 0, 0.8)), (9, (-10, 0, 2)), (14, (-6, 0, 1)), (23, (-15, 0, 2.5)), (29, (-17, 0, 2)),
-             (CONTACT, (5, 0, -1)), (38, (1, 0, 0)), (60, (0, 0, 0)), (HIT, (0, 0, 0)), (HIT + 1, (7, 0, 1)),
-             (HIT + 4, (-3, 0, -0.5)), (HIT + 8, (1, 0, 0)), (HIT + 13, (0, 0, 0)), (100, (0, 0, 0)), (101, (3, 0, 0)),
-             (105, (0, 0, 0)), (171, (0, 0, 0))],
-    "neck01": [(1, (0, 0, 0)), (23, (-4, 0, 0)), (29, (-5, 0, 0)), (CONTACT, (2, 0, 0)), (40, (0, 0, 0)),
-               (HIT, (0, 0, 0)), (HIT + 1, (3, 0, 0)), (HIT + 5, (-1, 0, 0)), (HIT + 10, (0, 0, 0)), (171, (0, 0, 0))],
+             (CONTACT, (11, 0, -1)), (38, (8, 0, 0)), (60, (7, 0, 0)), (HIT, (7, 0, 0)), (HIT + 1, (13, 0, 1)),
+             (HIT + 4, (4, 0, -0.5)), (HIT + 8, (8, 0, 0)), (HIT + 13, (7, 0, 0)), (100, (7, 0, 0)), (101, (10, 0, 0)),
+             (105, (7, 0, 0)), (171, (7, 0, 0))],
+    "neck01": [(1, (0, 0, 0)), (23, (-4, 0, 0)), (29, (-5, 0, 0)), (CONTACT, (5, 0, 0)), (40, (4, 0, 0)),
+               (HIT, (4, 0, 0)), (HIT + 1, (7, 0, 0)), (HIT + 5, (3, 0, 0)), (HIT + 10, (4, 0, 0)), (171, (4, 0, 0))],
     "spine01": [(1, (0, 0, 0)), (9, (-2, 0, 0)), (14, (-1, 0, 0)), (23, (-4, 0, 0)), (29, (-4.5, 0, 0)),
-                (CONTACT, (3, 0, 0)), (40, (1, 0, 0)), (HIT, (1, 0, 0)), (HIT + 1, (6, 0, 0)), (HIT + 4, (-1.5, 0, 0)),
-                (HIT + 9, (1, 0, 0)), (101, (2.5, 0, 0)), (105, (1, 0, 0)), (171, (1, 0, 0))],
+                (CONTACT, (5, 0, 0)), (40, (4, 0, 0)), (HIT, (4, 0, 0)), (HIT + 1, (9, 0, 0)), (HIT + 4, (2, 0, 0)),
+                (HIT + 9, (4, 0, 0)), (101, (6, 0, 0)), (105, (4, 0, 0)), (171, (4, 0, 0))],
 }
 SKIN_FLUSH = [(1, "#B98466"), (60, "#B98466"), (HIT + 2, "#BF7C62"), (115, "#C76C58"), (171, "#CA6553")]
 
@@ -141,6 +146,23 @@ def _same_hemisphere(q, ref):
     return q if q.dot(ref) >= 0 else -q
 
 
+def _key_shrug(rig, off):
+    """Her right shoulder lifts and rolls forward as she pinches (it lets the elbow hang lower).
+    The right collarbone runs from the sternum out to -X: turning it about +Y lifts the
+    shoulder end, about +Z brings it forward (-Y)."""
+    pb = rig.pose.bones["clavicle.R"]
+    pb.rotation_mode = "XYZ"
+    sc = bpy.context.scene
+    sc.frame_set(1 - off)
+    rest = rig.matrix_world @ pb.matrix
+    for g, k in SHRUG:
+        R = Matrix.Rotation(math.radians(SHRUG_FWD * k), 3, "Z") @ Matrix.Rotation(math.radians(SHRUG_UP * k), 3, "Y")
+        W = Matrix.Translation(rest.translation) @ (R @ rest.to_3x3()).to_4x4()
+        pb.matrix = rig.matrix_world.inverted() @ W
+        pb.keyframe_insert("rotation_euler", frame=g - off)
+    V.ease_id(rig)
+
+
 def _key_hand(hero, off, frames):
     """The right hand: hangs, dips (anticipation), snaps up to the nose, pinches at CONTACT
     and from then on rides on her head. frames: the shot's own frame range (to bake)."""
@@ -160,12 +182,13 @@ def _key_hand(hero, off, frames):
     wrist = rig.pose.bones["wrist.R"]
     hang = rig.matrix_world @ wrist.matrix
     h = A.hand_rig(hero)
+    h["ik"].pole_angle = math.radians(ELBOW_POLE)
     hand = h["hand"]
     # the pinch, worked out with her head where it is at the moment of contact
     sc.frame_set(CONTACT - off)
     tip, _ = HR.surface_point(hero, hero["nose_tip"])
     nose = tip + Vector((0.0, 0.008, 0.004))                    # between the nostril wings
-    loc_c, q_c = A.pinch_pose(rig, nose, up=Vector((0, 0.45, 1.0)))[:2]
+    loc_c, q_c = A.pinch_pose(rig, nose, up=PINCH_UP)[:2]
     head_c = _head_matrix(rig)
     contact = Matrix.Translation(loc_c) @ q_c.to_matrix().to_4x4()
     q_h = hang.to_quaternion()
@@ -234,6 +257,7 @@ def perform(shot):
     _key_face(hero["body"], off)
     _key_bones(hero["rig"], off)
     _key_flush(hero, off)
+    _key_shrug(hero["rig"], off)
     h = _key_hand(hero, off, (1, hi - lo + 1))
     seed = _seed_flies_off(hero, off, (1, hi - lo + 1)) if shot == "03" else None
     bpy.context.scene.frame_set(1)
