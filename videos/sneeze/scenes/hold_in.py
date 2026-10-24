@@ -28,7 +28,8 @@ CU_LOOK, CU_END_DIST, CU_LENS = (-22, 3), 0.62, 85       # shot 04 ends where sh
 CU_AIM = Vector((0.0, 0.0, -0.012))                      # from the nose (at take frame 60)
 CONTACT = 34                                   # the fingers close on her nose
 PINCH_UP = Vector((0.2, 0.3, 1.0))             # wrist -> fingers: the hand comes up from below the nose, a little from her right
-ELBOW_POLE = -75                               # IK pole angle: elbow low in front of her right side
+HANG_POLE = Vector((-0.1, 1.0, -0.1))          # elbow direction while the arm hangs (back)
+PINCH_POLE = Vector((-0.6, -0.4, -1.0))         # ...and at her nose: out to her right, forward and down
 SHRUG = [(1, 0.0), (27, 0.0), (33, 1.0), (60, 1.0), (72, 1.0), (75, 1.3), (85, 1.0), (171, 1.0)]  # 72: the hit
 SHRUG_UP, SHRUG_FWD = 9.0, 12.0                # degrees the right collarbone lifts and rolls forward at 1.0
 HIT = 72                                       # the sneeze hits inside (also in SHRUG below)
@@ -181,8 +182,7 @@ def _key_hand(hero, off, frames):
     sc.frame_set(1 - off)
     wrist = rig.pose.bones["wrist.R"]
     hang = rig.matrix_world @ wrist.matrix
-    h = A.hand_rig(hero)
-    h["ik"].pole_angle = math.radians(ELBOW_POLE)
+    h = A.hand_target(hero)
     hand = h["hand"]
     # the pinch, worked out with her head where it is at the moment of contact
     sc.frame_set(CONTACT - off)
@@ -213,6 +213,13 @@ def _key_hand(hero, off, frames):
         push = into * (1.0 if g in (CONTACT + 1, CONTACT + 2) else 0.5 if g == CONTACT + 3 else 0.0)
         M = _head_matrix(rig) @ head_c.inverted() @ Matrix.Translation(push) @ contact
         A.key_hand(hand, g - off, M.translation, _same_hemisphere(M.to_quaternion(), q_c))
+    # pose the arm to follow the hand: elbow back while it hangs, out to her right and down
+    # (clear of her chest) once the hand is up at her nose
+    def pole(f):
+        u = min(max((f + off - 24) / (CONTACT - 1 - 24), 0.0), 1.0)
+        u = u * u * (3 - 2 * u)
+        return (HANG_POLE * (1 - u) + PINCH_POLE * u).normalized()
+    A.bake_arm(rig, "R", range(lo - 2, hi + 3), lambda f: hand.matrix_world.copy(), pole, twist_share=0.8)
     return h
 
 
