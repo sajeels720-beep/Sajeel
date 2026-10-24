@@ -39,12 +39,13 @@ def services():
     return HumanService, AssetService, FaceService, AnimationService, LocationService
 
 
-def build_hero(name="Hero", pose=None, faceunits=True, subdiv=1):
+def build_hero(name="Hero", pose=None, faceunits=True, subdiv=1, spec=None):
     """Create the character. pose: a poses01 pose name (e.g. 'anrico_sitting02').
+    spec: another character's settings in the same form as HERO (default: this video's hero).
     Returns {"body", "rig", "parts"} where parts are the child meshes (eyes, hair, clothes...)."""
     HS, AS, FS, ANIM, LS = services()
     info = HS._create_default_human_info_dict()          # pylint: disable=protected-access
-    info.update({k: v for k, v in HERO.items()})
+    info.update({k: v for k, v in (spec or HERO).items()})
     info["name"] = name
     settings = HS.get_default_deserialization_settings()
     settings["subdiv_levels"] = subdiv
@@ -170,7 +171,7 @@ def recolor_shirt(parts, color=SHIRT_COLOR):
     return None
 
 
-def chest_print(hero, text=None, size=0.05, height=0.815):
+def chest_print(hero, text=None, size=0.05, height=0.815, ink=(0.012, 0.012, 0.014)):
     """Channel name across the chest (call in the rest pose, before apply_pose).
     height: fraction of body height for the text centre (upper chest, above the cup he
     holds in his lap in shots 3, 4 and 19b)."""
@@ -180,8 +181,12 @@ def chest_print(hero, text=None, size=0.05, height=0.815):
     shirt = shirt_object(hero["parts"])
     top = max((body.matrix_world @ v.co).z for v in body.data.vertices)
     z = top * height
-    front = min(((shirt.matrix_world @ v.co) for v in shirt.data.vertices if abs((shirt.matrix_world @ v.co).z - z) < 0.02
-                 and abs((shirt.matrix_world @ v.co).x) < 0.03), key=lambda p: p.y)
+    pts = [shirt.matrix_world @ v.co for v in shirt.data.vertices]
+    for dz, dx in ((0.02, 0.03), (0.035, 0.06), (0.05, 0.1)):         # widen the search on low-poly shirts
+        near = [p for p in pts if abs(p.z - z) < dz and abs(p.x) < dx]
+        if near:
+            break
+    front = min(near, key=lambda p: p.y)
     cu = bpy.data.curves.new("Chest_Print", "FONT")
     cu.body = text
     cu.align_x, cu.align_y = "CENTER", "CENTER"
@@ -210,13 +215,13 @@ def chest_print(hero, text=None, size=0.05, height=0.815):
     sub.subdivision_type, sub.levels, sub.render_levels = "SIMPLE", 3, 3
     sw = mesh_ob.modifiers.new("HugShirt", "SHRINKWRAP")
     sw.target, sw.wrap_method, sw.offset = shirt, "NEAREST_SURFACEPOINT", 0.0012
-    ink = bpy.data.materials.new("Print_Ink")
-    if getattr(ink, "node_tree", None) is None:
-        ink.use_nodes = True
-    b = ink.node_tree.nodes.get("Principled BSDF")
-    b.inputs["Base Color"].default_value = (0.012, 0.012, 0.014, 1)
+    ink_mat = bpy.data.materials.new("Print_Ink")
+    if getattr(ink_mat, "node_tree", None) is None:
+        ink_mat.use_nodes = True
+    b = ink_mat.node_tree.nodes.get("Principled BSDF")
+    b.inputs["Base Color"].default_value = (*ink, 1)
     b.inputs["Roughness"].default_value = 0.75
-    mesh_ob.data.materials.append(ink)
+    mesh_ob.data.materials.append(ink_mat)
     if rig is not None:                                          # ride the spine bone nearest the print
         spines = [b for b in rig.data.bones if b.name.startswith("spine")]
         at = mesh_ob.matrix_world.translation
