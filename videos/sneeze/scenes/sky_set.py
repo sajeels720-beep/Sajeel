@@ -1,11 +1,11 @@
-"""His bright outdoor blur, like the user's screenshot (the slug on the razor blade): a
-saturated sky blue that gets lighter towards a soft, warm sun glow, and a blurred green field
-with a soft tree line along the bottom. It is built into the world, already soft as if out of
-focus, so it works from every camera angle and both engines (EEVEE and Cycles) show the same
-thing. The same colours light the scene softly (blue from above, green bounce from below),
-and lights() adds the studio key, sky-blue fill and warm rim that go with it.
+"""Backdrops for the sneeze video, built into the world so they work from every camera angle
+and both engines (EEVEE and Cycles) show the same thing, plus the matching light rig.
 
-The glow sits where the shot asks for it on screen (glow_dir), top right by default.
+studio(): the main look, his seamless studio blue (the user's coin-toss reference frame):
+teal-cyan at the edges, fading to a pale blue-grey glow behind the subject, no horizon.
+backdrop(): his bright outdoor blur (the user's first reference, the slug on the razor
+blade): saturated sky, soft sun glow, blurred green field. Kept for shots that need outdoors.
+lights() adds the soft studio key, a fill tinted with the backdrop's blue and a warm rim.
 """
 import math
 
@@ -26,14 +26,24 @@ HALO = (2.4, 6.6, 11.0)               # pale cyan-white around the sun (blue mix
 FIELD_FAR = (0.271, 1.51, 0.036)      # (131, 192, 84) sunlit field near the horizon
 FIELD_NEAR = (0.070, 0.508, 0.055)    # (62, 140, 42) greener towards the camera
 TREES = (0.132, 0.559, 0.205)         # (86, 146, 97) soft tree line, hazed by distance
+# studio blue, measured from the reference frame (radius in half frame heights from the glow)
+STUDIO_CENTRE = (1.09, 2.00, 2.67)    # (186, 203, 212) pale blue-grey glow behind the subject
+STUDIO_INNER = (0.25, 1.78, 2.52)     # (156, 198, 212)
+STUDIO_MID = (0.0057, 1.35, 2.01)     # (127, 188, 206)
+STUDIO_EDGE = (0.0014, 0.886, 1.59)   # (101, 172, 200) teal-cyan at the edges
+STUDIO_LOW = (0.022, 0.738, 1.09)     # (86, 163, 183) a little deeper at the bottom
+
+
+def _camera_axes(cam_loc, aim):
+    f = (Vector(aim) - Vector(cam_loc)).normalized()
+    r = f.cross(Vector((0, 0, 1))).normalized()
+    return f, r, r.cross(f)
 
 
 def view_dir(cam_loc, aim, lens, screen=(0.85, 0.95), aspect=9 / 16):
     """World direction that lands at a screen position (x right, y up, -1..1) for a camera at
     cam_loc looking at aim with this lens (vertical 9:16 frame, 36 mm sensor on the long side)."""
-    f = (Vector(aim) - Vector(cam_loc)).normalized()
-    r = f.cross(Vector((0, 0, 1))).normalized()
-    u = r.cross(f)
+    f, r, u = _camera_axes(cam_loc, aim)
     t = 18.0 / lens
     return (f + r * screen[0] * t * aspect + u * screen[1] * t).normalized()
 
@@ -81,6 +91,66 @@ def _mix(nt, fac, a, b):
     return m.outputs[2]
 
 
+def _finish(nt, col, camera_strength, light_strength):
+    """What the camera sees vs the softer light the same colours cast on the scene."""
+    out = nt.nodes.new("ShaderNodeOutputWorld")
+    cam_bg = _node(nt, "ShaderNodeBackground", Strength=camera_strength)
+    cam_bg.name = "Backdrop_Camera"
+    amb = _node(nt, "ShaderNodeBackground", Strength=light_strength)
+    nt.links.new(col, cam_bg.inputs["Color"])
+    nt.links.new(col, amb.inputs["Color"])
+    lp = nt.nodes.new("ShaderNodeLightPath")
+    mix = nt.nodes.new("ShaderNodeMixShader")
+    nt.links.new(lp.outputs["Is Camera Ray"], mix.inputs[0])
+    nt.links.new(amb.outputs[0], mix.inputs[1])
+    nt.links.new(cam_bg.outputs[0], mix.inputs[2])
+    nt.links.new(mix.outputs[0], out.inputs[0])
+
+
+def studio(cam_loc, aim, lens, centre=(0.0, 0.0), camera_strength=1.0, light_strength=0.25):
+    """His studio blue. The pale glow sits at a screen position (centre: x right, y up, -1..1)
+    for this camera, behind the subject, and is sized to the lens so it looks the same in wide
+    shots and close-ups; the frame's edges are teal-cyan, a little deeper at the bottom.
+    When the camera moves, the glow stays put in the world like a light on a real backdrop.
+    Returns the world; its "Backdrop_Camera" node's Strength is what the camera sees."""
+    w, nt = V._world()
+    tc = nt.nodes.new("ShaderNodeTexCoord")
+    nrm = nt.nodes.new("ShaderNodeVectorMath")
+    nrm.operation = "NORMALIZE"
+    nt.links.new(tc.outputs["Generated"], nrm.inputs[0])
+    d = nrm.outputs["Vector"]
+    t = 18.0 / lens
+    f, r, u = _camera_axes(cam_loc, aim)
+
+    def dot_with(vec):
+        n = nt.nodes.new("ShaderNodeVectorMath")
+        n.operation = "DOT_PRODUCT"
+        n.inputs[1].default_value = vec
+        nt.links.new(d, n.inputs[0])
+        return n.outputs["Value"]
+
+    # screen position of each view direction (x in half frame widths, y in half heights), so the
+    # glow is an oval that fits the 9:16 frame like his: teal at the side edges and corners
+    aspect = 9 / 16
+    depth = _math(nt, "MAXIMUM", dot_with(f), 0.05)
+    x = _math(nt, "SUBTRACT", _math(nt, "DIVIDE", _math(nt, "DIVIDE", dot_with(r), depth), t * aspect), centre[0])
+    y = _math(nt, "DIVIDE", _math(nt, "DIVIDE", dot_with(u), depth), t)
+    yc = _math(nt, "SUBTRACT", y, centre[1])
+    rho = _math(nt, "SQRT", _math(nt, "ADD", _math(nt, "MULTIPLY", x, x), _math(nt, "MULTIPLY", yc, yc)))
+    ramp = nt.nodes.new("ShaderNodeValToRGB")
+    els = ramp.color_ramp.elements
+    els[0].position, els[0].color = 0.0, (*STUDIO_CENTRE, 1)
+    els[1].position, els[1].color = 1.0, (*STUDIO_EDGE, 1)
+    for pos, col in ((0.38, STUDIO_INNER), (0.57, STUDIO_MID), (0.85, STUDIO_EDGE)):
+        e = els.new(pos)
+        e.color = (*col, 1)
+    nt.links.new(_map(nt, rho, 0.0, 1.2, smooth=False), ramp.inputs["Fac"])
+    low = _map(nt, y, -0.8, -1.05)                                # a little deeper along the bottom edge
+    col = _mix(nt, _math(nt, "MULTIPLY", low, 0.8), ramp.outputs["Color"], STUDIO_LOW)
+    _finish(nt, col, camera_strength, light_strength)
+    return w
+
+
 def backdrop(glow_dir=(0.45, 0.55, 0.7), horizon=-13.0, camera_strength=1.0, light_strength=0.22,
              glow=1.0, glow_size=None, lens=50.0, tree_seed=0.0):
     """The world. glow_dir: world direction of the sun glow (see view_dir); glow_size: radius
@@ -90,7 +160,6 @@ def backdrop(glow_dir=(0.45, 0.55, 0.7), horizon=-13.0, camera_strength=1.0, lig
     lens so it looks the same on screen in wide shots and close-ups.
     Returns the world; its "Backdrop_Camera" node's Strength is what the camera sees."""
     w, nt = V._world()
-    out = nt.nodes.new("ShaderNodeOutputWorld")
     tc = nt.nodes.new("ShaderNodeTexCoord")
     nrm = nt.nodes.new("ShaderNodeVectorMath")
     nrm.operation = "NORMALIZE"
@@ -148,18 +217,7 @@ def backdrop(glow_dir=(0.45, 0.55, 0.7), horizon=-13.0, camera_strength=1.0, lig
     trees = _mix(nt, 0.15, TREES, SKY_LOW)                        # haze
     land_col = _mix(nt, _map(nt, z, h0 - 0.02, h0 + 0.02), field_ramp.outputs["Color"], trees)
     col = _mix(nt, land, sky, land_col)
-
-    cam_bg = _node(nt, "ShaderNodeBackground", Strength=camera_strength)
-    cam_bg.name = "Backdrop_Camera"
-    amb = _node(nt, "ShaderNodeBackground", Strength=light_strength)
-    nt.links.new(col, cam_bg.inputs["Color"])
-    nt.links.new(col, amb.inputs["Color"])
-    lp = nt.nodes.new("ShaderNodeLightPath")
-    mix = nt.nodes.new("ShaderNodeMixShader")
-    nt.links.new(lp.outputs["Is Camera Ray"], mix.inputs[0])
-    nt.links.new(amb.outputs[0], mix.inputs[1])
-    nt.links.new(cam_bg.outputs[0], mix.inputs[2])
-    nt.links.new(mix.outputs[0], out.inputs[0])
+    _finish(nt, col, camera_strength, light_strength)
     return w
 
 
@@ -176,8 +234,8 @@ def _area(name, loc, target, size, power, color, col):
 def lights(subject, cam_loc, glow_dir, scale=1.0, key=1.0, fill=1.0, rim=1.0, col=None):
     """Soft studio light that matches the backdrop. subject: point the lights aim at;
     scale: roughly the subject size in meters (1 = head and shoulders at ~1-2 m).
-    Key: warm-white, high on the camera's right (the sun-glow side). Fill: sky blue, low on
-    the left. Rim: the warm sun itself, from the glow's direction, behind the subject."""
+    Key: warm-white, high on the camera's right. Fill: backdrop blue, low on the left.
+    Rim: a warm sun from glow_dir (behind the subject, e.g. view_dir's default top right)."""
     col = col or V.collection("LIGHTS")
     s = Vector(subject)
     to_cam = Vector(cam_loc) - s
@@ -194,7 +252,7 @@ def lights(subject, cam_loc, glow_dir, scale=1.0, key=1.0, fill=1.0, rim=1.0, co
     d = 2.4 * scale
     out = {
         "key": _area("Key_Light", around(48, 38, d), s, 1.8 * scale, 260 * key * scale ** 2, H("#FFF1DE"), col),
-        "fill": _area("Fill_Light", around(-60, 8, d), s, 2.6 * scale, 110 * fill * scale ** 2, H("#BFE3FA"), col),
+        "fill": _area("Fill_Light", around(-60, 8, d), s, 2.6 * scale, 110 * fill * scale ** 2, H("#B5E0EE"), col),
     }
     sun = bpy.data.lights.new("Sun_Rim", "SUN")
     sun.energy, sun.color, sun.angle = 3.2 * rim, H("#FFE7C2"), math.radians(6)

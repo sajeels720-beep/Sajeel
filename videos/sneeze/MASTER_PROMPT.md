@@ -14,9 +14,9 @@ PROJECT SETTINGS
 
 STYLE (match Zack D. Films)
 - Tell it in second person: "you" are the main character. Use one protagonist per video (same face, hair and outfit in every shot) and a new one for each video unless I say otherwise. Put my channel name, "Jay3Dfilms" (written exactly like that), on their T-shirt.
-- Backdrop: his bright outdoor blur, like my screenshot (the slug on the razor blade). A saturated sky blue that gets lighter towards a soft, warm sun glow at the top right, and a blurred green field along the bottom, with strong depth of field. Build it as a seamless curved backdrop so it works from every camera angle. Use it for the character shots, X-ray views of the body and isolated objects.
+- Backdrop: his seamless studio blue, like my coin-toss screenshot. Teal-cyan at the edges of the frame (about #61B5CD), fading smoothly to a pale blue-grey glow right behind the subject (about #B9CAD2), a little deeper along the bottom. No horizon, no floor line. It must look the same from every camera angle. Use it for the character shots, X-ray views of the body and isolated objects.
 - X-ray views: the skin turns see-through and the organs glow inside, with the blue backdrop still behind.
-- Close-ups inside the body (airways, eardrum, blood vessels, organs) sit inside the body: warm, dark, out-of-focus tissue with a few blurred vessels behind, never the blue sky (anatomy in front of sky reads as an object standing outdoors). Vessels and tubes curve, taper and branch; never a straight, upright pole. Never use an empty black void.
+- Close-ups inside the body (airways, eardrum, blood vessels, organs) sit inside the body: warm, dark, out-of-focus tissue with a few blurred vessels behind, never the blue backdrop (an airway or vessel in front of it reads as an object on display, not something inside you). Vessels and tubes curve, taper and branch; never a straight, upright pole. Never use an empty black void.
 - Bright, saturated, clean colours. Keep the subject warm-toned against the cool blue so it pops.
 - One clear subject per shot, filling the frame. Keep scenes simple and uncluttered.
 - Faces must read at phone size: push expressions past realistic (wide eyes with white around the iris, high brows, puffed cheeks, clear winces), the way his characters react. Shape-key values above 1.0 are fine.
@@ -38,7 +38,7 @@ MATERIALS
 - No pure black or pure white surfaces.
 
 LIGHTING
-- Backdrop scenes: soft, even studio light with gentle shadows. The key light comes from the sun-glow side (top right) so the light matches the backdrop, the fill is tinted with the backdrop's sky blue, and a rim light separates the subject from the background.
+- Backdrop scenes: soft, even studio light with gentle shadows. The key light comes from the top right, the fill is tinted with the backdrop's blue, and a warm rim light separates the subject from the background.
 - Full environments: Poly Haven HDRI (sunny sky) plus a warm key light and a rim light.
 - Inside-the-body close-ups: keep an HDRI for the light; the tissue backdrop replaces only what the camera sees.
 - Soft, realistic shadows. Light volumetric haze for depth where it fits.
@@ -73,4 +73,4 @@ AFTER EACH STEP
 THIS VIDEO
 Topic: What happens if you hold in a sneeze
 Script with timings: see SCRIPT_AND_SHOTS.md
-Extra notes: new character (not the brain-freeze one); blue backdrop like my screenshot.
+Extra notes: new character (not the brain-freeze one); studio blue backdrop like my coin-toss screenshot.

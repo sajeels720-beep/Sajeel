@@ -13,9 +13,9 @@ Not the brain-freeze guy. A young woman in her early twenties, built with MPFB /
 
 ## Backdrop
 
-Like your screenshot: a saturated sky blue, lighter towards a soft warm sun glow at the top right, and a blurred green field along the bottom, with strong depth of field. It's a seamless curved backdrop, so it works from every angle. The character stands outdoors in front of it. The story starts with dandelion seeds, which explains the sunny field. The sun-glow side is also where the key light comes from.
+His studio blue, like your coin-toss screenshot: teal-cyan at the edges of the frame, fading smoothly to a pale blue-grey glow right behind the subject, a little deeper along the bottom. There's no horizon or floor line, and it looks the same from every camera angle. The colours were measured from your screenshot. The key light comes from the top right, the fill is tinted with the backdrop's blue, and a warm rim light separates her from it.
 
-Inside-the-body close-ups (airway walls, eardrum, throat) use the warm tissue backdrop from video 1 instead, so anatomy never stands in front of the sky.
+Inside-the-body close-ups (airway walls, eardrum, throat) use the warm tissue backdrop from video 1 instead, so anatomy never stands in front of the blue backdrop.
 
 ## Script (timed)
 
@@ -51,7 +51,7 @@ Frames are at 30 fps. Difficulty is for Claude driving Blender: **E** = easy (ob
 
 | # | Frames | Time (s) | VO / caption | Shot | Camera | Effects | Diff. |
 |---|---|---|---|---|---|---|---|
-| 1 | 1–36 | 0.0–1.2 | "You feel a giant" | Extreme close-up of a fluffy dandelion seed head against the blue backdrop (like your slug shot); a breeze lifts a few seeds off towards the lens | 100 mm, slow push-in, very shallow focus | Seeds drift, soft sun glow | E |
+| 1 | 1–36 | 0.0–1.2 | "You feel a giant" | Extreme close-up of a fluffy dandelion seed head against the blue backdrop (like the coin in your screenshot); a breeze lifts a few seeds off towards the lens | 100 mm, slow push-in, very shallow focus | Seeds drift | E |
 | 2 | 37–66 | 1.2–2.2 | "sneeze coming," | Her nose in extreme close-up: a seed lands on the tip, the nostrils twitch and flare | 100 mm, slow push to the nostril | Tiny nose wiggle (shape keys) | M |
 | 3 | 67–126 | 2.2–4.2 | "so you pinch your nose, shut your mouth," | Medium close-up: "ahh… ahh…" squint, the head tilts back, then her hand snaps up and pinches her nose and her lips press shut | 50 mm, slow orbit left | Ponytail swings | H |
 | 4 | 127–189 | 4.2–6.3 | "and hold it in." | Close-up: the sneeze hits inside, her cheeks balloon, her eyes bulge wide and her body jolts | 85 mm, push-in, a muffled jolt shake | Cheeks puff, face flushes slightly red | H |
@@ -69,10 +69,10 @@ Frames are at 30 fps. Difficulty is for Claude driving Blender: **E** = easy (ob
 | 16 | 733–780 | 24.4–26.0 | "in your eyes." | One vessel pops and a red blotch spreads across the white of the eye | Slight push, small shake on the pop | Spreading red stain | M |
 | 17 | 781–840 | 26.0–28.0 | "But in rare cases, it can even" | X-ray of her neck: the windpipe wall stretches thin and a weak spot glows red | 50 mm, slow orbit | Red warning glow, fine cracks | E–M |
 | 18 | 841–900 | 28.0–30.0 | "tear a hole in your throat." | Inside the throat (tissue backdrop): the wall rips open in a small tear and air bursts out | Push-in, shake on the rip | Red ripple ring, torn edges | E–M |
-| 19 | 901–966 | 30.0–32.2 | "So next time you feel one coming," | Back outside: another seed drifts onto her nose and her face scrunches up, "ahh…" | 50 mm, slow push-in | Seed drifts in | H |
+| 19 | 901–966 | 30.0–32.2 | "So next time you feel one coming," | Back to her on the blue backdrop: another seed drifts onto her nose and her face scrunches up, "ahh…" | 50 mm, slow push-in | Seed drifts in | H |
 | 20 | 967–1008 | 32.2–33.6 | "just let it out." | She lets go of her nose and tilts her head back to wind up (anticipation) | 35 mm, slight pull-back | Ponytail swings back | H |
 | 21 | 1009–1056 | 33.6–35.2 | *("Ahh… CHOO!")* | The giant sneeze in slow motion: her head snaps forward and the blast hits the dandelion in the foreground | 35 mm, crash zoom + shake | Spray of droplets, seeds explode off | H |
-| 22 | 1057–1110 | 35.2–37.0 | *(music button)* | Callback to shot 1: the now-bald dandelion stem in front; the seeds swirl away into the blue sky; she sniffs, relieved, blurred behind | Slow pull-back and tilt up | Seeds float off | M |
+| 22 | 1057–1110 | 35.2–37.0 | *(music button)* | Callback to shot 1: the now-bald dandelion stem in front; the seeds swirl away across the blue backdrop; she sniffs, relieved, blurred behind | Slow pull-back and tilt up | Seeds float off | M |
 
 **Callback:** the video opens on the full seed head that starts the sneeze and ends on the same dandelion, blown bald by the sneeze.
 
@@ -89,6 +89,6 @@ Frames are at 30 fps. Difficulty is for Claude driving Blender: **E** = easy (ob
 ## Production checklist
 
 - **Format:** 9:16, 1080×1920, 30 fps, 37.0 s = 1,110 frames.
-- **Look:** AgX Punchy, blue backdrop with a sun glow, shallow depth of field, motion blur, glare on glowing effects, slight chromatic aberration and grain.
+- **Look:** AgX Punchy, studio blue backdrop with a pale glow behind the subject, shallow depth of field, motion blur, glare on glowing effects, slight chromatic aberration and grain.
 - **Render:** EEVEE, 64 samples, one PNG sequence per shot, then the MP4.
 - **Afterwards (you):** the voiceover (`VOICEOVER.md`) and sound effects. Then I build the final edit to your recording with captions and the mix.
