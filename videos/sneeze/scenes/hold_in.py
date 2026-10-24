@@ -1,5 +1,5 @@
-"""Her performance for shots 03-05, animated once as one continuous take (171 frames) and cut
-by three cameras, so the acting carries across the cuts:
+"""Her performance for shots 03-09, animated once as one continuous take (372 frames) and cut
+by seven cameras, so the acting carries across the cuts:
 
   shot 03 (take 1-60)    "so you pinch your nose, shut your mouth,": "ahh... ahh..." (head
                           back, mouth opening), then her right hand snaps up and pinches her
@@ -7,6 +7,9 @@ by three cameras, so the acting carries across the cuts:
   shot 04 (take 61-123)  "and hold it in.": the sneeze hits inside (frame 72): her body
                           jolts, her cheeks balloon, her eyes pop wide; she goes red.
   shot 05 (take 124-171) "Big mistake.": holding it, eyes bulging, cheeks full.
+  shots 06-09 (take 172-372), x-ray: still holding it. She strains as her lungs squeeze
+                          (SQUEEZE), and her cheeks balloon and her head jolts when the
+                          air slams into her shut lips and pinched nose (SLAM).
 
 perform(shot) builds her and keys the take shifted so that the shot's first frame is 1.
 """
@@ -23,7 +26,8 @@ import heroine as HR
 import vfx_kit as V
 
 H = V.hex_lin
-SHOTS = {"03": (1, 60), "04": (61, 123), "05": (124, 171)}
+SHOTS = {"03": (1, 60), "04": (61, 123), "05": (124, 171), "06": (172, 231), "07": (232, 288), "08": (289, 330),
+         "09": (331, 372)}
 CU_LOOK, CU_END_DIST, CU_LENS = (-22, 3), 0.62, 85       # shot 04 ends where shot 05 starts (invisible cut)
 CU_AIM = Vector((0.0, 0.0, -0.012))                      # from the nose (at take frame 60)
 CONTACT = 34                                   # the fingers close on her nose
@@ -33,6 +37,8 @@ PINCH_POLE = Vector((-0.6, -0.4, -1.0))         # ...and at her nose: out to her
 SHRUG = [(1, 0.0), (27, 0.0), (33, 1.0), (60, 1.0), (72, 1.0), (75, 1.3), (85, 1.0), (171, 1.0)]  # 72: the hit
 SHRUG_UP, SHRUG_FWD = 9.0, 12.0                # degrees the right collarbone lifts and rolls forward at 1.0
 HIT = 72                                       # the sneeze hits inside (also in SHRUG below)
+SQUEEZE = (205, 218)                           # x-ray: her lungs squeeze (shot 06)
+SLAM = 301                                     # the air slams into her shut lips and pinched nose (shot 08)
 
 S2_END = {"noseSneerLeft": 0.8, "noseSneerRight": 0.8, "flare": 0.9, "nostrils_wide": 0.35, "mouthPressLeft": 0.25,
           "mouthPressRight": 0.25, "cheekSquintLeft": 0.55, "cheekSquintRight": 0.55, "eyeSquintLeft": 0.6,
@@ -89,17 +95,37 @@ FACE = [  # (take frame, face units); anything not listed is 0 at that key
     (171, _both(noseSneer=0.3, mouthPress=0.85, mouthRollLower=0.15, cheekPuff=1.6, eyeWide=1.45, browInnerUp=1.0,
                 browOuterUp=1.0)),
 ]
+
+
+def _held(puff, wide, press=0.85, brow=1.0):
+    """Holding it in: lips pressed, cheeks full (puff), eyes bulging (wide)."""
+    return _both(noseSneer=0.3, mouthPress=press, mouthRollLower=0.15, cheekPuff=puff, eyeWide=wide,
+                 browInnerUp=brow, browOuterUp=1.0)
+
+
+FACE += [  # the x-ray shots 06-09
+    (190, _held(1.6, 1.45)), (SQUEEZE[0], _held(1.62, 1.48)),
+    (SQUEEZE[1] - 2, _held(1.78, 1.58, brow=1.06)),                                  # straining as the lungs squeeze
+    (232, _held(1.7, 1.5)), (SLAM - 2, _held(1.7, 1.52)),
+    (SLAM + 1, _held(1.95, 1.75, press=0.95, brow=1.08)),                           # SLAM: cheeks balloon
+    (SLAM + 5, _held(1.76, 1.6)), (SLAM + 10, _held(1.88, 1.68)), (SLAM + 17, _held(1.8, 1.62)),
+    (330, _held(1.83, 1.63)), (345, _held(1.9, 1.7, brow=1.05)), (358, _held(1.84, 1.66)),
+    (372, _held(1.92, 1.72, brow=1.06)),                                           # trapped air churning
+]
 BONES = {  # pose bone: [(take frame, (x, y, z) degrees)]; +x bends forward (chin down) on head/neck/spine
     # after the pinch she stays bowed a little into her hand, shoulders hunched (holding it in)
     "head": [(1, (-4, 0, 0.8)), (9, (-10, 0, 2)), (14, (-6, 0, 1)), (23, (-15, 0, 2.5)), (29, (-17, 0, 2)),
              (CONTACT, (11, 0, -1)), (38, (8, 0, 0)), (60, (7, 0, 0)), (HIT, (7, 0, 0)), (HIT + 1, (13, 0, 1)),
              (HIT + 4, (4, 0, -0.5)), (HIT + 8, (8, 0, 0)), (HIT + 13, (7, 0, 0)), (100, (7, 0, 0)), (101, (10, 0, 0)),
-             (105, (7, 0, 0)), (171, (7, 0, 0))],
+             (105, (7, 0, 0)), (171, (7, 0, 0)), (SQUEEZE[0], (7, 0, 0)), (SQUEEZE[1], (8.5, 0, 0.4)),
+             (232, (7.5, 0, 0)), (SLAM - 1, (7.5, 0, 0)), (SLAM + 1, (9.5, 0, -0.4)), (SLAM + 5, (6.5, 0, 0)),
+             (SLAM + 11, (7.5, 0, 0)), (372, (7.5, 0, 0))],
     "neck01": [(1, (0, 0, 0)), (23, (-4, 0, 0)), (29, (-5, 0, 0)), (CONTACT, (5, 0, 0)), (40, (4, 0, 0)),
                (HIT, (4, 0, 0)), (HIT + 1, (7, 0, 0)), (HIT + 5, (3, 0, 0)), (HIT + 10, (4, 0, 0)), (171, (4, 0, 0))],
     "spine01": [(1, (0, 0, 0)), (9, (-2, 0, 0)), (14, (-1, 0, 0)), (23, (-4, 0, 0)), (29, (-4.5, 0, 0)),
                 (CONTACT, (5, 0, 0)), (40, (4, 0, 0)), (HIT, (4, 0, 0)), (HIT + 1, (9, 0, 0)), (HIT + 4, (2, 0, 0)),
-                (HIT + 9, (4, 0, 0)), (101, (6, 0, 0)), (105, (4, 0, 0)), (171, (4, 0, 0))],
+                (HIT + 9, (4, 0, 0)), (101, (6, 0, 0)), (105, (4, 0, 0)), (171, (4, 0, 0)), (SQUEEZE[0], (4, 0, 0)),
+                (SQUEEZE[1], (6, 0, 0)), (232, (5, 0, 0)), (372, (5, 0, 0))],
 }
 SKIN_FLUSH = [(1, "#B98466"), (60, "#B98466"), (HIT + 2, "#BF7C62"), (115, "#C76C58"), (171, "#CA6553")]
 
