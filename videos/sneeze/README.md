@@ -7,6 +7,8 @@ Video 2: a vertical Short of about 37 seconds (1,110 frames at 30 fps) in the st
 - `MASTER_PROMPT.md`: your master prompt, revised for this video.
 - `shots/`: one script per shot (being built step by step).
 - `scenes/`: shared sets. `heroine.py` is the new character, `sky_set.py` the studio blue backdrop and lights, `dandelion_set.py` the dandelion and its seeds.
+  - `acting.py` poses her arm and fingers (the nose pinch), and `hold_in.py` is her performance from the pinch to the end of the x-ray shots (shots 3–9), animated as one take so the acting carries across the cuts.
+  - The x-ray shots use four modules. `xray_body.py` turns her skin and clothes to glass with a scan line. `airways.py` builds her lungs, windpipe, throat, nose and mouth passages inside her. `air_fx.py` makes the glowing air (the blast, the slam and the swirl). `xray_set.py` puts these together for each shot.
 - `assets/`: the logo-free T-shirt texture and its mask (from a CC0 MakeHuman asset).
 - `previews/`: test images from each step.
 
