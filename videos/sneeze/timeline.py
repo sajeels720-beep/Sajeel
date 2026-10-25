@@ -201,9 +201,9 @@ def button_time(path):
 
 
 def captions(vo_files):
-    """When each caption shows: [(start s, end s, words)]. Each group comes up as it is spoken (at
-    CAPTION_STARTS, or else its phrase's sound, pauses left out, shared by the groups' letters) and
-    stays until the next; the last one of a phrase stays a moment after it."""
+    """When each caption shows: [(start s, end s, words without punctuation)]. Each group comes up
+    as it is spoken (at CAPTION_STARTS, or else its phrase's sound, pauses left out, shared by the
+    groups' letters) and stays until the next; the last one of a phrase stays a moment after it."""
     placed = place_voice(vo_files)
     pauses = {n: sound_span(path)[2] for n, path in vo_files.items()}
     out, count = [], {}
@@ -234,7 +234,7 @@ def captions(vo_files):
             starts = [when(total * sum(sizes[:i]) / sum(sizes)) for i in range(len(groups))]
         after = placed[k + 1][4] if k + 1 < len(placed) else LENGTH
         ends = starts[1:] + [min(t + e - s + 0.3, after)]
-        out += zip(starts, ends, groups)
+        out += zip(starts, ends, (re.sub(r"[^\w\s]", "", g).strip() for g in groups))   # no punctuation
     return out
 
 
