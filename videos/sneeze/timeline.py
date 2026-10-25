@@ -20,8 +20,8 @@ LENGTH = sum(n for _, n in SHOTS) / FPS                                # 37.0 s
 
 VOICEOVER = {  # voiceover_N: (cue s, phrase) for each phrase, in the order spoken
     1: [(0.05, "You feel a giant sneeze coming..."),
-        (2.85, "so you pinch your nose, shut your mouth, and hold it in."),  # after her "ahh... ahh...": "pinch"
-                                                                            # as her hand snaps up to her nose
+        (3.05, "so you pinch your nose, shut your mouth, and hold it in."),  # after her "ahh... AHH": "pinch"
+                                                                            # as her fingers close on her nose
         (6.30, "Big... mistake.")],                                         # "Big" on the crash zoom
     2: [(8.35, "You see, a sneeze blasts air out of your lungs super fast."),  # on the x-ray reveal
         (12.35, "With nowhere to go, it gets trapped inside you,"),        # as the air slams into her lips
@@ -40,22 +40,24 @@ MIN_GAP = 0.15                   # a phrase never starts sooner than this after 
 SILENCE_DB = -38                 # quieter than this counts as a pause
 PAD = (0.04, 0.08)               # kept before and after each phrase, so no consonant is clipped
 
-SFX = {  # sfx_name: [(time s, level dB against the voice), ...]; plays from its first sound
-    "sfx_ahh": [(2.40, -4), (32.0, -14)],
-    "sfx_stifled": [(4.55, -4), (5.55, -10)],
-    "sfx_sniff": [(1.70, -10), (1.90, -12), (31.0, -10), (36.1, -6)],
-    "sfx_whoosh_soft": [(0.10, -14), (1.20, -14), (30.0, -14), (35.3, -14)],
-    "sfx_whoosh_fast": [(2.95, -10), (6.15, -6), (16.75, -8), (32.25, -12), (34.0, -8)],
+SFX = {  # sfx_name: [(time s, level dB against the voice[, cut s]), ...]: its loudest moment lands on the time
+         # (its first sound, for START); cut ends the sound that far into its file
+    "sfx_ahh": [(2.98, -6, 1.22),                    # "ahh... AHH" cut off as her fingers close on her nose
+                (33.45, -10)],                       # under "just let it out": "ahh..." 32.8, "AHH" 33.4
+    "sfx_stifled": [(4.63, -6), (5.57, -12)],        # the sneeze hits inside, then a smaller hiccup
+    "sfx_sniff": [(1.75, -12), (1.92, -14), (31.05, -10), (36.12, -4)],
+    "sfx_whoosh_soft": [(0.50, -14), (1.45, -14), (30.80, -14), (35.70, -10)],   # seeds drifting
+    "sfx_whoosh_fast": [(3.15, -10), (6.36, -6), (16.98, -8), (32.40, -12), (34.28, -8)],  # hand up, zooms, let go
     "sfx_tap": [(1.63, -10), (30.97, -10)],
-    "sfx_pinch": [(3.28, -10)],
-    "sfx_puff": [(4.60, -6), (12.20, -8)],
-    "sfx_thump": [(4.57, -4), (12.18, -4)],
-    "sfx_boom": [(6.30, -4), (16.97, -6), (22.30, -6), (28.77, -6), (34.17, -4)],
+    "sfx_pinch": [(3.32, -10)],
+    "sfx_puff": [(4.63, -6), (12.20, -8)],
+    "sfx_thump": [(4.60, -4), (12.18, -4)],
+    "sfx_boom": [(6.33, -4), (16.97, -6), (22.30, -6), (28.77, -6), (34.17, -4)],
     "sfx_alert_pop": [(6.43, -6)],
     "sfx_xray_scan": [(8.00, -10), (19.85, -12)],
     "sfx_air_rush": [(9.00, -8)],
     "sfx_air_hiss": [(18.20, -10)],
-    "sfx_stretch": [(14.95, -12), (15.75, -12), (20.35, -12), (21.60, -10), (28.20, -10)],
+    "sfx_stretch": [(14.97, -12), (15.77, -12), (20.37, -12), (21.63, -10), (28.23, -10)],
     "sfx_heartbeat": [(13.57, -10), (14.17, -10), (23.37, -8), (23.77, -8), (24.17, -8), (26.30, -8), (26.77, -8),
                       (27.23, -8), (27.70, -8)],
     "sfx_gauge": [(16.97, -6)],
@@ -67,7 +69,7 @@ SFX = {  # sfx_name: [(time s, level dB against the voice), ...]; plays from its
     "sfx_slowmo_blast": [(34.15, -6)],
     "sfx_seeds_poof": [(34.27, -8)],
 }
-PEAK = {"sfx_gauge"}             # these land their loudest moment (the clank) on the time instead
+START = {"sfx_xray_scan", "sfx_air_rush", "sfx_air_hiss", "sfx_ear_ring", "sfx_slowmo_blast"}  # long sweeps
 BEDS = {  # sfx_name: ([(start s, end s), ...], level dB): trimmed to each span, faded in and out
     "sfx_breeze": ([(0.0, 1.4), (35.0, LENGTH)], -20),
     "sfx_air_swirl": ([(13.2, 16.6)], -14),

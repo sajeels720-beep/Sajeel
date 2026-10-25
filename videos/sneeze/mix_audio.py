@@ -11,7 +11,7 @@ import argparse
 import os
 import subprocess
 
-from timeline import (BEDS, MUSIC_DB, PAD, PEAK, SFX, SILENCE_DB, SNEEZE, duration, find_audio, loudness,
+from timeline import (BEDS, MUSIC_DB, PAD, SFX, SILENCE_DB, SNEEZE, START, duration, find_audio, loudness,
                       peak_time, place_voice, sneeze_start)
 
 RATE = 48000
@@ -63,17 +63,25 @@ def main():
     if vo:
         chains.append("".join(vo) + f"amix=inputs={len(vo)}:normalize=0,asplit=2[voice][duck]")
         mix.append("[voice]")
-    for name, places in SFX.items():                                  # one-shots, from their first sound
+    for name, places in SFX.items():                                  # one-shots, on their loudest moment
         if name not in files["sfx"]:
             continue
         path = files["sfx"][name]
         g = gain(path)
-        lead = peak_time(path) if name in PEAK else 0.0
-        for j, (t, db) in enumerate(places):
+        lead = 0.0 if name in START else peak_time(path)
+        for j, (t, db, *cut) in enumerate(places):
             k = new_input(path)
-            trim = "" if name in PEAK else f"silenceremove=start_periods=1:start_threshold={SILENCE_DB}dB,"
-            chains.append(f"[{k}:a]{fmt},{trim}volume={g + db:.2f}dB,{at(t - lead)}[{name}{j}]")
+            if name in START:                                         # long sweeps: from their first sound
+                head = f"silenceremove=start_periods=1:start_threshold={SILENCE_DB}dB,"
+            else:                                                     # a peak too close to 0 s: drop the run-up
+                skip = max(lead - t, 0.0)
+                head = f"atrim=start={skip:.3f},asetpts=PTS-STARTPTS," if skip else ""
+            if cut:                                                   # cut short, with a quick fade
+                end = cut[0] - max(lead - t, 0.0)
+                head += f"atrim=0:{end:.3f},afade=t=out:st={max(end - 0.06, 0):.3f}:d=0.06,"
+            chains.append(f"[{k}:a]{fmt},{head}volume={g + db:.2f}dB,{at(t - lead)}[{name}{j}]")
             mix.append(f"[{name}{j}]")
+            report.append(f"  {t:6.2f} s  {name}" + (" (starts)" if name in START else ""))
     for name, (spans, db) in BEDS.items():                            # beds, trimmed to their spans
         if name not in files["sfx"]:
             continue
