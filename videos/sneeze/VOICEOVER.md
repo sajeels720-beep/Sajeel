@@ -18,9 +18,11 @@ Read it like his narrator: friendly, curious and brisk (about 2.7 words per seco
 | `voiceover_10` | But, in rare cases... it can even tear a hole in your throat. | **But**, **hole** | the twist, serious | 26.0–30.0 | 17–18 |
 | `voiceover_11` | So next time you feel one coming, | **next time** | friendly advice | 30.0–32.2 | 19 |
 | `voiceover_12` | just let it out. | **let it out** | warm, a smile | 32.2–33.6 | 20 |
-| `voiceover_13` | Ahh... ahh... CHOO! | **CHOO** | a big, real sneeze (record it yourself or use a sound effect) | 33.6–35.2 | 21 |
+| `voiceover_13` | Ahh... ahh... CHOO! | **CHOO** | a big, real sneeze (record it yourself or use a sound effect); the CHOO lands at 34.2 s | 33.6–35.2 | 21 |
 
 The short gaps at 6.0–6.3, 7.5–7.9 and 25.6–26.0 s are deliberate beats before "Big mistake", "You see" and "But". Shot 22 (35.2–37.0 s) has no voice: just the seeds floating away and the music ending.
+
+The sneeze in the animation: her mouth opens for "ahh..." at 32.8 s and "AHH..." at 33.4 s (under "just let it out", so keep those soft or leave them out), the big breath in peaks at 33.8 s, and her head snaps forward on the **CHOO at 34.2 s**. In shot 22 she sniffs at 36.1 s: a small sniff sound there is optional.
 
 Tips:
 - If a line comes out longer or shorter than its slot, that's fine: the edit is adjusted to your timing.
