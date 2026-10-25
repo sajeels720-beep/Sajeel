@@ -228,6 +228,8 @@ def head(col, mats, slots, skip=(), name="Dandelion"):
         off = len(verts) * len(tmpl_v)
         verts.append(_transform(tmpl_v, R, t))
         faces.extend([tuple(x + off for x in f) for f in tmpl_f])
+    if not verts:                                                 # every seed loose: nothing left on the head
+        return []
     objs = [_curves_object(f"{name}_Pappus", np.concatenate(bristles), BRISTLE_RADIUS, mats["pappus"], col),
             _curves_object(f"{name}_Beaks", np.array(beaks), BEAK_RADIUS, mats["beak"], col, taper=0.6),
             _mesh_object(f"{name}_Achenes", np.concatenate(verts), faces, mats["achene"], col)]
