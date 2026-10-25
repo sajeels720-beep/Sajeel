@@ -79,7 +79,8 @@ BEDS = {  # sfx_name: ([(start s, end s), ...], level dB): trimmed to each span,
     "sfx_breeze": ([(0.0, 1.4), (35.0, LENGTH)], -20),
     "sfx_air_swirl": ([(13.2, 16.6)], -14),
 }
-MUSIC_DB = -14                   # under the voice; dips a few dB more while it talks
+MUSIC_DB = -12                   # under the voice; dips a few dB more while it talks
+MUSIC_BUTTON = 36.45             # the music's last big hit lands here, on her smile (it is stretched a little)
 AUDIO_EXT = (".wav", ".mp3", ".m4a", ".aac", ".flac", ".ogg")
 
 
@@ -172,6 +173,17 @@ def place_voice(vo_files):
             placed.append((n, text, a, b, start))
             prev_end = start + (b - a)
     return placed
+
+
+def button_time(path):
+    """A music track's last big hit (s): its loudest 0.1 s in the last fifth of the track."""
+    raw = subprocess.run(["ffmpeg", "-v", "error", "-i", path, "-ac", "1", "-ar", "16000", "-f", "f32le", "-"],
+                         capture_output=True, check=True).stdout
+    x = np.frombuffer(raw, np.float32)
+    w = 1600
+    rms = np.sqrt(np.mean(x[:len(x) // w * w].reshape(-1, w) ** 2, axis=1))
+    first = int(len(rms) * 0.8)
+    return float(first + np.argmax(rms[first:])) * w / 16000
 
 
 def sneeze_start(path):

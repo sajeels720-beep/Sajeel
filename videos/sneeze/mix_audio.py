@@ -11,8 +11,8 @@ import argparse
 import os
 import subprocess
 
-from timeline import (BEDS, MUSIC_DB, PAD, SFX, SNEEZE, START, duration, find_audio, loudness,
-                      hit_time, place_voice, sneeze_start)
+from timeline import (BEDS, MUSIC_BUTTON, MUSIC_DB, PAD, SFX, SNEEZE, START, duration, find_audio, loudness,
+                      button_time, hit_time, place_voice, sneeze_start)
 
 RATE = 48000
 VOICE_LUFS = -20                 # every voiceover part is brought to this level first
@@ -61,7 +61,8 @@ def main():
         mix.append("[sneeze]")
         report.append(f"  {t:6.2f} s  voiceover_{SNEEZE}: her sneeze (CHOO at {t + hit_time(path):.2f} s)")
     if vo:
-        chains.append("".join(vo) + f"amix=inputs={len(vo)}:normalize=0,asplit=2[voice][duck]")
+        chains.append("".join(vo) + f"amix=inputs={len(vo)}:normalize=0,asplit=2[voice][talk]")
+        chains.append(f"[talk]apad=whole_dur={length:.3f}[duck]")   # it must outlast the voice, or the music stops
         mix.append("[voice]")
     for name, places in SFX.items():                                  # one-shots, on their hit
         if name not in files["sfx"]:
@@ -93,12 +94,19 @@ def main():
                           f"afade=t=in:d={min(0.4, d / 3):.3f},afade=t=out:st={d - min(0.6, d / 3):.3f}:"
                           f"d={min(0.6, d / 3):.3f},volume={g:.2f}dB,{at(t0)}[{name}{j}]")
             mix.append(f"[{name}{j}]")
-    if files["music"]:
-        k = new_input(files["music"])
-        chains.append(f"[{k}:a]{fmt},atrim=0:{length:.3f},asetpts=PTS-STARTPTS,afade=t=out:st={length - 1.0:.3f}:"
-                      f"d=1.0,volume={gain(files['music'], MUSIC_DB):.2f}dB[mraw]")
+    if files["music"]:                                                # its last big hit lands on MUSIC_BUTTON
+        path = files["music"]
+        button = button_time(path)
+        tempo = button / MUSIC_BUTTON                                 # slowed or sped up a little (same pitch)
+        fit = f"atempo={tempo:.4f}," if 0.85 <= tempo <= 1.15 else ""
+        k = new_input(path)
+        chains.append(f"[{k}:a]{fmt},{fit}atrim=0:{length:.3f},asetpts=PTS-STARTPTS,afade=t=out:st={length - 0.3:.3f}:"
+                      f"d=0.3,volume={gain(path, MUSIC_DB):.2f}dB[mraw]")
+        report.append(f"  music: its last hit ({button:.2f} s in the track) lands at "
+                      f"{button / tempo if fit else button:.2f} s" + (f" ({abs(1 / tempo - 1) * 100:.1f}% "
+                                                                      f"{'slower' if tempo < 1 else 'faster'})" if fit else ""))
         if vo:                                                        # dip the music while the voice talks
-            chains.append("[mraw][duck]sidechaincompress=threshold=0.03:ratio=3:attack=40:release=500[music]")
+            chains.append("[mraw][duck]sidechaincompress=threshold=0.06:ratio=2:attack=40:release=400[music]")
         else:
             chains.append("[mraw]anull[music]")
         mix.append("[music]")
