@@ -57,7 +57,7 @@ def main():
         path = files["vo"][SNEEZE]
         t = sneeze_start(path)
         k = new_input(path)
-        chains.append(f"[{k}:a]{fmt},volume={gain(path, -2):.2f}dB,{at(t)}[sneeze]")
+        chains.append(f"[{k}:a]{fmt},volume={gain(path, 1):.2f}dB,{at(t)}[sneeze]")
         mix.append("[sneeze]")
         report.append(f"  {t:6.2f} s  voiceover_{SNEEZE}: her sneeze (CHOO at {t + peak_time(path):.2f} s)")
     if vo:
