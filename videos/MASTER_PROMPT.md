@@ -63,6 +63,17 @@ FINAL RENDER
 - Render each shot to a PNG image sequence (so a crash never loses finished frames), then encode the final MP4 (H.264, high quality) to my Videos folder.
 - Leave out captions, voiceover and music. I add those in editing.
 
+YOUTUBE (monetization and copyright)
+- Every video is uploaded to my monetized YouTube channel, so everything in it must be original or licensed for commercial use: my own scripts, models and animation; CC0 assets; CC-BY assets credited in the description. Never Non-Commercial, "editorial use only" or unknown-licence assets, and nothing taken from other people's videos, channels or websites.
+- Match his style, never copy his work: no copying his scripts, shots, characters, thumbnails, titles or branding, and never use his name or channel in my titles, tags or descriptions.
+- Music and sound effects only from sources cleared for monetized YouTube videos (a paid ElevenLabs plan, the YouTube Audio Library), with any attribution the licence asks for. No commercial songs.
+- AI voices only from licensed library voices on a paid plan. Never clone or imitate a real person's voice.
+- Every video must be original and clearly different from the last (topic, story, character, shots), not a template with the words swapped: YouTube does not monetize mass-produced or repetitive content.
+- Facts must be accurate and sourced: put the sources in the description, say "can" and "in rare cases" where something is rare, and give no medical advice beyond common sense.
+- Keep injuries and medical close-ups stylised and clean, never gory, so ads aren't limited.
+- No realistic depictions of real people. Animated content doesn't need YouTube's "altered or synthetic content" label; realistic AI-generated people, places or events do.
+- When uploading: audience "No, it's not made for kids" (unless it really is for kids), and the credits and sources in the description.
+
 AFTER EACH STEP
 - Give a 2–3 line summary of what you did and what I should check when I preview.
 
