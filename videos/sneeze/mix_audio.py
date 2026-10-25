@@ -52,7 +52,7 @@ def main():
                       f"afade=t=in:d=0.01,afade=t=out:st={e - s + pre + post - 0.03:.3f}:d=0.03,"
                       f"volume={gain(path):.2f}dB,{at(t - pre)}[vo{j}]")
         vo.append(f"[vo{j}]")
-        report.append(f"  {t:6.2f}-{t + e - s:6.2f} s  voiceover_{n}: {text}")
+        report.append(f"  {t:6.2f}-{t + e - s:6.2f} s  voiceover_{n}: {text.replace(' | ', ' ')}")
     if SNEEZE in files["vo"]:                                         # her sneeze, on the CHOO
         path = files["vo"][SNEEZE]
         t = sneeze_start(path)

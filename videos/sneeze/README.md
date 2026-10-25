@@ -6,7 +6,7 @@ Video 2: a vertical Short of about 37 seconds (1,110 frames at 30 fps) in the st
 - `VOICEOVER.md`: what to record, with file names and time slots.
 - `SOUND_EFFECTS.md`: every sound effect, with an ElevenLabs prompt and where it plays.
 - `audio/`: the voiceover (and, once made, the sound effects and music).
-- `timeline.py` and `mix_audio.py`: the sound edit. The picture is fixed, so each voiceover part is split at its pauses and every phrase starts on its cue in the picture; the mix brings everything to the same loudness and sets it to YouTube level.
+- `timeline.py`, `assemble_cut.py` and `mix_audio.py`: the edit. The picture is fixed, so each voiceover part is split at its pauses and every phrase starts on its cue in the picture. `assemble_cut.py` joins the shots and burns in the captions; `mix_audio.py` adds the voice, sound effects and music and sets the loudness to YouTube level.
 - `MASTER_PROMPT.md`: your master prompt, revised for this video.
 - `shots/`: one script per shot, 22 in all.
 - `scenes/`: shared sets. `heroine.py` is the new character, `sky_set.py` the studio blue backdrop and lights, `dandelion_set.py` the dandelion and its seeds.
@@ -43,6 +43,17 @@ To look at a shot in Blender instead: start a new file (File > New > General), t
 import runpy
 runpy.run_path(r"C:\Users\asc\Sajeel\videos\sneeze\shots\shot01_dandelion.py", run_name="__main__")
 ```
+
+## Build the final video
+
+This needs Python 3 and ffmpeg on your PATH (on Windows, type `py` instead of `python3`). Once every shot is rendered, run these two commands from the repository folder:
+
+```bash
+python3 videos/sneeze/assemble_cut.py videos/sneeze/renders sneeze_captions.mp4 --captions --voiceover videos/sneeze/audio
+python3 videos/sneeze/mix_audio.py videos/sneeze/audio sneeze_captions.mp4 sneeze_final.mp4
+```
+
+The first joins the 22 shots (every frame as rendered) and burns in his caption style: 2–4 white bold words at about 72% height, each group coming up as it is spoken. The second puts every voiceover phrase on its cue, lines up the sound effects, fits the music's last hit to her smile, dips the music under the voice and sets the loudness YouTube expects (-14 LUFS). `sneeze_final.mp4` is the finished Short. For a version without captions, leave out `--captions --voiceover videos/sneeze/audio`.
 
 ## Credits (for the video description)
 

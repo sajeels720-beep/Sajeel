@@ -1,15 +1,17 @@
-"""Shared timing for the sneeze edit: the shots as rendered, where each voiceover phrase starts
-and where each sound effect plays. mix_audio.py uses it.
+"""Shared timing for the sneeze edit: the shots as rendered, where each voiceover phrase starts,
+when each caption shows and where each sound effect plays. assemble_cut.py (picture and
+captions) and mix_audio.py (sound) both use it.
 
 The picture is fixed (her acting runs across the cuts), so the voice is fitted to the picture:
 each recorded part is split at its pauses into phrases, and each phrase starts on its cue, or
 just after the phrase before it if that one runs long. Times are seconds in the finished video.
+Needs only Python 3 and ffmpeg.
 """
+import array
+import math
 import os
 import re
 import subprocess
-
-import numpy as np
 
 FPS = 30
 SHOTS = [("shot01", 36), ("shot02", 30), ("shot03", 60), ("shot04", 63), ("shot05", 48), ("shot06", 60),
@@ -18,23 +20,32 @@ SHOTS = [("shot01", 36), ("shot02", 30), ("shot03", 60), ("shot04", 63), ("shot0
          ("shot19", 66), ("shot20", 42), ("shot21", 48), ("shot22", 54)]   # (folder, frames)
 LENGTH = sum(n for _, n in SHOTS) / FPS                                # 37.0 s
 
-VOICEOVER = {  # voiceover_N: (cue s, phrase) for each phrase, in the order spoken
-    1: [(0.05, "You feel a giant sneeze coming..."),
-        (3.05, "so you pinch your nose, shut your mouth, and hold it in."),  # after her "ahh... AHH": "pinch"
-                                                                            # as her fingers close on her nose
-        (6.30, "Big... mistake.")],                                         # "Big" on the crash zoom
-    2: [(8.35, "You see, a sneeze blasts air out of your lungs super fast."),  # on the x-ray reveal
-        (12.35, "With nowhere to go, it gets trapped inside you,"),        # as the air slams into her lips
-        (15.15, "and the pressure in your airways jumps about twenty times higher.")],  # "twenty": the gauge slams
-    3: [(18.50, "That air shoots up the tiny tubes to your ears,"),
-        (21.80, "and can burst your eardrums,"),                            # "burst" just before it pops
-        (23.75, "or pop the blood vessels in your eyes.")],                # "pop" as the vessels swell up
-    4: [(26.00, "But, in rare cases..."),
-        (28.20, "it can even tear a hole in your throat.")],                # "tear" on the rip
-    5: [(30.45, "So next time you feel one coming,"),
+VOICEOVER = {  # voiceover_N: (cue s, phrase) for each phrase, in the order spoken; | breaks the captions
+    1: [(0.05, "You feel a | giant sneeze | coming..."),
+        (3.05, "so you pinch | your nose, | shut your mouth, | and hold it in."),  # after her "ahh... AHH":
+                                                                            # "pinch" as her fingers close on her nose
+        (6.30, "Big... | mistake.")],                                       # "Big" on the crash zoom
+    2: [(8.35, "You see, | a sneeze blasts air | out of your lungs | super fast."),  # on the x-ray reveal
+        (12.35, "With nowhere to go, | it gets trapped | inside you,"),    # as the air slams into her lips
+        (15.15, "and the pressure | in your airways | jumps about | 20 times higher.")],  # "twenty": the gauge
+    3: [(18.50, "That air shoots up | the tiny tubes | to your ears,"),
+        (21.80, "and can burst | your eardrums,"),                          # "burst" just before it pops
+        (23.75, "or pop the | blood vessels | in your eyes.")],            # "pop" as the vessels swell up
+    4: [(26.00, "But, | in rare cases..."),
+        (28.20, "it can even | tear a hole | in your throat.")],            # "tear" on the rip
+    5: [(30.45, "So next time | you feel one coming,"),
         (32.50, "just let it out.")],                                       # as she lets go of her nose
 }
-SNEEZE = 6                       # voiceover_6 is her sneeze: its hit (the CHOO) lands on CHOO
+CAPTION_STARTS = {  # (part, phrase): (its length s, where its 2nd, 3rd ... caption starts, s into it), measured on
+    # these recordings (word timings, snapped to pauses). A part recorded again (another length) falls back to
+    # spreading its captions over its sound by their letters.
+    (1, 0): (2.02, [0.58, 1.66]), (1, 1): (3.20, [0.50, 1.30, 2.38]), (1, 2): (1.88, [1.04]),
+    (2, 0): (3.79, [0.78, 2.06, 2.74]), (2, 1): (2.59, [1.17, 1.80]), (2, 2): (3.25, [0.49, 1.31, 2.05]),
+    (3, 0): (2.87, [1.18, 1.96]), (3, 1): (1.46, [0.58]), (3, 2): (2.01, [0.63, 1.19]),
+    (4, 0): (1.90, [0.77]), (4, 1): (2.07, [0.60, 1.28]),
+    (5, 0): (1.83, [0.72]), (5, 1): (1.13, []),
+}
+SNEEZE = 6                      # voiceover_6 is her sneeze: its hit (the CHOO) lands on CHOO
 CHOO = 34.17                     # her head snaps forward (shot 21)
 MIN_GAP = 0.15                   # a phrase never starts sooner than this after the one before
 SILENCE_DB = -38                 # quieter than this counts as a pause
@@ -125,15 +136,22 @@ def phrases(path, count):
     return [(bounds[2 * i], bounds[2 * i + 1]) for i in range(len(bounds) // 2)]
 
 
+def levels(path, window=0.02):
+    """The level (dB) of each `window` seconds of a recording."""
+    raw = subprocess.run(["ffmpeg", "-v", "error", "-i", path, "-ac", "1", "-ar", "16000", "-f", "f32le", "-"],
+                         capture_output=True, check=True).stdout
+    x = array.array("f")
+    x.frombytes(raw[:len(raw) // 4 * 4])
+    w = int(16000 * window)
+    return [10 * math.log10(sum(v * v for v in x[i:i + w]) / w + 1e-18) for i in range(0, len(x) - w + 1, w)]
+
+
 def hit_time(path, within=6.0):
     """When a recording hits (s): the first 20 ms that come within `within` dB of its loudest (leaving out
     its last 60 ms, where a cut-off file often clicks)."""
-    raw = subprocess.run(["ffmpeg", "-v", "error", "-i", path, "-ac", "1", "-ar", "16000", "-f", "f32le", "-"],
-                         capture_output=True, check=True).stdout
-    x = np.frombuffer(raw, np.float32)
-    w = 320
-    db = 20 * np.log10(np.sqrt(np.mean(x[:len(x) // w * w].reshape(-1, w) ** 2, axis=1)) + 1e-9)[:-3]
-    return float(np.argmax(db >= db.max() - within)) * w / 16000
+    db = levels(path)[:-3]
+    top = max(db)
+    return next(i for i, d in enumerate(db) if d >= top - within) * 0.02
 
 
 def find_audio(folder):
@@ -167,7 +185,7 @@ def place_voice(vo_files):
         cues = VOICEOVER[n]
         segs = phrases(vo_files[n], len(cues))
         if len(segs) != len(cues):                                     # fewer pauses than phrases: keep it whole
-            segs, cues = [(segs[0][0], segs[-1][1])], [(cues[0][0], " ".join(t for _, t in cues))]
+            segs, cues = [(segs[0][0], segs[-1][1])], [(cues[0][0], " | ".join(t for _, t in cues))]
         for (cue, text), (a, b) in zip(cues, segs):
             start = max(cue, prev_end + MIN_GAP)
             placed.append((n, text, a, b, start))
@@ -177,13 +195,47 @@ def place_voice(vo_files):
 
 def button_time(path):
     """A music track's last big hit (s): its loudest 0.1 s in the last fifth of the track."""
-    raw = subprocess.run(["ffmpeg", "-v", "error", "-i", path, "-ac", "1", "-ar", "16000", "-f", "f32le", "-"],
-                         capture_output=True, check=True).stdout
-    x = np.frombuffer(raw, np.float32)
-    w = 1600
-    rms = np.sqrt(np.mean(x[:len(x) // w * w].reshape(-1, w) ** 2, axis=1))
-    first = int(len(rms) * 0.8)
-    return float(first + np.argmax(rms[first:])) * w / 16000
+    db = levels(path, 0.1)
+    first = int(len(db) * 0.8)
+    return max(range(first, len(db)), key=lambda i: db[i]) * 0.1
+
+
+def captions(vo_files):
+    """When each caption shows: [(start s, end s, words)]. Each group comes up as it is spoken (at
+    CAPTION_STARTS, or else its phrase's sound, pauses left out, shared by the groups' letters) and
+    stays until the next; the last one of a phrase stays a moment after it."""
+    placed = place_voice(vo_files)
+    pauses = {n: sound_span(path)[2] for n, path in vo_files.items()}
+    out, count = [], {}
+    for k, (n, text, s, e, t) in enumerate(placed):
+        j = count[n] = count.get(n, -1) + 1                           # the phrase's number within its part
+        spoken, at = [], s                                            # the phrase's sound, without its pauses
+        for a, b in pauses[n]:
+            if s < b and a < e:
+                if a > at:
+                    spoken.append((at, a))
+                at = max(at, b)
+        if at < e:
+            spoken.append((at, e))
+        total = sum(b - a for a, b in spoken)
+
+        def when(x):                                                  # x seconds into its sound -> video time
+            for a, b in spoken:
+                if x <= b - a:
+                    return t + a + x - s
+                x -= b - a
+            return t + e - s
+        groups = [g.strip() for g in text.split("|")]
+        length, measured = CAPTION_STARTS.get((n, j), (0.0, []))
+        if abs(length - (e - s)) < 0.05 and len(measured) == len(groups) - 1:
+            starts = [t] + [t + x for x in measured]
+        else:                                                         # a digit is said with about 3 letters
+            sizes = [sum(c.isalpha() + 3 * c.isdigit() for c in g) for g in groups]
+            starts = [when(total * sum(sizes[:i]) / sum(sizes)) for i in range(len(groups))]
+        after = placed[k + 1][4] if k + 1 < len(placed) else LENGTH
+        ends = starts[1:] + [min(t + e - s + 0.3, after)]
+        out += zip(starts, ends, groups)
+    return out
 
 
 def sneeze_start(path):
