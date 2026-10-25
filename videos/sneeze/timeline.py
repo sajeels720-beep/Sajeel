@@ -20,14 +20,15 @@ LENGTH = sum(n for _, n in SHOTS) / FPS                                # 37.0 s
 
 VOICEOVER = {  # voiceover_N: (cue s, phrase) for each phrase, in the order spoken
     1: [(0.05, "You feel a giant sneeze coming..."),
-        (2.30, "so you pinch your nose, shut your mouth, and hold it in."),  # "hold it in" as her cheeks balloon
+        (2.85, "so you pinch your nose, shut your mouth, and hold it in."),  # after her "ahh... ahh...": "pinch"
+                                                                            # as her hand snaps up to her nose
         (6.30, "Big... mistake.")],                                         # "Big" on the crash zoom
     2: [(8.35, "You see, a sneeze blasts air out of your lungs super fast."),  # on the x-ray reveal
         (12.35, "With nowhere to go, it gets trapped inside you,"),        # as the air slams into her lips
         (15.15, "and the pressure in your airways jumps about twenty times higher.")],  # "twenty": the gauge slams
     3: [(18.50, "That air shoots up the tiny tubes to your ears,"),
         (21.80, "and can burst your eardrums,"),                            # "burst" just before it pops
-        (23.55, "or pop the blood vessels in your eyes.")],
+        (23.75, "or pop the blood vessels in your eyes.")],                # "pop" as the vessels swell up
     4: [(26.00, "But, in rare cases..."),
         (28.20, "it can even tear a hole in your throat.")],                # "tear" on the rip
     5: [(30.45, "So next time you feel one coming,"),
