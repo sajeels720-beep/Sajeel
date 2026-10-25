@@ -70,13 +70,14 @@ def main():
         g, total = gain(path), duration(path)
         lead = hit_time(path, 30.0 if name in START else 6.0)          # long sweeps: from their first sound
         for j, (t, db, *until) in enumerate(places):
+            fade = until[1] if len(until) > 1 else 0.05
             k = new_input(path)
             start = t - lead
             skip = max(-start, 0.0)                                   # a hit too close to 0 s: drop the run-up
             start = max(start, 0.0)
             keep = (until[0] - start) if until else (total - skip - 0.06)  # the last 60 ms often clicks
             chains.append(f"[{k}:a]{fmt},atrim={skip:.3f}:{skip + keep:.3f},asetpts=PTS-STARTPTS,"
-                          f"afade=t=out:st={max(keep - 0.05, 0):.3f}:d=0.05,volume={g + db:.2f}dB,"
+                          f"afade=t=out:st={max(keep - fade, 0):.3f}:d={fade:.3f},volume={g + db:.2f}dB,"
                           f"{at(start)}[{name}{j}]")
             mix.append(f"[{name}{j}]")
             report.append(f"  {t:6.2f} s  {name}" + (" (starts)" if name in START else ""))

@@ -40,8 +40,8 @@ MIN_GAP = 0.15                   # a phrase never starts sooner than this after 
 SILENCE_DB = -38                 # quieter than this counts as a pause
 PAD = (0.04, 0.08)               # kept before and after each phrase, so no consonant is clipped
 
-SFX = {  # sfx_name: [(time s, level dB against the voice[, until s]), ...]: its hit (hit_time) lands on the time
-         # (its first sound, for START); until cuts it off at that time in the video
+SFX = {  # sfx_name: [(time s, level dB against the voice[, until s[, fade s]]), ...]: its hit (hit_time) lands on
+         # the time (its first sound, for START); until cuts it off at that time in the video, fading out over fade
     "sfx_ahh": [(2.98, -6, 3.24),                    # "ahh... AHH" cut off as her fingers close on her nose
                 (33.45, -10)],                       # under "just let it out": "ahh..." 32.8, "AHH" 33.4
     "sfx_stifled": [(4.63, -6), (5.57, -12)],        # the sneeze hits inside, then a smaller hiccup
@@ -66,18 +66,18 @@ SFX = {  # sfx_name: [(time s, level dB against the voice[, until s]), ...]: its
     "sfx_gauge": [(16.97, -6)],                              # the needle hits its stop
     "sfx_glass_crack": [(16.97, -8), (26.40, -18), (27.00, -18)],  # the gauge glass; the red cracks creeping
     "sfx_membrane_pop": [(22.30, -4)],
-    "sfx_ear_ring": [(22.35, -18)],
-    "sfx_wet_pop": [(24.70, -6)],
-    "sfx_tear": [(28.77, -4)],
-    "sfx_slowmo_blast": [(34.15, -6)],
+    "sfx_ear_ring": [(22.35, -14, 23.40, 0.8)],             # ringing after the eardrum pops, dying away
+    "sfx_wet_pop": [(24.70, -6)],                            # the vessel in her eye pops
+    "sfx_tension_drone": [(25.95, -14, 28.80)],              # rising under the weak spot, cut dead by the rip
+    "sfx_tear": [(28.77, -4)],                               # the throat wall rips
+    "sfx_slowmo_blast": [(34.27, -6)],                       # the slow-motion blast hitting the dandelion
     "sfx_seeds_poof": [(34.27, -8)],
 }
 START = {"sfx_xray_scan", "sfx_air_rush", "sfx_air_hiss", "sfx_stretch", "sfx_ear_ring",
-         "sfx_slowmo_blast"}     # long sounds: they start on their time
+         "sfx_tension_drone"}    # long sounds: they start on their time
 BEDS = {  # sfx_name: ([(start s, end s), ...], level dB): trimmed to each span, faded in and out
     "sfx_breeze": ([(0.0, 1.4), (35.0, LENGTH)], -20),
     "sfx_air_swirl": ([(13.2, 16.6)], -14),
-    "sfx_tension_drone": ([(26.0, 28.9)], -16),
 }
 MUSIC_DB = -14                   # under the voice; dips a few dB more while it talks
 AUDIO_EXT = (".wav", ".mp3", ".m4a", ".aac", ".flac", ".ogg")
