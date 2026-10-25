@@ -58,8 +58,10 @@ The first joins the 22 shots (every frame as rendered) and burns in his caption 
 ## Credits (for the video description)
 
 - Character: MPFB 2 with MakeHuman assets (CC0): skin, eyes, ponytail, eyebrows, eyelashes, T-shirt and jeans, shoes, the faceunits01 expression pack and the nose targets. No credit required.
-- Dandelion, seeds, backdrop and effects: modelled procedurally by the scripts.
-- No CC-BY or non-commercial assets are used so far. Any CC-BY asset added later will be listed here with its creator.
+- Dandelion, seeds, anatomy, pressure gauge, backdrop and effects: modelled procedurally by the scripts.
+- Voice and sound effects: made in ElevenLabs. On a paid plan no credit is required; on the free plan ElevenLabs must be credited (for example "Voice and sound: ElevenLabs (elevenlabs.io)") and the video can't be monetized. The music follows its own licence: ElevenLabs Music as above; a YouTube Audio Library track needs the attribution line its page gives, if it asks for one.
+- No CC-BY or non-commercial assets are used.
+- Sources for the facts: Misirovs R. et al., "Spontaneous tracheal perforation following a sneeze", BMJ Case Reports 2023 (doi:10.1136/bcr-2023-255633); Yang W. et al., "Snap, crackle and pop: when sneezing leads to crackling in the neck", BMJ Case Reports 2018.
 
 ## Preview vs final
 
