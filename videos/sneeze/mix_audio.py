@@ -12,7 +12,7 @@ import os
 import subprocess
 
 from timeline import (BEDS, MUSIC_DB, PAD, SFX, SILENCE_DB, SNEEZE, START, duration, find_audio, loudness,
-                      peak_time, place_voice, sneeze_start)
+                      hit_time, place_voice, sneeze_start)
 
 RATE = 48000
 VOICE_LUFS = -20                 # every voiceover part is brought to this level first
@@ -59,21 +59,21 @@ def main():
         k = new_input(path)
         chains.append(f"[{k}:a]{fmt},volume={gain(path, 1):.2f}dB,{at(t)}[sneeze]")
         mix.append("[sneeze]")
-        report.append(f"  {t:6.2f} s  voiceover_{SNEEZE}: her sneeze (CHOO at {t + peak_time(path):.2f} s)")
+        report.append(f"  {t:6.2f} s  voiceover_{SNEEZE}: her sneeze (CHOO at {t + hit_time(path):.2f} s)")
     if vo:
         chains.append("".join(vo) + f"amix=inputs={len(vo)}:normalize=0,asplit=2[voice][duck]")
         mix.append("[voice]")
-    for name, places in SFX.items():                                  # one-shots, on their loudest moment
+    for name, places in SFX.items():                                  # one-shots, on their hit
         if name not in files["sfx"]:
             continue
         path = files["sfx"][name]
         g = gain(path)
-        lead = 0.0 if name in START else peak_time(path)
+        lead = 0.0 if name in START else hit_time(path)
         for j, (t, db, *cut) in enumerate(places):
             k = new_input(path)
             if name in START:                                         # long sweeps: from their first sound
                 head = f"silenceremove=start_periods=1:start_threshold={SILENCE_DB}dB,"
-            else:                                                     # a peak too close to 0 s: drop the run-up
+            else:                                                     # a hit too close to 0 s: drop the run-up
                 skip = max(lead - t, 0.0)
                 head = f"atrim=start={skip:.3f},asetpts=PTS-STARTPTS," if skip else ""
             if cut:                                                   # cut short, with a quick fade

@@ -34,13 +34,13 @@ VOICEOVER = {  # voiceover_N: (cue s, phrase) for each phrase, in the order spok
     5: [(30.45, "So next time you feel one coming,"),
         (32.50, "just let it out.")],                                       # as she lets go of her nose
 }
-SNEEZE = 6                       # voiceover_6 is her sneeze: its loudest moment lands on CHOO
+SNEEZE = 6                       # voiceover_6 is her sneeze: its hit (the CHOO) lands on CHOO
 CHOO = 34.17                     # her head snaps forward (shot 21)
 MIN_GAP = 0.15                   # a phrase never starts sooner than this after the one before
 SILENCE_DB = -38                 # quieter than this counts as a pause
 PAD = (0.04, 0.08)               # kept before and after each phrase, so no consonant is clipped
 
-SFX = {  # sfx_name: [(time s, level dB against the voice[, cut s]), ...]: its loudest moment lands on the time
+SFX = {  # sfx_name: [(time s, level dB against the voice[, cut s]), ...]: its hit (hit_time) lands on the time
          # (its first sound, for START); cut ends the sound that far into its file
     "sfx_ahh": [(2.98, -6, 1.22),                    # "ahh... AHH" cut off as her fingers close on her nose
                 (33.45, -10)],                       # under "just let it out": "ahh..." 32.8, "AHH" 33.4
@@ -48,11 +48,12 @@ SFX = {  # sfx_name: [(time s, level dB against the voice[, cut s]), ...]: its l
     "sfx_sniff": [(1.75, -12), (1.92, -14), (31.05, -10), (36.12, -4)],
     "sfx_whoosh_soft": [(0.50, -14), (1.45, -14), (30.80, -14), (35.70, -10)],   # seeds drifting
     "sfx_whoosh_fast": [(3.15, -10), (6.36, -6), (16.98, -8), (32.40, -12), (34.28, -8)],  # hand up, zooms, let go
-    "sfx_tap": [(1.63, -10), (30.97, -10)],
-    "sfx_pinch": [(3.32, -10)],
-    "sfx_puff": [(4.63, -6), (12.20, -8)],
-    "sfx_thump": [(4.60, -4), (12.18, -4)],
-    "sfx_boom": [(6.33, -4), (16.97, -6), (22.30, -6), (28.77, -6), (34.17, -4)],
+    "sfx_tap": [(1.63, -10, 0.12), (30.97, -10, 0.12)],    # just the tap, not the hiss after it
+    "sfx_pinch": [(3.32, -10)],                              # her fingers squeeze her nose
+    "sfx_puff": [(4.63, -8), (12.20, -8)],                   # her cheeks balloon
+    "sfx_thump": [(4.60, -6), (12.18, -4)],                  # the sneeze hits inside; the air slams into her lips
+    "sfx_boom": [(6.33, -4), (16.97, -6), (22.30, -6), (28.77, -6), (34.17, -4)],  # Big mistake, gauge, eardrum,
+                                                                                   # throat, CHOO
     "sfx_alert_pop": [(6.43, -6)],
     "sfx_xray_scan": [(8.00, -10), (19.85, -12)],
     "sfx_air_rush": [(9.00, -8)],
@@ -120,14 +121,14 @@ def phrases(path, count):
     return [(bounds[2 * i], bounds[2 * i + 1]) for i in range(len(bounds) // 2)]
 
 
-def peak_time(path):
-    """When a recording is loudest (s), from 20 ms windows."""
+def hit_time(path, within=6.0):
+    """When a recording hits (s): the first 20 ms that come within `within` dB of its loudest."""
     raw = subprocess.run(["ffmpeg", "-v", "error", "-i", path, "-ac", "1", "-ar", "16000", "-f", "f32le", "-"],
                          capture_output=True, check=True).stdout
     x = np.frombuffer(raw, np.float32)
     w = 320
-    rms = np.sqrt(np.mean(x[:len(x) // w * w].reshape(-1, w) ** 2, axis=1))
-    return float(np.argmax(rms)) * w / 16000
+    db = 20 * np.log10(np.sqrt(np.mean(x[:len(x) // w * w].reshape(-1, w) ** 2, axis=1)) + 1e-9)
+    return float(np.argmax(db >= db.max() - within)) * w / 16000
 
 
 def find_audio(folder):
@@ -171,4 +172,4 @@ def place_voice(vo_files):
 
 def sneeze_start(path):
     """Where her sneeze starts in the video, so its CHOO lands on the frame her head snaps forward."""
-    return CHOO - peak_time(path)
+    return CHOO - hit_time(path)
