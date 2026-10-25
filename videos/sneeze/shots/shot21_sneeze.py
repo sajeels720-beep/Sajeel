@@ -1,6 +1,6 @@
 """SHOT 21 (33.6-35.2 s, 48 frames @30fps) - (the sneeze: "Ahh... CHOO!")
 The giant sneeze in slow motion: at the top of the wind-up her head snaps forward, a spray of
-droplets and a blast of air shoot out of her mouth into the dandelion in the foreground, and
+droplets and a blast of air shoot out of her mouth into the dandelion in front of her, and
 its seeds burst off in every direction; the camera crash-zooms into the dandelion as it is
 hit, with a shake. 35 mm.
 
@@ -76,13 +76,12 @@ def build():
         V.fast_preview(samples=24)
     bpy.context.scene.frame_set(1)
 
-    # camera: low at her front-right, the dandelion in the foreground; crash zoom into it on the hit
+    # camera: at her front-right, her face left and the dandelion right; crash zoom into it on the hit
     r = V.camera_rig("Cam_Shot21", lens=LENS, fstop=5.6)
-    mid = mouth.lerp(head, 0.5)
-    a0 = mid + Vector((0.0, 0.0, 0.045))                          # her face left, the dandelion right and nearer
-    c0 = a0 + K.look_dir(-45, 1) * 0.64
+    a0 = mouth.lerp(head, 0.45) + Vector((0.0, 0.0, 0.05))         # her whole face left, the dandelion right
+    c0 = a0 + K.look_dir(-33, 2) * 0.75
     a1, c1 = head + Vector((0.0, 0.02, 0.0)), head + K.look_dir(-42, 6) * 0.2
-    V.cam_keys(r, [(1, c0, a0, None), (hit - 2, a0 + K.look_dir(-45, 1) * 0.6, a0, None), (hit + 3, c1, a1, None),
+    V.cam_keys(r, [(1, c0, a0, None), (hit - 2, a0 + K.look_dir(-33, 2) * 0.7, a0, None), (hit + 3, c1, a1, None),
                    (n, head + K.look_dir(-40, 7) * 0.19, a1, None)])
     for fc in V.fcurves(r["rig"]) + V.fcurves(r["aim"]):
         for kp in fc.keyframe_points:
@@ -91,10 +90,10 @@ def build():
     V.handheld(r, amount=0.0008, aim_amount=0.0006)
     V.shake(r, hit, hit + 10, strength=0.006, scale=1.3)
     focus = V.link(bpy.data.objects.new("Focus_Shot21", None), V.collection("CAMERA"))
-    focus.location = mid
+    face = mouth.lerp(head, 0.2)                                   # on her face for the wind-up
     for f in range(1, n + 1):                                     # racks onto the dandelion and rides its whip
         u = min(max((f - hit + 2) / 5, 0.0), 1.0)
-        focus.location = mid.lerp(REL.head_at(dl, f + off).translation, u * u * (3 - 2 * u))
+        focus.location = face.lerp(REL.head_at(dl, f + off).translation, u * u * (3 - 2 * u))
         focus.keyframe_insert("location", frame=f)
     r["cam"].data.dof.focus_object = focus
 

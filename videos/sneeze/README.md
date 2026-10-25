@@ -5,6 +5,8 @@ Video 2: a vertical Short of about 37 seconds (1,110 frames at 30 fps) in the st
 - `SCRIPT_AND_SHOTS.md`: the voiceover script with timings, and the 22-shot plan.
 - `VOICEOVER.md`: what to record, with file names and time slots.
 - `SOUND_EFFECTS.md`: every sound effect, with an ElevenLabs prompt and where it plays.
+- `audio/`: the voiceover (and, once made, the sound effects and music).
+- `timeline.py` and `mix_audio.py`: the sound edit. The picture is fixed, so each voiceover part is split at its pauses and every phrase starts on its cue in the picture; the mix brings everything to the same loudness and sets it to YouTube level.
 - `MASTER_PROMPT.md`: your master prompt, revised for this video.
 - `shots/`: one script per shot, 22 in all.
 - `scenes/`: shared sets. `heroine.py` is the new character, `sky_set.py` the studio blue backdrop and lights, `dandelion_set.py` the dandelion and its seeds.
