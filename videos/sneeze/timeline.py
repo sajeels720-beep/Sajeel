@@ -40,29 +40,31 @@ MIN_GAP = 0.15                   # a phrase never starts sooner than this after 
 SILENCE_DB = -38                 # quieter than this counts as a pause
 PAD = (0.04, 0.08)               # kept before and after each phrase, so no consonant is clipped
 
-SFX = {  # sfx_name: [(time s, level dB against the voice[, cut s]), ...]: its hit (hit_time) lands on the time
-         # (its first sound, for START); cut ends the sound that far into its file
-    "sfx_ahh": [(2.98, -6, 1.22),                    # "ahh... AHH" cut off as her fingers close on her nose
+SFX = {  # sfx_name: [(time s, level dB against the voice[, until s]), ...]: its hit (hit_time) lands on the time
+         # (its first sound, for START); until cuts it off at that time in the video
+    "sfx_ahh": [(2.98, -6, 3.24),                    # "ahh... AHH" cut off as her fingers close on her nose
                 (33.45, -10)],                       # under "just let it out": "ahh..." 32.8, "AHH" 33.4
     "sfx_stifled": [(4.63, -6), (5.57, -12)],        # the sneeze hits inside, then a smaller hiccup
     "sfx_sniff": [(1.75, -12), (1.92, -14), (31.05, -10), (36.12, -4)],
     "sfx_whoosh_soft": [(0.50, -14), (1.45, -14), (30.80, -14), (35.70, -10)],   # seeds drifting
-    "sfx_whoosh_fast": [(3.15, -10), (6.36, -6), (16.98, -8), (32.40, -12), (34.28, -8)],  # hand up, zooms, let go
-    "sfx_tap": [(1.63, -10, 0.12), (30.97, -10, 0.12)],    # just the tap, not the hiss after it
+    "sfx_whoosh_fast": [(3.15, -10), (6.36, -6), (16.98, -10), (32.40, -12), (34.28, -8)],  # hand up, zooms, let go
+    "sfx_tap": [(1.63, -10, 1.75), (30.97, -10, 31.09)],   # just the tap, not the hiss after it
     "sfx_pinch": [(3.32, -10)],                              # her fingers squeeze her nose
     "sfx_puff": [(4.63, -8), (12.20, -8)],                   # her cheeks balloon
     "sfx_thump": [(4.60, -6), (12.18, -4)],                  # the sneeze hits inside; the air slams into her lips
-    "sfx_boom": [(6.33, -4), (16.97, -6), (22.30, -6), (28.77, -6), (34.17, -4)],  # Big mistake, gauge, eardrum,
+    "sfx_boom": [(6.33, -4), (16.97, -8), (22.30, -6), (28.77, -6), (34.17, -4)],  # Big mistake, gauge, eardrum,
                                                                                    # throat, CHOO
-    "sfx_alert_pop": [(6.43, -6)],
-    "sfx_xray_scan": [(8.00, -10), (19.85, -12)],
-    "sfx_air_rush": [(9.00, -8)],
-    "sfx_air_hiss": [(18.20, -10)],
-    "sfx_stretch": [(14.97, -12), (15.77, -12), (20.37, -12), (21.63, -10), (28.23, -10)],
+    "sfx_alert_pop": [(6.43, -6)],                           # the red "!"
+    "sfx_xray_scan": [(8.00, -10), (19.85, -12)],            # the x-ray reveals
+    "sfx_air_rush": [(9.00, -8)],                            # the blast up her windpipe, loudest at the top
+    "sfx_air_hiss": [(18.20, -8)],                           # air up the tubes to her ears
+    "sfx_stretch": [(14.60, -12, 16.40),                     # the throat wall bulging (shot 10)
+                    (20.85, -12, 22.30),                     # the eardrum straining, cut off as it pops
+                    (27.33, -10, 28.77)],                    # the blister straining, cut off as it rips
     "sfx_heartbeat": [(13.57, -10), (14.17, -10), (23.37, -8), (23.77, -8), (24.17, -8), (26.30, -8), (26.77, -8),
-                      (27.23, -8), (27.70, -8)],
-    "sfx_gauge": [(16.97, -6)],
-    "sfx_glass_crack": [(16.97, -6), (26.40, -18), (27.00, -18)],
+                      (27.23, -8), (27.70, -8)],             # the pressure throbbing
+    "sfx_gauge": [(16.97, -6)],                              # the needle hits its stop
+    "sfx_glass_crack": [(16.97, -8), (26.40, -18), (27.00, -18)],  # the gauge glass; the red cracks creeping
     "sfx_membrane_pop": [(22.30, -4)],
     "sfx_ear_ring": [(22.35, -18)],
     "sfx_wet_pop": [(24.70, -6)],
@@ -70,7 +72,8 @@ SFX = {  # sfx_name: [(time s, level dB against the voice[, cut s]), ...]: its h
     "sfx_slowmo_blast": [(34.15, -6)],
     "sfx_seeds_poof": [(34.27, -8)],
 }
-START = {"sfx_xray_scan", "sfx_air_rush", "sfx_air_hiss", "sfx_ear_ring", "sfx_slowmo_blast"}  # long sweeps
+START = {"sfx_xray_scan", "sfx_air_rush", "sfx_air_hiss", "sfx_stretch", "sfx_ear_ring",
+         "sfx_slowmo_blast"}     # long sounds: they start on their time
 BEDS = {  # sfx_name: ([(start s, end s), ...], level dB): trimmed to each span, faded in and out
     "sfx_breeze": ([(0.0, 1.4), (35.0, LENGTH)], -20),
     "sfx_air_swirl": ([(13.2, 16.6)], -14),
@@ -122,12 +125,13 @@ def phrases(path, count):
 
 
 def hit_time(path, within=6.0):
-    """When a recording hits (s): the first 20 ms that come within `within` dB of its loudest."""
+    """When a recording hits (s): the first 20 ms that come within `within` dB of its loudest (leaving out
+    its last 60 ms, where a cut-off file often clicks)."""
     raw = subprocess.run(["ffmpeg", "-v", "error", "-i", path, "-ac", "1", "-ar", "16000", "-f", "f32le", "-"],
                          capture_output=True, check=True).stdout
     x = np.frombuffer(raw, np.float32)
     w = 320
-    db = 20 * np.log10(np.sqrt(np.mean(x[:len(x) // w * w].reshape(-1, w) ** 2, axis=1)) + 1e-9)
+    db = 20 * np.log10(np.sqrt(np.mean(x[:len(x) // w * w].reshape(-1, w) ** 2, axis=1)) + 1e-9)[:-3]
     return float(np.argmax(db >= db.max() - within)) * w / 16000
 
 

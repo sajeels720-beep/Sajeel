@@ -11,7 +11,7 @@ import argparse
 import os
 import subprocess
 
-from timeline import (BEDS, MUSIC_DB, PAD, SFX, SILENCE_DB, SNEEZE, START, duration, find_audio, loudness,
+from timeline import (BEDS, MUSIC_DB, PAD, SFX, SNEEZE, START, duration, find_audio, loudness,
                       hit_time, place_voice, sneeze_start)
 
 RATE = 48000
@@ -67,19 +67,17 @@ def main():
         if name not in files["sfx"]:
             continue
         path = files["sfx"][name]
-        g = gain(path)
-        lead = 0.0 if name in START else hit_time(path)
-        for j, (t, db, *cut) in enumerate(places):
+        g, total = gain(path), duration(path)
+        lead = hit_time(path, 30.0 if name in START else 6.0)          # long sweeps: from their first sound
+        for j, (t, db, *until) in enumerate(places):
             k = new_input(path)
-            if name in START:                                         # long sweeps: from their first sound
-                head = f"silenceremove=start_periods=1:start_threshold={SILENCE_DB}dB,"
-            else:                                                     # a hit too close to 0 s: drop the run-up
-                skip = max(lead - t, 0.0)
-                head = f"atrim=start={skip:.3f},asetpts=PTS-STARTPTS," if skip else ""
-            if cut:                                                   # cut short, with a quick fade
-                end = cut[0] - max(lead - t, 0.0)
-                head += f"atrim=0:{end:.3f},afade=t=out:st={max(end - 0.06, 0):.3f}:d=0.06,"
-            chains.append(f"[{k}:a]{fmt},{head}volume={g + db:.2f}dB,{at(t - lead)}[{name}{j}]")
+            start = t - lead
+            skip = max(-start, 0.0)                                   # a hit too close to 0 s: drop the run-up
+            start = max(start, 0.0)
+            keep = (until[0] - start) if until else (total - skip - 0.06)  # the last 60 ms often clicks
+            chains.append(f"[{k}:a]{fmt},atrim={skip:.3f}:{skip + keep:.3f},asetpts=PTS-STARTPTS,"
+                          f"afade=t=out:st={max(keep - 0.05, 0):.3f}:d=0.05,volume={g + db:.2f}dB,"
+                          f"{at(start)}[{name}{j}]")
             mix.append(f"[{name}{j}]")
             report.append(f"  {t:6.2f} s  {name}" + (" (starts)" if name in START else ""))
     for name, (spans, db) in BEDS.items():                            # beds, trimmed to their spans
