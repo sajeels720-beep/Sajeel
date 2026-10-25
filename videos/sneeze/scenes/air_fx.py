@@ -431,19 +431,24 @@ def slam(aw, n_frames, col, parent, rng, hit=13, per_route=34, n_core=6, speed=(
     return comets, (P["nose_end"], P["lips_end"])
 
 
-def swirl(aw, n_frames, col, parent, rng, count=72, width=(0.0011, 0.0019), core=8, core_width=0.0028, stretch=1.6):
-    """The trapped air churning round inside her head: comets sweep back and forth along
-    her nose, mouth and throat passages, spiralling round them."""
+def swirl(aw, n_frames, col, parent, rng, count=72, width=(0.0011, 0.0019), core=8, core_width=0.0028, stretch=1.6,
+          routes=None, name="Air_Swirl"):
+    """The trapped air churning round inside her: comets sweep back and forth along the
+    passages, spiralling round them. routes: point lists (default: her nose, mouth and
+    throat)."""
     bvh = walls(aw["walls"])
     P = aw["paths"]
-    routes = [Channel(P["pharynx"] + P["nasal"], bvh), Channel(P["pharynx"][:2] + P["oral"], bvh),
-              Channel(P["larynx"] + P["pharynx"], bvh)]
-    weights = np.array([0.42, 0.4, 0.18])
-    mat, mat_core = material("Air_Swirl"), material("Air_Swirl_Core", 1.25)
+    if routes is None:
+        routes = [P["pharynx"] + P["nasal"], P["pharynx"][:2] + P["oral"], P["larynx"] + P["pharynx"]]
+        weights = np.array([0.42, 0.4, 0.18])
+    else:
+        weights = np.ones(len(routes)) / len(routes)
+    routes = [Channel(r, bvh) for r in routes]
+    mat, mat_core = material(name), material(name + "_Core", 1.25)
     comets = []
     for k in range(count + core):
         is_core = k >= count
-        ch = routes[int(rng.choice(3, p=weights))]
+        ch = routes[int(rng.choice(len(routes), p=weights))]
         L = ch.length
         sc, amp = rng.uniform(0.25, 0.75) * L, rng.uniform(0.15, 0.32) * L
         om, ph, ph2 = rng.uniform(0.16, 0.3), rng.uniform(0, 2 * math.pi), rng.uniform(0, 2 * math.pi)
@@ -457,7 +462,7 @@ def swirl(aw, n_frames, col, parent, rng, count=72, width=(0.0011, 0.0019), core
             s = min(max(s, 0.003), L - 0.004)
             rho = (0.15 if is_core else 0.5) + 0.28 * math.sin(0.17 * t + ph3)
             track.append(ch.at(s, th0 + spin * t, max(rho, 0.0)))
-        ob = comet(f"Air_Swirl_{k:02d}", track, [w0] * n_frames, mat_core if is_core else mat, col, parent,
+        ob = comet(f"{name}_{k:02d}", track, [w0] * n_frames, mat_core if is_core else mat, col, parent,
                    stretch=stretch)
         comets.append(ob)
     return comets

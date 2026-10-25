@@ -11,6 +11,8 @@ by seven cameras, so the acting carries across the cuts:
                           (SQUEEZE), and her cheeks balloon and her head jolts when the
                           air slams into her shut lips and pinched nose (SLAM).
   shots 12-13 (take 481-570): still holding it while the air reaches her ears.
+  shots 15-16 (take 625-714): her bulging eye, close up.
+  shot 17 (take 715-774), x-ray: her neck.
 
 perform(shot) builds her and keys the take shifted so that the shot's first frame is 1.
 """
@@ -28,7 +30,9 @@ import vfx_kit as V
 
 H = V.hex_lin
 SHOTS = {"03": (1, 60), "04": (61, 123), "05": (124, 171), "06": (172, 231), "07": (232, 288), "08": (289, 330),
-         "09": (331, 372), "12": (481, 528), "13": (529, 570)}    # take frame = video frame - 66
+         "09": (331, 372), "12": (481, 528), "13": (529, 570), "15": (625, 666), "16": (667, 714),
+         "17": (715, 774)}
+# take frame = video frame - 66
 CU_LOOK, CU_END_DIST, CU_LENS = (-22, 3), 0.62, 85       # shot 04 ends where shot 05 starts (invisible cut)
 CU_AIM = Vector((0.0, 0.0, -0.012))                      # from the nose (at take frame 60)
 CONTACT = 34                                   # the fingers close on her nose
