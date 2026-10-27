@@ -130,7 +130,7 @@ def terrified_hero(c, x, y, scale, lx=-0.7, facing=1, guitar=True, light=(0.45, 
     return hx, hy, R
 
 
-# --- variant A: "THEY'RE WATCHING." - close-up terror, the crowd leaning in ---------------------------------
+# --- variant A: "WHAT WILL PEOPLE SAY?" - close-up terror, the crowd leaning in -----------------------------
 
 def variant_a(c):
     background(c)
@@ -149,8 +149,8 @@ def variant_a(c):
         SHADE.draw(c, dict(x=W + 230, y=H + 380, scale=4.8, facing=-1, turn=0.3, eye=1.0, lean=14, tilt=12))
     blurred(c, 14, fg)
     vignette(c, W, H, 0.6)
-    big_text(c, 'THEY’RE', 70, 230, 210, 'white', align='left')
-    big_text(c, 'WATCHING.', 70, 450, 210, '#FFD23F', align='left')
+    big_text(c, 'WHAT WILL', 70, 215, 180, 'white', align='left')
+    big_text(c, 'PEOPLE SAY?', 70, 410, 180, '#FFD23F', align='left')
 
 
 # --- variant B: "CRINGE." - everyone is filming him ------------------------------------------------------------
