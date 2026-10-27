@@ -152,11 +152,13 @@ def variant_a(c):
                                face=dict(eyes='dot', ly=0.0, brow=-17, brow_y=0.0, mopen=0.0, smile=-0.2,
                                          mwide=0.75, sweat=0.0, tilt=-1))
     light_pool(c, hx, hy - R * 0.6, R * 2.2, R * 1.6, '#FFF1D6', 0.18)
-    light_pool(c, 0, H * 0.75, 900, 700, 'red', 0.22)
+    light_pool(c, 0, H * 0.75, 900, 700, 'red', 0.13)
+
+    edge = SHADE.with_look(rim_a=0.45)  # softer red rim on the big edge figures; their eyes keep full glow
 
     def fg():
-        SHADE.draw(c, dict(x=-60, y=H + 330, scale=4.6, facing=1, turn=0.3, eye=1.0, lean=14, tilt=14))
-        SHADE.draw(c, dict(x=W + 230, y=H + 380, scale=4.8, facing=-1, turn=0.3, eye=1.0, lean=14, tilt=12))
+        edge.draw(c, dict(x=-60, y=H + 330, scale=4.6, facing=1, turn=0.3, eye=1.0, lean=14, tilt=14))
+        edge.draw(c, dict(x=W + 230, y=H + 380, scale=4.8, facing=-1, turn=0.3, eye=1.0, lean=14, tilt=12))
     blurred(c, 14, fg)
     vignette(c, W, H, 0.6)
     big_text(c, 'WHAT WILL', 70, 195, 180, 'white', align='left')
