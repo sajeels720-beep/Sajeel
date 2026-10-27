@@ -111,8 +111,9 @@ def background(c, top='#08070B', bottom='#1C0708'):
 
 
 def terrified_hero(c, x, y, scale, lx=-0.7, facing=1, guitar=True, light=(0.45, -0.9), who=HERO_BEANIE,
-                   face=None, tremble=True):
-    gp, mid, _ = play_guitar(0.0, seated=False, strum=False, fret_shift=False) if guitar else ({}, None, 0)
+                   face=None, tremble=True, guitar_at=None):
+    gp, mid, _ = (play_guitar(0.0, seated=False, strum=False, fret_shift=False, **(guitar_at or {}))
+                  if guitar else ({}, None, 0))
     pose = dict(x=x, y=y, scale=scale, facing=facing, turn=0.12, eyes='wide', pupil=0.5, lx=lx, ly=-0.05,
                 brow=-24, brow_y=0.06, mopen=0.62, mwide=1.15, sweat=1.6, lean=-7, tilt=-6,
                 hb=-6, kb=4, hf=7, kf=4, **gp)
@@ -145,7 +146,9 @@ def variant_a(c):
                            lean=10, tilt=10 + 4 * i, sb=10, sf=-4))
     cone(c, (1380 + dx, -200), 120, H, 540, '#FFF1D6', 0.22, soft=50)
     # bare round head, no beanie; a quiet, uneasy sideways glance at the crowd instead of cartoon terror
-    hx, hy, R = terrified_hero(c, hero_x, 1175, 3.25, lx=-0.75, who=HERO, tremble=False,
+    # big enough for the face to read on a phone; the guitar is held high so it stays in frame
+    hx, hy, R = terrified_hero(c, hero_x, 1232, 3.65, lx=-0.75, who=HERO, tremble=False,
+                               guitar_at=dict(gy=-72, angle=-30),
                                face=dict(eyes='dot', ly=0.0, brow=-17, brow_y=0.0, mopen=0.0, smile=-0.2,
                                          mwide=0.75, sweat=0.0, tilt=-1))
     light_pool(c, hx, hy - R * 0.6, R * 2.2, R * 1.6, '#FFF1D6', 0.18)
@@ -156,8 +159,8 @@ def variant_a(c):
         SHADE.draw(c, dict(x=W + 230, y=H + 380, scale=4.8, facing=-1, turn=0.3, eye=1.0, lean=14, tilt=12))
     blurred(c, 14, fg)
     vignette(c, W, H, 0.6)
-    big_text(c, 'WHAT WILL', 70, 215, 180, 'white', align='left')
-    big_text(c, 'PEOPLE SAY?', 70, 410, 180, 'white', align='left')
+    big_text(c, 'WHAT WILL', 70, 195, 180, 'white', align='left')
+    big_text(c, 'PEOPLE SAY?', 70, 390, 180, 'white', align='left')
 
 
 # --- variant B: "CRINGE." - everyone is filming him ------------------------------------------------------------
