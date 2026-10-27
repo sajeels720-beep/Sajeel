@@ -229,9 +229,28 @@ def variant_d(c, words=('WHAT WILL', 'PEOPLE SAY?')):
     guitar(c, 800, 1000, -60, 2.0, shine=0.6)
     # the head
     hx, hy, R = 700, 650, 215
-    HERO_BEANIE.draw_head(c, hx, hy, dict(turn=0.5, eyes='wide', pupil=0.55, lx=0.95, ly=-0.1, brow=-20,
-                                           smile=-0.55, sweat=1.7), angle=-6, scale=R / 62)
+    # full panic: huge eyes with tiny pupils, brows shot up, a shaky mouth, sweat everywhere
+    HERO_BEANIE.draw_head(c, hx, hy, dict(turn=0.45, eyes='wide', eye_size=1.3, pupil=0.4, lx=0.95, ly=-0.05,
+                                           face_dy=0.12, mouth_dy=0.1, brow=-30, brow_y=0.1,
+                                           brows_over_hat=True, mouth='wavy', mwide=1.15, sweat=2.0),
+                          angle=-6, scale=R / 62)
     shade_head(c, hx, hy, R, light=(0.7, -0.5), rim='#FFE6E2', bounce=None, rim_a=0.16)
+    # tremble marks and flying sweat
+    for side, a0 in ((-1, 196), (1, -16)):
+        for k in range(3):
+            r = R * (1.12 + 0.11 * k)
+            arc = skia.Path()
+            arc.addArc(skia.Rect.MakeLTRB(hx - r, hy - r, hx + r, hy + r), a0 + k * 3, 24 if side > 0 else -24)
+            c.drawPath(arc, paint('#F4F1EA', 0.9 - 0.25 * k, stroke=8))
+    for dx, dy, sz in ((-R * 1.25, -R * 0.55, 1.0), (R * 1.3, -R * 0.75, 0.85), (-R * 1.05, -R * 0.95, 0.7)):
+        d = sz * 2.6
+        x0, y0 = hx + dx, hy + dy
+        drop = skia.Path()
+        drop.moveTo(x0, y0 - 16 * d)
+        drop.cubicTo(x0 + 9 * d, y0 - 2 * d, x0 + 9 * d, y0 + 9 * d, x0, y0 + 9 * d)
+        drop.cubicTo(x0 - 9 * d, y0 + 9 * d, x0 - 9 * d, y0 - 2 * d, x0, y0 - 16 * d)
+        c.drawPath(drop, paint('#9ED8FF', 0.95))
+        c.drawPath(drop, paint('outline', stroke=5))
     # the blanket pulled up to his chin
     bl = skia.Path()
     bl.moveTo(-60, 790)

@@ -356,6 +356,8 @@ class Character:
                 c.drawPath(hood, paint(L.outline, stroke=OUTLINE_W))
         if L.hat == 'beanie':
             beanie(c, R, L.hat_color, L.outline)
+        if pose.get('brows_over_hat') and not pose.get('back'):
+            brows(c, R, pose, L.outline)
         c.restore()
 
     def draw_head(self, c, x, y, pose_in: dict, angle=0.0, scale=1.0, facing=1):
@@ -371,14 +373,29 @@ class Character:
 
 # --- face parts (head-local: centre (0,0), radius R, facing +x) ----------------------
 
+def brows(c, R, p, outline='outline'):
+    turn = p.get('turn', 0.35)
+    fx = turn * R * 0.42
+    hs = R * 0.30 * (1 - 0.32 * turn)
+    lx = p.get('lx', 0.0)
+    brow = p.get('brow', 0.0)
+    by = -R * 0.33 - p.get('brow_y', 0.0) * R + p.get('face_dy', 0.0) * R
+    bl = R * 0.15
+    for ex, inner in ((fx - hs + lx * R * 0.07, 1), (fx + hs + lx * R * 0.07, -1)):
+        # inner end (toward the nose) drops for anger, rises for worry
+        a = math.radians(brow) * inner
+        dx, dy = math.cos(a) * bl, math.sin(a) * bl
+        c.drawLine(ex - dx, by - dy, ex + dx, by + dy, paint(outline, stroke=6.5))
+
+
 def face(c, R, p, outline='outline'):
     turn = p.get('turn', 0.35)
     fx = turn * R * 0.42
     hs = R * 0.30 * (1 - 0.32 * turn)
     lx, ly = p.get('lx', 0.0), p.get('ly', 0.0)
     ex_b, ex_f = fx - hs + lx * R * 0.07, fx + hs + lx * R * 0.07
-    ey = -R * 0.05 + ly * R * 0.06
-    er = R * 0.105
+    ey = -R * 0.05 + ly * R * 0.06 + p.get('face_dy', 0.0) * R
+    er = R * 0.105 * p.get('eye_size', 1.0)
     eyes = p.get('eyes', 'dot')
     openness = max(0.0, min(1.0, p.get('eye', 1.0)))
     ink = paint(outline)
@@ -419,20 +436,24 @@ def face(c, R, p, outline='outline'):
                 c.drawLine(ex - size * 1.5, ey - size * 0.35, ex + size * 1.5, ey - size * 0.15,
                            paint(outline, stroke=4))
 
-    brow = p.get('brow', 0.0)
-    by = -R * 0.33 - p.get('brow_y', 0.0) * R
-    bl = R * 0.15
-    for ex, inner in ((ex_b, 1), (ex_f, -1)):
-        # inner end (toward the nose) drops for anger, rises for worry
-        a = math.radians(brow) * inner
-        dx, dy = math.cos(a) * bl, math.sin(a) * bl
-        c.drawLine(ex - dx, by - dy, ex + dx, by + dy, paint(outline, stroke=6.5))
+    if not p.get('brows_over_hat'):
+        brows(c, R, p, outline)
 
-    mx, my = fx + R * 0.03, R * 0.38
+    mx, my = fx + R * 0.03, R * (0.38 + p.get('mouth_dy', 0.0))
     mw = R * 0.2 * p.get('mwide', 1.0)
     mopen = p.get('mopen', 0.0)
     mouth = p.get('mouth', 'curve')
-    if mouth == 'teeth':
+    if mouth == 'wavy':
+        # a shaky, scared squiggle
+        path = skia.Path()
+        n = 24
+        for k in range(n + 1):
+            u = k / n
+            x = mx - mw * 1.15 + u * mw * 2.3
+            y = my + math.sin(u * math.pi * 4) * R * 0.035 + R * 0.02
+            path.moveTo(x, y) if k == 0 else path.lineTo(x, y)
+        c.drawPath(path, paint(outline, stroke=5))
+    elif mouth == 'teeth':
         r = skia.RRect.MakeRectXY(skia.Rect.MakeLTRB(mx - mw * 1.2, my - R * 0.08, mx + mw * 1.2, my + R * 0.1), 6, 6)
         c.drawRRect(r, paint('#FFFFFF'))
         c.drawRRect(r, paint(outline, stroke=3.5))
