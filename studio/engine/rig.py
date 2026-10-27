@@ -406,7 +406,7 @@ def face(c, R, p, outline='outline'):
             c.drawOval(oval(ex, ey, sr, sr * max(0.12, openness)), paint('#FFFFFF'))
             c.drawOval(oval(ex, ey, sr, sr * max(0.12, openness)), paint(outline, stroke=3.5))
             if openness > 0.3:
-                c.drawCircle(ex + lx * sr * 0.45, ey + ly * sr * 0.45, size * 0.95, ink)
+                c.drawCircle(ex + lx * sr * 0.45, ey + ly * sr * 0.45, size * 0.95 * p.get('pupil', 1.0), ink)
         else:
             ry = size * openness
             if ry < size * 0.18:
@@ -460,13 +460,19 @@ def face(c, R, p, outline='outline'):
             c.drawOval(oval(ex, ey + er * 2.6, er * 1.5, er * 0.7), paint('#F28C8C', 0.45 * p['blush'], blur=3))
     if p.get('sweat', 0) > 0:
         s = p['sweat']
-        x0, y0 = R * 0.8, -R * 0.45
-        path = skia.Path()
-        path.moveTo(x0, y0 - 16 * s)
-        path.cubicTo(x0 + 9 * s, y0 - 2 * s, x0 + 9 * s, y0 + 9 * s, x0, y0 + 9 * s)
-        path.cubicTo(x0 - 9 * s, y0 + 9 * s, x0 - 9 * s, y0 - 2 * s, x0, y0 - 16 * s)
-        c.drawPath(path, paint('#9ED8FF', 0.95))
-        c.drawPath(path, paint(outline, stroke=3))
+        # one drop at the temple; heavy sweat adds drops on the other side and the cheek
+        drops = [(R * 0.8, -R * 0.45, 1.0)]
+        if s > 1.1:
+            drops += [(-R * 0.82, -R * 0.3, 0.8), (R * 0.9, R * 0.1, 0.65)]
+        for x0, y0, k in drops:
+            d = s * k
+            path = skia.Path()
+            path.moveTo(x0, y0 - 16 * d)
+            path.cubicTo(x0 + 9 * d, y0 - 2 * d, x0 + 9 * d, y0 + 9 * d, x0, y0 + 9 * d)
+            path.cubicTo(x0 - 9 * d, y0 + 9 * d, x0 - 9 * d, y0 - 2 * d, x0, y0 - 16 * d)
+            c.drawPath(path, paint('#9ED8FF', 0.95))
+            c.drawCircle(x0 - 2.5 * d, y0 + 2 * d, 2.2 * d, paint('#FFFFFF', 0.8))
+            c.drawPath(path, paint(outline, stroke=3))
     if p.get('tears', 0) > 0:
         tl = p['tears']
         for ex in (ex_b, ex_f):
