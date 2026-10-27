@@ -29,7 +29,7 @@ def head_world(x, y, scale, facing, j):
     return x + facing * scale * hx, y + scale * hy
 
 
-def shade_head(c, hx, hy, R, light=(0.45, -0.9), rim='#FFF1D6', bounce='red'):
+def shade_head(c, hx, hy, R, light=(0.45, -0.9), rim='#FFF1D6', bounce='red', rim_a=0.55):
     """Spotlight shading on a round head: soft shadow away from the light, a rim highlight toward it,
     and a red bounce light from the eyes in the dark."""
     lx, ly = light
@@ -42,7 +42,7 @@ def shade_head(c, hx, hy, R, light=(0.45, -0.9), rim='#FFF1D6', bounce='red'):
         colors=[col('#000000', 0.0), col('#000000', 0.0), col('#1A0C10', 0.42)], positions=[0.0, 0.55, 1.0])
     c.drawCircle(hx, hy, R, paint('#000000', 1.0, shader=shadow))
     c.drawCircle(hx + lx * R * 0.12, hy + ly * R * 0.12, R * 0.98,
-                 paint(rim, 0.55, stroke=R * 0.1, blur=R * 0.05, blend='add'))
+                 paint(rim, rim_a, stroke=R * 0.1, blur=R * 0.05, blend='add'))
     if bounce:
         c.drawCircle(hx - lx * R * 0.1 - R * 0.15, hy + R * 0.1, R,
                      paint(bounce, 0.35, stroke=R * 0.14, blur=R * 0.08, blend='add'))
@@ -201,7 +201,67 @@ def variant_c(c):
     big_text(c, 'PEOPLE SAY?', 70, 350, 150, '#FF4A40', align='left')
 
 
-VARIANTS = {'a': variant_a, 'b': variant_b, 'c': variant_c}
+# --- variant D: the reference channel's own style ---------------------------------------------------------------
+# Flat near-black, one huge head with one emotion, one glowing thing that tells the story, plain white
+# hand-lettered words. Here: hiding under the blanket with his guitar, side-eyeing the red eyes in the dark.
+
+def variant_d(c, words=('WHAT WILL', 'PEOPLE SAY?')):
+    from engine.draw import circle, oval
+    from engine.props import guitar
+    from engine.rig import eye_pair
+    c.drawPaint(paint('#0E0E11'))
+    line = '#4B4F5C'
+    # the figure in the dark: a faint silhouette, then its eyes
+    sil = skia.Path()
+    sil.addCircle(1500, 470, 190)
+    sil.addRRect(skia.RRect.MakeRectXY(skia.Rect.MakeLTRB(1330, 600, 1680, 1200), 120, 120))
+    c.drawPath(sil, paint('#121217'))
+    c.drawPath(sil, paint('red', 0.12, stroke=10, blur=10, blend='add'))
+    eye_pair(c, 1500, 470, 330, 1.0, 18)
+    eye_pair(c, 1170, 210, 110, 1.0, 22, a=0.8)
+    eye_pair(c, 1820, 160, 90, 1.0, 14, a=0.7)
+    # pillow and headboard post
+    c.drawRRect(rrect(330, 640, 640, 190, 80), paint('#3A3D47'))
+    c.drawRRect(rrect(330, 640, 640, 190, 80), paint(line, stroke=7))
+    c.drawRRect(rrect(1090, 380, 60, 760, 30), paint('#24252C'))
+    c.drawRRect(rrect(1090, 380, 60, 760, 30), paint(line, stroke=7))
+    # his guitar, clutched under the blanket, neck sticking out
+    guitar(c, 800, 1000, -60, 2.0, shine=0.6)
+    # the head
+    hx, hy, R = 700, 650, 215
+    HERO_BEANIE.draw_head(c, hx, hy, dict(turn=0.5, eyes='wide', pupil=0.55, lx=0.95, ly=-0.1, brow=-20,
+                                           smile=-0.55, sweat=1.7), angle=-6, scale=R / 62)
+    shade_head(c, hx, hy, R, light=(0.7, -0.5), rim='#FFE6E2', bounce=None, rim_a=0.16)
+    # the blanket pulled up to his chin
+    bl = skia.Path()
+    bl.moveTo(-60, 790)
+    bl.cubicTo(250, 760, 450, 820, 620, 830)
+    bl.cubicTo(800, 840, 900, 800, 1060, 840)
+    bl.lineTo(1080, 1140)
+    bl.lineTo(-60, 1140)
+    bl.close()
+    c.drawPath(bl, paint('#2B3242'))
+    c.drawPath(bl, paint(line, stroke=7))
+    c.drawLine(120, 900, 520, 960, paint(line, 0.7, stroke=6))
+    c.drawLine(640, 930, 960, 980, paint(line, 0.7, stroke=6))
+    # fingers gripping the blanket edge and the guitar neck
+    for fx, fy in ((560, 832), (610, 836), (660, 838)):
+        circle(c, fx, fy, 24, 'skin', 'outline', 6)
+    gx, gy = 800 + math.cos(math.radians(-60)) * 150 * 2.0, 1000 + math.sin(math.radians(-60)) * 150 * 2.0
+    circle(c, gx, gy, 30, 'skin', 'outline', 6)
+    vignette(c, W, H, 0.35)
+    # plain white hand-lettered words, like "DAY 1."
+    size = 150 if len(words) > 1 else 215
+    for k, wline in enumerate(words):
+        y = (190 if len(words) > 1 else 230) + k * 170
+        text(c, wline, 70, y, size, 'Mali-700', 'white', align='left')
+
+
+def variant_e(c):
+    variant_d(c, ('CRINGE.',))
+
+
+VARIANTS = {'a': variant_a, 'b': variant_b, 'c': variant_c, 'd': variant_d, 'e': variant_e}
 
 
 def render(fn, path):
@@ -219,7 +279,7 @@ def build(out_dir):
     out_dir.mkdir(parents=True, exist_ok=True)
     paths = {k: render(fn, out_dir / f'thumbnail_{k}.png') for k, fn in VARIANTS.items()}
     main = out_dir / 'thumbnail.png'
-    main.write_bytes(paths['a'].read_bytes())
+    main.write_bytes(paths['d'].read_bytes())  # the reference channel's style
     return main
 
 
