@@ -135,15 +135,17 @@ def terrified_hero(c, x, y, scale, lx=-0.7, facing=1, guitar=True, light=(0.45, 
 # --- variant A: "WHAT WILL PEOPLE SAY?" - close-up terror, the crowd leaning in -----------------------------
 
 def variant_a(c):
+    hero_x = 1160  # a little right of centre, under the title
+    dx = hero_x - 1385
     background(c)
     crowd_eyes(c, 34, 11, (-40, 230, W + 40, H + 60), (70, 120),
-               avoid=lambda x, y: 900 < x < 1650 and y < 1000)
+               avoid=lambda x, y: 900 + dx < x < 1650 + dx and y < 1000)
     for i, (x, s, f) in enumerate([(140, 1.7, 1), (420, 1.9, 1), (1820, 1.8, -1), (650, 1.55, 1)]):
         SHADE.draw(c, dict(x=x, y=H + 40 - STAND_HIP * s * 0.35, scale=s, facing=f, turn=0.35, eye=1.0,
                            lean=10, tilt=10 + 4 * i, sb=10, sf=-4))
-    cone(c, (1380, -200), 120, H, 540, '#FFF1D6', 0.22, soft=50)
+    cone(c, (1380 + dx, -200), 120, H, 540, '#FFF1D6', 0.22, soft=50)
     # bare round head, no beanie; a quiet, uneasy sideways glance at the crowd instead of cartoon terror
-    hx, hy, R = terrified_hero(c, 1385, 1175, 3.25, lx=-0.75, who=HERO, tremble=False,
+    hx, hy, R = terrified_hero(c, hero_x, 1175, 3.25, lx=-0.75, who=HERO, tremble=False,
                                face=dict(eyes='dot', ly=0.0, brow=-17, brow_y=0.0, mopen=0.0, smile=-0.2,
                                          mwide=0.75, sweat=0.0, tilt=-1))
     light_pool(c, hx, hy - R * 0.6, R * 2.2, R * 1.6, '#FFF1D6', 0.18)
