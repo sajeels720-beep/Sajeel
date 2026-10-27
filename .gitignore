@@ -4,3 +4,7 @@
 # Python bytecode from running skill scripts
 __pycache__/
 *.pyc
+
+# Video studio: local Python env and render output
+.venv/
+output/

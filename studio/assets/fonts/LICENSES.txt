@@ -1,0 +1,3 @@
+Fonts from Google Fonts (fonts.google.com), all under the SIL Open Font License 1.1:
+Patrick Hand, Gochi Hand, Fredoka, Luckiest Guy, Caveat Brush, Short Stack, Baloo 2.
+OFL fonts may be used, embedded and redistributed freely, including commercially.
