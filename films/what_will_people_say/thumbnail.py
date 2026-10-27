@@ -15,7 +15,7 @@ sys.path.insert(0, str(HERE.parents[1] / 'studio'))
 
 import skia  # noqa: E402
 
-from common import HERO_BEANIE, SHADE, STAND_HIP, play_guitar  # noqa: E402
+from common import HERO, HERO_BEANIE, SHADE, STAND_HIP, play_guitar  # noqa: E402
 from engine.core import H, W, hrand, hrange  # noqa: E402
 from engine.draw import col, cone, light_pool, paint, poly, rrect, text, vignette  # noqa: E402
 from engine.fx import eye_field  # noqa: E402
@@ -110,14 +110,14 @@ def background(c, top='#08070B', bottom='#1C0708'):
     c.drawRect(skia.Rect.MakeWH(W, H), paint('#000000', shader=shader))
 
 
-def terrified_hero(c, x, y, scale, lx=-0.7, facing=1, guitar=True, light=(0.45, -0.9)):
+def terrified_hero(c, x, y, scale, lx=-0.7, facing=1, guitar=True, light=(0.45, -0.9), who=HERO_BEANIE):
     gp, mid, _ = play_guitar(0.0, seated=False, strum=False, fret_shift=False) if guitar else ({}, None, 0)
     pose = dict(x=x, y=y, scale=scale, facing=facing, turn=0.12, eyes='wide', pupil=0.5, lx=lx, ly=-0.05,
                 brow=-24, brow_y=0.06, mopen=0.62, mwide=1.15, sweat=1.6, lean=-7, tilt=-6,
                 hb=-6, kb=4, hf=7, kf=4, **gp)
-    j = HERO_BEANIE.draw(c, pose, {'mid': mid} if mid else None)
+    j = who.draw(c, pose, {'mid': mid} if mid else None)
     hx, hy = head_world(x, y, scale, facing, j)
-    R = HERO_BEANIE.look.head_r * scale
+    R = who.look.head_r * scale
     shade_head(c, hx, hy, R, light)
     # trembling marks beside the head
     for side in (-1, 1):
@@ -140,7 +140,7 @@ def variant_a(c):
         SHADE.draw(c, dict(x=x, y=H + 40 - STAND_HIP * s * 0.35, scale=s, facing=f, turn=0.35, eye=1.0,
                            lean=10, tilt=10 + 4 * i, sb=10, sf=-4))
     cone(c, (1380, -200), 120, H, 540, '#FFF1D6', 0.22, soft=50)
-    hx, hy, R = terrified_hero(c, 1385, 1175, 3.25, lx=-0.75)
+    hx, hy, R = terrified_hero(c, 1385, 1175, 3.25, lx=-0.75, who=HERO)  # bare round head, no beanie
     light_pool(c, hx, hy - R * 0.6, R * 2.2, R * 1.6, '#FFF1D6', 0.18)
     light_pool(c, 0, H * 0.75, 900, 700, 'red', 0.22)
 
@@ -150,7 +150,7 @@ def variant_a(c):
     blurred(c, 14, fg)
     vignette(c, W, H, 0.6)
     big_text(c, 'WHAT WILL', 70, 215, 180, 'white', align='left')
-    big_text(c, 'PEOPLE SAY?', 70, 410, 180, '#FFD23F', align='left')
+    big_text(c, 'PEOPLE SAY?', 70, 410, 180, 'white', align='left')
 
 
 # --- variant B: "CRINGE." - everyone is filming him ------------------------------------------------------------
