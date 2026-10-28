@@ -58,7 +58,7 @@ def _col(name):
 # --------------------------------------------------------------------------
 # World: the garden HDRI, with a sunny blue sky for the camera
 # --------------------------------------------------------------------------
-def world(rot_deg=-8.0, strength=0.9, camera_strength=1.0, sky=True, light_sky=0.6):
+def world(rot_deg=-8.0, strength=0.72, camera_strength=1.0, sky=True, light_sky=0.6):
     """Poly Haven "Pool" HDRI. rot_deg turns the garden behind him. sky: the camera sees the
     pale overcast sky pushed to blue (bright, low-saturation pixels above the trees);
     light_sky: how much of that blue the light and reflections get (with the plain HDRI the
@@ -473,8 +473,9 @@ def underwater_hero(hero):
 # --------------------------------------------------------------------------
 # Props
 # --------------------------------------------------------------------------
-def duck(col=None, at=(0.55, -0.55), heading=200.0, drift=(0.0, 0.0), bob=0.004, scale_to=0.11):
-    """The CC0 rubber duck floating at `at` (x, y), bobbing; drift: metres per second."""
+def duck(col=None, at=(0.55, -0.55), heading=200.0, drift=(0.0, 0.0), bob=0.004, scale_to=0.11, speed=1.0):
+    """The CC0 rubber duck floating at `at` (x, y) on frame 0, bobbing; drift: metres per
+    second; speed: how fast its bobbing runs (a time-lapse speeds it up)."""
     col = col or _col("POOL")
     objs = V.polyhaven_model("rubber_duck_toy", "1k", col)
     meshes = [o for o in objs if o.type == "MESH"]
@@ -494,11 +495,12 @@ def duck(col=None, at=(0.55, -0.55), heading=200.0, drift=(0.0, 0.0), bob=0.004,
     root.rotation_euler.z = math.radians(heading)
     fps = bpy.context.scene.render.fps
     base = Vector((at[0], at[1], root.location.z))
-    for f in range(0, 241, 6):
+    for f in range(-60, 241, 3):
         t = f / fps
-        root.location = base + Vector((drift[0] * t, drift[1] * t, bob * math.sin(t * 2.1)))
-        root.rotation_euler = (math.radians(2.0 * math.sin(t * 1.7)), math.radians(2.5 * math.sin(t * 1.3 + 1)),
-                               math.radians(heading + 6 * math.sin(t * 0.5)))
+        tb = t * speed
+        root.location = base + Vector((drift[0] * t, drift[1] * t, bob * math.sin(tb * 2.1)))
+        root.rotation_euler = (math.radians(2.0 * math.sin(tb * 1.7)), math.radians(2.5 * math.sin(tb * 1.3 + 1)),
+                               math.radians(heading + 6 * math.sin(tb * 0.5)))
         root.keyframe_insert("location", frame=f)
         root.keyframe_insert("rotation_euler", frame=f)
     return root
@@ -544,19 +546,208 @@ def marble(col=None, at=(0.12, -0.32, None), radius=0.008):
     return glass
 
 
+def set_time_speed(factor):
+    """Run the water faster (a time-lapse) or slower: ripples, light patterns and swell."""
+    fps = bpy.context.scene.render.fps
+    for m in bpy.data.materials:
+        nt = m.node_tree
+        if nt is None:
+            continue
+        hit = False
+        for n in nt.nodes:
+            if n.name in ("Caustic_Time", "Ripple_Time"):
+                for f in (0, 3000):
+                    n.outputs[0].default_value = f / fps * CAUSTIC_SPEED * factor
+                    n.outputs[0].keyframe_insert("default_value", frame=f)
+                hit = True
+        if hit:
+            for fc in V.fcurves(nt):
+                for kp in fc.keyframe_points:
+                    kp.interpolation = "LINEAR"
+    drift = bpy.data.objects.get("Pool_Swell_Drift")
+    if drift is not None:
+        for f, d in ((0, 0.0), (3000, 3000 / fps * 0.12 * factor)):
+            drift.location = (d, d * 0.6, 0.0)
+            drift.keyframe_insert("location", frame=f)
+        for fc in V.fcurves(drift):
+            for kp in fc.keyframe_points:
+                kp.interpolation = "LINEAR"
+
+
+def _clock(nt):
+    """A Value node that counts frames (keyed linearly)."""
+    v = nt.nodes.get("Frame_Clock")
+    if v is None:
+        v = nt.nodes.new("ShaderNodeValue")
+        v.name = v.label = "Frame_Clock"
+        for f in (-200, 3000):
+            v.outputs[0].default_value = f
+            v.outputs[0].keyframe_insert("default_value", frame=f)
+        for fc in V.fcurves(nt):
+            if "Frame_Clock" in fc.data_path:
+                for kp in fc.keyframe_points:
+                    kp.interpolation = "LINEAR"
+    return v.outputs[0]
+
+
+def ripples(water_ob, events, speed=0.32, wavelength=0.045, width=0.07, life=1.0):
+    """Rings spreading over the water from where something breaks its surface:
+    events = [(frame, x, y, strength), ...], added to the water's ripple bump."""
+    mat = water_ob.data.materials[0]
+    nt, L = mat.node_tree, mat.node_tree.links
+    bp = next(n for n in nt.nodes if n.bl_idname == "ShaderNodeBump")
+    h = bp.inputs["Height"].links[0].from_socket
+    clock = _clock(nt)
+    geo = nt.nodes.new("ShaderNodeNewGeometry")
+    sep = nt.nodes.new("ShaderNodeSeparateXYZ")
+    L.new(geo.outputs["Position"], sep.inputs[0])
+    fps = bpy.context.scene.render.fps
+    m = lambda op, a, b=None: SKY._math(nt, op, a, b)
+    for f0, x, y, amp in events:
+        dx, dy = m("SUBTRACT", sep.outputs["X"], x), m("SUBTRACT", sep.outputs["Y"], y)
+        r = m("SQRT", m("ADD", m("MULTIPLY", dx, dx), m("MULTIPLY", dy, dy)))
+        t = m("DIVIDE", m("SUBTRACT", clock, f0), fps)
+        front = m("SUBTRACT", r, m("MULTIPLY", t, speed))
+        wave = m("SINE", m("MULTIPLY", front, 2 * math.pi / wavelength))
+        env = m("EXPONENT", m("MULTIPLY", m("MULTIPLY", front, front), -1.0 / (width * width)))
+        alive = m("MULTIPLY", m("GREATER_THAN", t, 0.0), m("EXPONENT", m("MULTIPLY", t, -1.0 / life)))
+        h = m("ADD", h, m("MULTIPLY", m("MULTIPLY", wave, env), m("MULTIPLY", alive, 0.6 * amp)))
+    L.new(h, bp.inputs["Height"])
+
+
+def falling_drop(name, start, pos, vel=(0.0, 0.0, 0.0), radius=0.0022, col=None):
+    """A drop of water that falls from `pos` (world) from frame `start` under gravity,
+    stretched by its speed, and vanishes into the pool. Returns (object, landing frame,
+    landing (x, y))."""
+    col = col or _col("POOL")
+    mat = bpy.data.materials.get("Drop_Water") or water_material("Drop_Water", ripple=0.0)
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=radius, segments=12, ring_count=8, location=pos)
+    ob = bpy.context.active_object
+    ob.name = name
+    for c in list(ob.users_collection):
+        c.objects.unlink(ob)
+    col.objects.link(ob)
+    for p in ob.data.polygons:
+        p.use_smooth = True
+    ob.data.materials.append(mat)
+    fps = bpy.context.scene.render.fps
+    p0, v0 = Vector(pos), Vector(vel)
+    ob.scale = (0.0, 0.0, 0.0)
+    ob.keyframe_insert("scale", frame=start - 1)
+    f, p = start, p0
+    while f < start + 60:
+        t = (f - start) / fps
+        p = p0 + v0 * t + Vector((0.0, 0.0, -4.905 * t * t))
+        if p.z < WATER_Z:
+            break
+        v = v0 + Vector((0.0, 0.0, -9.81 * t))
+        st = 1.0 + min(1.8, v.length * 0.4)
+        ob.location = p
+        ob.scale = (1 / math.sqrt(st), 1 / math.sqrt(st), st)
+        ob.keyframe_insert("location", frame=f)
+        ob.keyframe_insert("scale", frame=f)
+        f += 1
+    ob.scale = (0.0, 0.0, 0.0)
+    ob.keyframe_insert("scale", frame=f)
+    for fc in V.fcurves(ob):
+        for kp in fc.keyframe_points:
+            kp.interpolation = "LINEAR"
+    return ob, f, (p.x, p.y)
+
+
+def palm_fronds(over, sun_dir, rise=2.2, count=3, col=None, seed=3):
+    """Palm fronds out of shot whose shadows sweep over him as the sun moves (the time-lapse).
+    Only their shadows show: the camera, reflections and bounce light don't see them."""
+    import bmesh
+    import random
+    rnd = random.Random(seed)
+    col = col or _col("POOL")
+    d = Vector(sun_dir).normalized()
+    base = Vector(over) + d * (rise / max(d.z, 0.2))
+    obs = []
+    for i in range(count):
+        bm = bmesh.new()
+        length = rnd.uniform(1.7, 2.3)
+        for j in range(36):
+            s = (j + 1) / 37
+            p = Vector((0.0, s * length, -0.3 * s * s * length))
+            leaf = 0.16 + 0.36 * math.sin(math.pi * min(1.0, s * 1.12))
+            for side in (-1.0, 1.0):
+                dv = Vector((side * 0.85, 0.5, -0.28)).normalized()
+                w = Vector((-dv.y, dv.x, 0.0)).normalized() * 0.032   # narrower ones blur away in the sun's soft edge
+                tip = p + dv * leaf
+                bm.faces.new([bm.verts.new(p - w), bm.verts.new(p + w), bm.verts.new(tip + w * 0.3),
+                              bm.verts.new(tip - w * 0.3)])
+        me = bpy.data.meshes.new(f"Palm_Frond_{i}")
+        bm.to_mesh(me)
+        bm.free()
+        ob = V.link(bpy.data.objects.new(f"Palm_Frond_{i}", me), col)
+        ob.location = base + Vector((rnd.uniform(-0.7, 0.7), rnd.uniform(-0.7, 0.7), rnd.uniform(-0.2, 0.3)))
+        ob.rotation_euler = (math.radians(rnd.uniform(-10, 10)), math.radians(rnd.uniform(-15, 15)),
+                             math.radians(rnd.uniform(0, 360)))
+        for attr in ("visible_camera", "visible_diffuse", "visible_glossy", "visible_transmission",
+                     "visible_volume_scatter"):
+            setattr(ob, attr, False)
+        obs.append(ob)
+    return obs
+
+
+def sun_dir(az, el):
+    a, e = math.radians(az), math.radians(el)
+    return Vector((math.sin(a) * math.cos(e), -math.cos(a) * math.cos(e), math.sin(e)))
+
+
+def key_sun(ob, keys, interp="LINEAR"):
+    """Swing the sun: keys = [(frame, az, el, colour or None)]."""
+    for f, az, el, color in keys:
+        ob.rotation_euler = sun_dir(az, el).to_track_quat("Z", "Y").to_euler()
+        ob.keyframe_insert("rotation_euler", frame=f)
+        if color is not None:
+            ob.data.color = color
+            ob.data.keyframe_insert("color", frame=f)
+    for idd in (ob, ob.data):
+        V.ease_id(idd, interp)
+
+
+def cloud_flicker(ob, dips, strength=None):
+    """Clouds racing over the sun in a time-lapse: the sun dims for a few frames at a time.
+    dips = [(frame, frames long, how dark 0..1)]."""
+    full = strength if strength is not None else ob.data.energy
+    keys = [(1, full)]
+    for f, length, dark in dips:
+        keys += [(f - 2, full), (f + 1, full * (1 - dark)), (f + length - 1, full * (1 - dark * 0.8)), (f + length + 2, full)]
+    for f, e in sorted(keys):
+        ob.data.energy = e
+        ob.data.keyframe_insert("energy", frame=f)
+    V.ease_id(ob.data, data_path="energy")
+
+
 # --------------------------------------------------------------------------
 # Light
 # --------------------------------------------------------------------------
-def sun(az=35.0, el=48.0, strength=4.2, angle=1.2, color=SUN_COLOR, col=None):
+def sun(az=35.0, el=48.0, strength=5.2, angle=1.2, color=SUN_COLOR, col=None):
     """The key: a warm sun. az/el in the look_dir convention (0 = in front of him, -Y;
     90 = his left / screen right in a front view)."""
     col = col or _col("LIGHTS")
     lt = bpy.data.lights.new("Key_Sun", "SUN")
     lt.energy, lt.color, lt.angle = strength, color, math.radians(angle)
     ob = V.link(bpy.data.objects.new("Key_Sun", lt), col)
-    a, e = math.radians(az), math.radians(el)
-    to_sun = Vector((math.sin(a) * math.cos(e), -math.cos(a) * math.cos(e), math.sin(e)))
-    ob.rotation_euler = to_sun.to_track_quat("Z", "Y").to_euler()
+    ob.rotation_euler = sun_dir(az, el).to_track_quat("Z", "Y").to_euler()
+    return ob
+
+
+def fill(target, from_dir, dist=0.6, power=12.0, size=0.5, color=H("#FFF0E0"), col=None, name="Fill"):
+    """A soft fill from near the camera (no reflections), for close-ups."""
+    col = col or _col("LIGHTS")
+    lt = bpy.data.lights.new(name, "AREA")
+    lt.energy, lt.color, lt.size = power, color, size
+    if hasattr(lt, "specular_factor"):
+        lt.specular_factor = 0.0
+    ob = V.link(bpy.data.objects.new(name, lt), col)
+    ob.visible_glossy = False
+    d = Vector(from_dir).normalized()
+    ob.location = Vector(target) + d * dist
+    ob.rotation_euler = (-d).to_track_quat("-Z", "Y").to_euler()
     return ob
 
 
@@ -576,13 +767,14 @@ def rim(target, from_dir=(-0.5, 1.0, 0.55), dist=2.6, power=260.0, size=1.6, col
     return ob
 
 
-def build(duck_at=(0.55, -0.55), marble_at=(0.12, -0.32, None), hdri_rot=-8.0, sun_az=35.0, sun_el=48.0):
+def build(duck_at=(0.55, -0.55), marble_at=(0.12, -0.32, None), hdri_rot=-8.0, sun_az=35.0, sun_el=48.0,
+          duck_drift=(0.0, 0.0), duck_speed=1.0):
     """The whole set. Returns its parts."""
     col = _col("POOL")
     world(rot_deg=hdri_rot)
     parts = pool(col)
     parts["water"] = water(col)
-    parts["duck"] = duck(col, at=duck_at) if duck_at else None
+    parts["duck"] = duck(col, at=duck_at, drift=duck_drift, speed=duck_speed) if duck_at else None
     parts["marble"] = marble(col, at=marble_at) if marble_at else None
     parts["sun"] = sun(sun_az, sun_el)
     sc = bpy.context.scene

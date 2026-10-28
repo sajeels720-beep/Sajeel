@@ -19,6 +19,7 @@ from mathutils import Matrix, Vector
 import acting as A
 import character as C
 import pool_set as PS
+import vfx_kit as V
 
 LEAN = 9.0                     # degrees he leans back against the wall
 BACK_GAP = 0.012               # shirt to tiles
@@ -110,6 +111,56 @@ def hand_shape(hero, side, curl, together=0.95, thumb_in=0.5, frame=None):
             if frame is not None:
                 pb.keyframe_insert("rotation_euler", frame=frame)
     _update()
+
+
+def arm_path(hero, side, poses, frames, twist_share=0.5):
+    """Move a hand along a smooth path: poses = [(frame, loc, fingers, palm, pole), ...].
+    The wrist and the elbow's pole are keyed on helper empties (eased Bezier curves through
+    the poses, so the hand flows through the middle ones instead of stopping), then the arm
+    is solved and keyed on every frame in `frames` (sneeze/scenes/acting.bake_arm)."""
+    rig = hero["rig"]
+    col = V.collection("RIG_HELPERS")
+    hand = V.link(bpy.data.objects.new(f"Wrist_Path.{side}", None), col)
+    pole = V.link(bpy.data.objects.new(f"Pole_Path.{side}", None), col)
+    hand.rotation_mode = "QUATERNION"
+    prev = None
+    for f, loc, fingers, palm, pole_dir in poses:
+        M = wrist_matrix(rig, side, loc, fingers, palm)
+        q = M.to_quaternion()
+        if prev is not None and q.dot(prev) < 0:
+            q = -q
+        prev = q
+        hand.location, hand.rotation_quaternion = M.translation, q
+        hand.keyframe_insert("location", frame=f)
+        hand.keyframe_insert("rotation_quaternion", frame=f)
+        pole.location = Vector(pole_dir)
+        pole.keyframe_insert("location", frame=f)
+    for ob in (hand, pole):
+        V.ease_id(ob)
+
+    def wrist(f):
+        rot = hand.rotation_quaternion.normalized().to_matrix().to_4x4()
+        return Matrix.Translation(hand.location) @ rot
+    A.bake_arm(rig, side, frames, wrist, lambda f: pole.location.copy(), twist_share)
+    _update()
+    return hand
+
+
+def key_face(hero, keys, off=0):
+    """Expressions over time: keys = [(frame, {face unit: value})]; any unit used anywhere
+    but not listed at a key is 0 there, so expressions blend cleanly."""
+    units = sorted({u for _, d in keys for u in d})
+    for f, d in keys:
+        C.face(hero["body"], {u: d.get(u, 0.0) for u in units}, f - off)
+
+
+def key_bones(hero, keys, off=0):
+    """Body over time: keys = [(frame, {bone: (x, y, z) degrees})]; any bone used anywhere but
+    not listed at a key is at rest (0, 0, 0) there."""
+    names = sorted({n for _, d in keys for n in d})
+    for f, d in keys:
+        bones(hero, {n: d.get(n, (0.0, 0.0, 0.0)) for n in names}, f - off)
+    V.ease_id(hero["rig"], data_path="pose.bones")
 
 
 def bones(hero, rotations, frame=None):

@@ -131,12 +131,33 @@ def _get(url, dest):
     return dest
 
 
+def _cached(asset_id, kind, res):
+    """The files an earlier download left in ASSET_DIR (None if there are none), so a build
+    still works when Poly Haven can't be reached."""
+    if kind == "hdris":
+        p = os.path.join(ASSET_DIR, "hdri", f"{asset_id}_{res}.hdr")
+        return p if os.path.exists(p) else None
+    folder = os.path.join(ASSET_DIR, "textures", asset_id)
+    if not os.path.isdir(folder):
+        return None
+    tags = {"diffuse": "_diff_", "rough": "_rough_", "normal": "_nor_gl_", "disp": "_disp_", "ao": "_ao_"}
+    out = {k: os.path.join(folder, f) for f in os.listdir(folder) for k, t in tags.items() if t in f and f"_{res}." in f}
+    return out or None
+
+
 def polyhaven(asset_id, kind="hdris", res="2k"):
     """Download a Poly Haven asset (CC0). kind: 'hdris' -> path of the .hdr;
-    'textures' -> dict of map paths (diffuse, rough, normal, disp, ao)."""
+    'textures' -> dict of map paths (diffuse, rough, normal, disp, ao). Uses the copy already
+    downloaded if Poly Haven can't be reached."""
     req = urllib.request.Request(f"https://api.polyhaven.com/files/{asset_id}", headers={"User-Agent": "vfx_kit/1.0"})
-    with urllib.request.urlopen(req, timeout=60) as r:
-        files = json.loads(r.read())
+    try:
+        with urllib.request.urlopen(req, timeout=60) as r:
+            files = json.loads(r.read())
+    except OSError:
+        cached = _cached(asset_id, kind, res)
+        if cached:
+            return cached
+        raise
     if kind == "hdris":
         url = files["hdri"][res]["hdr"]["url"]
         return _get(url, os.path.join(ASSET_DIR, "hdri", os.path.basename(url)))
@@ -153,15 +174,21 @@ def polyhaven(asset_id, kind="hdris", res="2k"):
 def polyhaven_model(asset_id, res="1k", col=None):
     """Download a Poly Haven model (CC0) as glTF with its textures and import it.
     Returns the imported objects (moved into `col` if given)."""
-    req = urllib.request.Request(f"https://api.polyhaven.com/files/{asset_id}", headers={"User-Agent": "vfx_kit/1.0"})
-    with urllib.request.urlopen(req, timeout=60) as r:
-        files = json.loads(r.read())
-    gl = files["gltf"].get(res) or next(iter(files["gltf"].values()))
-    gl = gl["gltf"]
     folder = os.path.join(ASSET_DIR, "models", asset_id)
-    path = _get(gl["url"], os.path.join(folder, os.path.basename(gl["url"])))
-    for rel, info in gl.get("include", {}).items():
-        _get(info["url"], os.path.join(folder, rel))
+    req = urllib.request.Request(f"https://api.polyhaven.com/files/{asset_id}", headers={"User-Agent": "vfx_kit/1.0"})
+    try:
+        with urllib.request.urlopen(req, timeout=60) as r:
+            files = json.loads(r.read())
+        gl = files["gltf"].get(res) or next(iter(files["gltf"].values()))
+        gl = gl["gltf"]
+        path = _get(gl["url"], os.path.join(folder, os.path.basename(gl["url"])))
+        for rel, info in gl.get("include", {}).items():
+            _get(info["url"], os.path.join(folder, rel))
+    except OSError:                                              # offline: the copy downloaded before
+        path = next((os.path.join(folder, f) for f in sorted(os.listdir(folder)) if f.endswith(".gltf")), None) \
+            if os.path.isdir(folder) else None
+        if path is None:
+            raise
     before = set(bpy.data.objects)
     bpy.ops.import_scene.gltf(filepath=path)
     new = [o for o in bpy.data.objects if o not in before]
