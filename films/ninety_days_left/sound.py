@@ -319,9 +319,28 @@ def compose():
     s.note('piano', PIANO, 155.8, 3.8, 'C5', 50)
     s.note('piano', PIANO, 156.5, 3.2, 'F5', 44)
     s.note('piano', PIANO, 157.2, 2.6, 'A5', 40)
-    s.ramp('orch', PAD, 157.0, 159.6, 80, 0)
-    s.ramp('piano', PIANO, 157.8, 159.8, 127, 30, control=11)
+    s.ramp('orch', PAD, 157.6, 160.0, 80, 12)
+    s.ramp('piano', PIANO, 158.2, 160.0, 127, 70, control=11)
     return s
+
+
+def step_times(t0, t1, speed):
+    """Heel strikes of rig.walk(T, speed): a leg reaches full stride at T = (0.25 + 0.5 k) / speed."""
+    import math
+    k = math.ceil(t0 * speed * 2 - 0.5)
+    out = []
+    while True:
+        t = (0.25 + 0.5 * k) / speed
+        if t > t1:
+            return out
+        if t >= t0:
+            out.append(t)
+        k += 1
+
+
+def steps(mx, t0, t1, speed, gain=-14, wood=False, seed=0, pan=0.0):
+    for k, t in enumerate(step_times(t0, t1, speed)):
+        mx.add('sfx', sfx.footstep(wood, seed + k), t, gain, pan=pan + 0.12 * (1 if k % 2 else -1))
 
 
 # --- effects, ambience and voices on the timeline --------------------------------------------------------
@@ -368,7 +387,7 @@ def place_sfx(mx):
         add('sfx', sfx.whoosh(0.35, 400, 3000, int(t0)), t0 - 0.18, -16)
     for k in range(6):
         add('sfx', sfx.thud(60 + k, 0.6), EV['wobble'] + k * 0.11, -12 - k, pan=-0.3)
-    add('sfx', sfx.footsteps([0.0, 0.32, 0.64], seed=5), EV['wobble'] + 0.2, -14)
+    steps(mx, EV['wobble'] + 0.15, EV['wobble'] + 0.8, 1.2, -14, seed=5)
     add('sfx', sfx.thud(70, 1.2), EV['flop'] + 0.22, -6)
 
     # the shadow rises
@@ -383,12 +402,14 @@ def place_sfx(mx):
     add('sfx', sfx.tape_rip(1.4, 5), EV['tape'] + 0.4, -10, pan=0.3)
     add('sfx', sfx.tape_rip(1.0, 6), EV['tape'] + 2.0, -12, pan=0.3)
     add('sfx', sfx.click(7), EV['light_off'], -8, pan=0.5)
-    add('sfx', sfx.footsteps([0.0, 0.55, 1.1], seed=7), EV['light_off'] + 0.4, -14, pan=0.5)
+    steps(mx, EV['light_off'] + 0.3, EV['door_close'] - 0.1, 0.9, -14, seed=7, pan=0.5)
+    steps(mx, 60.2, 61.4, 0.8, -20, seed=70, pan=-0.5)
     add('sfx', sfx.door(True, 8), EV['door_close'] - 0.9, -12, pan=0.7)
     add('sfx', sfx.door(False, 9), EV['door_close'], -8, pan=0.7)
 
     # Day 1
-    add('sfx', sfx.footsteps([0.0, 0.35], seed=9), 62.0, -14)
+    for a, b in ((62.0, 62.7), (66.0, 66.3), (67.6, 67.9)):
+        steps(mx, a, b, 1.1, -14, seed=int(a))
     add('sfx', sfx.buzz(0.6, 10), 62.2, -8)
     add('sfx', sfx.drawer(True, 11), EV['drawer_open'], -8)
     add('sfx', sfx.thud(12, 0.4), EV['drop_phone'] + 0.2, -10)
@@ -409,6 +430,9 @@ def place_sfx(mx):
     add('sfx', sfx.sludge(1.6, 26), EV['alarm2'] + 0.3, -8, fade_out=0.4)
     add('sfx', sfx.whoosh(0.6, 300, 4000, 27), EV['break_free'] - 0.2, -6)
     add('sfx', sfx.footstep(True, 28), EV['break_free'] + 0.5, -8)
+    steps(mx, EV['break_free'] + 0.8, 82.0, 1.2, -16, seed=29)
+    steps(mx, 89.0, 90.4, 0.8, -18, seed=31, pan=-0.3)
+    steps(mx, 95.2, 96.0, 0.8, -18, seed=33, pan=-0.3)
     add('sfx', sfx.bang(30), 83.7, -12)
     add('sfx', sfx.bang(31), 84.5, -12)
     add('sfx', sfx.scribble(1.0, 32), EV['pencil_up'] + 0.2, -14)
@@ -430,16 +454,19 @@ def place_sfx(mx):
     # the exam hall
     for k in range(12):
         add('sfx', sfx.tick(k % 2 == 1, 80 + k), 108.4 + k * 0.5, -16, pan=0.1)
-    add('sfx', sfx.footsteps([0.0, 0.5], seed=41), 108.0, -16)
+    steps(mx, 108.0, EV['sit'], 1.0, -16, seed=41)
     add('sfx', sfx.page_flip(42), EV['paper_flip'], -10)
     add('sfx', sfx.heartbeat(96, 1.8), EV['blank'], -6, fade_in=0.3)
     add('sfx', sfx.tinnitus(1.7, 43), EV['blank'] - 0.1, -12)
     add('sfx', sfx.impact(44), EV['roar'], -6)
     for t in EV['memories']:
-        add('sfx', sfx.shimmer(0.5, 45 + int(t), 20), t, -16)
+        add('sfx', sfx.shimmer(0.5, 45 + int(t), 20), t, -14)
+        add('sfx', sfx.whoosh(0.3, 3000, 600, int(t * 10)), t - 0.12, -12)
+    add('sfx', sfx.heartbeat(64, 2.2), ROAR[2], -10, fade_out=0.6)
     add('sfx', sfx.breath_in(46), EV['breath'], -4)
     add('sfx', sfx.scribble(2.0, 47), EV['write'], -10)
-    add('sfx', sfx.puff_out(48), EV['shade_gone'] - 0.4, -8)
+    add('sfx', sfx.puff_out(48), EV['shade_gone'] - 0.4, 0)
+    add('sfx', sfx.whoosh(0.9, 2500, 300, 60), EV['shade_gone'] - 0.5, -4)
     add('sfx', sfx.shimmer(2.0, 49, 30), EV['release'] + 0.1, -14)
 
     # result day
@@ -448,10 +475,11 @@ def place_sfx(mx):
     add('sfx', sfx.breath_in(52), EV['tears'] - 0.4, -14)
 
     # 5 AM again
-    add('sfx', sfx.footsteps([k * 0.6 for k in range(5)], seed=53), 136.2, -16)
+    steps(mx, EV['shoulder'] - 0.85, EV['shoulder'] - 0.15, 0.9, -18, seed=50)
+    steps(mx, 136.0, 138.6, 0.85, -16, seed=53)
     add('sfx', sfx.shimmer(1.6, 54, 16), EV['shoes_seen'], -18)
     add('sfx', sfx.door(True, 55), EV['door_sun'], -10, pan=0.6)
-    add('sfx', sfx.footsteps([0.0, 0.6, 1.2], seed=56), EV['door_sun'] + 0.5, -16, pan=0.6)
+    steps(mx, EV['door_sun'] + 0.2, 146.6, 0.85, -16, seed=56, pan=0.5)
 
 
 MUFFLED = {'let me out!', 'you’re not smart enough.'}
@@ -477,9 +505,15 @@ def place_voices(mx, work):
         mx.add('voice', x, t0 + 0.02, -1, max_len=room + 1.5, fade_out=0.4)
         windows.append((t0, min(t1, t0 + len(x) / SR)))
     text, r0, r1 = ROAR
-    rx = voices.roar(text, [('Charon', 0.8), ('Fenrir', 0.68), ('Algenib', 0.85), ('Enceladus', 0.75)],
+    rx = voices.roar(text, [('Algenib', 0.93), ('Charon', 0.72), ('Fenrir', 0.66), ('Enceladus', 0.8)],
                      cache, tmp, length=r1 - r0 - 0.3)
-    mx.add('voice', rx, r0, -2, fade_out=0.6)
+    rx = rx + 0.6 * bp(rx, 1800, 4500)
+    mx.add('voice', rx, r0, -3, fade_out=0.6)
+    # the same words, whispered right at his ear, so they can be understood
+    wx = voices.line('you’ll go blank.', 'hiss', 'Enceladus', cache, tmp, pan=0.2, seed=99,
+                     max_dur=r1 - r0 - 0.4)
+    wx = hp(wx, 170, 2) + 0.7 * bp(hp(wx, 170, 2), 2000, 4800)
+    mx.add('voice', wx, r0 + 0.15, 0, fade_out=0.4)
     windows.append((r0, r1))
     return windows
 

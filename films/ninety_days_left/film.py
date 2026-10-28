@@ -42,7 +42,8 @@ def post(c, T):
     fade(c, W, H, a)
     flash(c, W, H, 0.22 * beat_env(T, LAPSE_FLASH, 0.1) + 0.75 * beat_env(T, [EV['drop']], 0.15)
           + 0.4 * beat_env(T, [EV['release']], 0.25)
-          + 0.5 * beat_env(T, [EV['look_door'], EV['pencil_up']], 0.18))
+          + 0.5 * beat_env(T, [EV['look_door'], EV['pencil_up']], 0.18)
+          + 0.45 * beat_env(T, EV['memories'] + [m + 0.3 for m in EV['memories']], 0.12))
 
 
 def build():

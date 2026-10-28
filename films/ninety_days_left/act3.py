@@ -23,6 +23,7 @@ ISLAND = (560, 1380)          # x range of the kitchen island
 ISLAND_TOP = KITCHEN_FLOOR - 150
 SON_X, DAD_X = 760, 1190
 LAPTOP_X = 960
+EXIT_AT = 145.8   # he reaches the doorway; then steps out into the sun
 
 
 def kitchen(c, T, sun=1.0):
@@ -185,11 +186,15 @@ def morning(c, t, T):
     else:
         turned = smooth(EV['father_turns'], EV['father_turns'] + 0.5, T)
         nod = math.sin(max(0.0, T - 143.2) * 6) * smooth(143.2, 143.4, T) * (1 - smooth(143.9, 144.2, T))
-        walk_t = smooth(EV['door_sun'] + 0.4, 147.0, T)
-        x = STOOL_X - 30 + 330 * walk_t
-        out = smooth(146.2, 147.0, T)
-        pose = merge(standing(), walk(T, 0.85, 18) if 0.02 < walk_t < 0.98 else idle(T, 44, 0.6),
-                     x=x, y=fy - STAND_HIP, facing=-1 if turned > 0.5 and T < EV['door_sun'] else 1, turn=0.3,
+        walk_t = smooth(EV['door_sun'] + 0.2, EXIT_AT, T)
+        door_mid = FRONT_DOOR[0] + FRONT_DOOR[1] / 2
+        x = STOOL_X - 30 + (door_mid - (STOOL_X - 30)) * walk_t
+        out = smooth(EXIT_AT, EXIT_AT + 0.8, T)
+        sc = 1.0 - 0.2 * out   # stepping away from us, through the doorway
+        walking = 0.02 < walk_t and out < 0.98
+        pose = merge(standing(), walk(T, 0.85, 18) if walking else idle(T, 44, 0.6),
+                     x=x, y=fy - STAND_HIP * sc - 10 * out, scale=sc,
+                     facing=-1 if turned > 0.5 and T < EV['door_sun'] else 1, turn=0.3,
                      eyes='happy' if T > 142.8 else 'dot', bags=0.8, brow=4, smile=0.6, tears=0.5,
                      tilt=8 * nod, lean=4, eye=blink(T, 45), alpha=1.0 - out)
         pose['hand_b'] = (60, -70) if T < EV['door_sun'] else (36, -40)
