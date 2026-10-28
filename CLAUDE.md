@@ -10,5 +10,6 @@ sound effects and Gemini TTS whispers. See `studio/README.md`.
 
 ## Thumbnails
 
-Every thumbnail must follow `studio/THUMBNAILS.md` and match the owner's favourite,
-`studio/assets/reference/thumbnail_reference.png`. Look at that image before designing a new one.
+Every thumbnail must follow `studio/THUMBNAILS.md`: match the quality and style of the owner's favourite,
+`studio/assets/reference/thumbnail_reference.png`, but not its content. Each film gets its own scene, props and
+words. Look at that image before designing a new one.

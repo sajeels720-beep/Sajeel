@@ -1,7 +1,8 @@
 """Finish a code-drawn thumbnail layout in the house thumbnail style with a Gemini image model.
 
-The layout fixes composition, pose, emotion and title placement; the reference image fixes the look
-(see studio/THUMBNAILS.md). The API key is read the same way as for the whispers and never printed.
+The layout decides what is in the picture (scene, characters, props, palette, title placement); the reference
+image only sets the rendering quality and style (see studio/THUMBNAILS.md). The API key is read the same way
+as for the whispers and never printed.
 
     .venv/bin/python studio/polish.py LAYOUT.png OUT.png --title "WHAT WILL|PEOPLE SAY?" --emotion "quiet worry"
 """
@@ -29,21 +30,22 @@ MAX_BYTES = 2 * 1024 * 1024  # YouTube's thumbnail limit
 
 PROMPT = """Create a finished YouTube thumbnail, 16:9.
 
-The FIRST image is the layout. Keep its composition, framing, the main character's position, size and pose, \
-the guitar or props, where the crowd stands, and where the title sits.
+The FIRST image is the layout and decides WHAT is in the picture: keep its scene, composition, framing, every \
+character exactly as drawn (round white heads, their clothes and accessories), their positions, sizes, poses and \
+expressions, the props, the colour palette and mood, and where the title sits.
 
-The SECOND image is the style reference. Use it only for the look, not its content: soft cinematic lighting; \
-a near-black charcoal background with a gentle hazy spotlight from above; plain black silhouette figures with \
-glowing red eyes and a thin red rim light, at several depths (big soft-focus figures at the frame edges, \
-smaller sharper ones behind, tiny pairs of red eyes far back in the dark); soft shading on the round white head \
-with small catchlights in the eyes; shallow depth of field; high contrast; clean and readable at phone size.
+The SECOND image is a style and quality reference only. Copy HOW it is rendered, never what it shows (ignore its \
+characters, crowd, guitar and words): a polished, premium 2D cartoon finish; soft cinematic lighting from one \
+clear source with a gentle haze; soft shading on rounded forms; small catchlights in the eyes; shallow depth of \
+field with soft-focus foreground shapes; strong contrast so the title and the main face are the brightest things \
+in the frame; glows kept subtle near the frame edges; clean shapes that still read at phone size.
 
-The main character is a simple cartoon person with a perfectly round white head, no hair, no hat, dot eyes, \
-eyebrows and a small mouth showing {emotion}. {extra}
+The main character shows {emotion}, kept subtle and human: no sweat drops, no shake lines, no exaggerated face. \
+{extra}
 
 Title text, spelled exactly as written and nothing else: {title}. Bold white rough-brush capital letters with \
-a thick black outline, as in the second image, placed where the layout has it. No other text, no logos, \
-no watermark, no borders."""
+a thick black outline, in the lettering style of the second image, placed where the layout has it. No other \
+text, no logos, no watermark, no borders."""
 
 
 def request(model, parts, size):

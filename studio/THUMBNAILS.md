@@ -1,50 +1,51 @@
 # Thumbnails: the house style
 
-The channel owner's favourite thumbnail is the standard every new one is measured against:
+The channel owner's favourite thumbnail sets the **quality and style** every new one must reach:
 [`assets/reference/thumbnail_reference.png`](assets/reference/thumbnail_reference.png) (film 1, "WHAT WILL PEOPLE SAY?").
-Open it before designing anything, and match its look.
 
-## What makes it work
+**Copy the style, not the picture.** Each film gets its own thumbnail idea: its own scene, characters, props,
+colours and words, chosen to fit that story. Nothing about film 1's content (the red-eyed crowd, the guitar,
+the stage) carries over unless the new story needs it.
 
-- **Two bright things only.** The title and the hero's face are the only white in the frame; the red eyes come
-  second; everything else is near-black. The eye goes straight to the words, then the face.
-- **The title.** Top-left, two short lines, huge (letters about 12% of the frame height). Bold white capitals
-  with rough dry-brush edges and a thick black outline, slightly overlapping the scene. Never over the face.
-- **One character, one quiet emotion.** The hero's round white head is big (about a third of the frame height)
-  and just right of centre, under the title. Soft spherical shading on the head, small white catchlights in the
-  dot eyes, worried brows and a small frown, glancing sideways at the crowd. Subtle and human, not cartoon panic.
-- **The prop tells the story.** The guitar is fully readable: body, sound hole, neck, headstock and tuning pegs.
-- **The crowd in layers.** Black round-headed silhouettes with glowing, slanted red eyes and a thin red rim
-  light: big soft-focus figures cropped at the left and right edges, sharper ones in the middle distance,
-  tiny pairs of red eyes far back in the dark.
-- **Light and depth.** A near-black charcoal background with a faint cool haze and a soft spotlight from above
-  on the hero. Shallow depth of field: foreground blurred, hero sharp.
+## Style to copy every time
 
-## Owner's preferences (from film 1 feedback)
+- **Polished finish.** A premium 2D cartoon look, not flat clip-art: soft shading on rounded forms, small
+  catchlights in the eyes, soft cinematic light from one clear source with a little haze, and shallow depth of
+  field (soft-focus foreground shapes, sharp subject).
+- **Clear brightness order.** The title and the main face are the brightest things in the frame. One accent
+  colour that belongs to the story comes next; everything else sits darker. A moody, dark background suits the
+  channel, but the story decides the palette.
+- **House lettering.** 1 to 4 words in huge bold white capitals with rough dry-brush edges and a thick black
+  outline, usually top-left on one or two lines. Never over the face.
+- **One character, one quiet emotion, big.** The hero's head is about a third of the frame height. The emotion is
+  subtle and human: no sweat drops, no shake lines, no exaggerated faces (wide white eyes, open mouth).
+- **The story object reads instantly.** Whatever prop carries the story is fully visible and recognisable.
+- **Restraint at the edges.** Glows and accent light stay subtle near the frame edges; no colour haze.
+- **Phone first.** At 320 px wide the words, the face's emotion and the story object still read.
 
-- No sweat drops, shake lines or exaggerated faces (wide white eyes, open mouth). Keep the emotion quiet.
-- The hero has no hat in thumbnails.
-- Keep the red eyes bright, but the red glow at the frame edges subtle: thin rims, no red haze.
-- Make the hero big enough that the emotion reads on a phone.
-- White title text only (no yellow second line).
+## Film 1 specifics (example, not a template)
+
+A crowd of black silhouettes with glowing red eyes in layers around him, a guitar, the hero without his beanie,
+a two-line white title. The owner asked for: white text only, no hat, a calmer face, the hero moved toward the
+centre and made bigger, and less red glow at the edges.
 
 ## Workflow
 
-1. **Layout in code.** Draw the composition in `films/<film>/thumbnail.py` with the studio engine: hero size and
-   position, emotion, prop, crowd layers, title placement. Render with
+1. **Layout in code.** Draw the new idea in `films/<film>/thumbnail.py` with the studio engine: scene, hero size
+   and position, emotion, props, palette, title placement. Render with
    `.venv/bin/python studio/make_film.py films/<film> thumb`.
-2. **Polish in the reference style.**
-   `.venv/bin/python studio/polish.py LAYOUT.png OUT.png --title "LINE ONE|LINE TWO" --emotion "quiet worry" --extra "..."`
-   sends the layout and the reference to a Gemini image model (Nano Banana Pro, then Nano Banana 2, then
-   Nano Banana) and writes a 1280x720 file under YouTube's 2 MB limit.
+2. **Polish to the reference quality.**
+   `.venv/bin/python studio/polish.py LAYOUT.png OUT.png --title "LINE ONE|LINE TWO" --emotion "..." --extra "..."`
+   sends the layout (what to show) and the reference (how to render it) to a Gemini image model (Nano Banana Pro,
+   then Nano Banana 2, then Nano Banana) and writes a 1280x720 file under YouTube's 2 MB limit.
    - Needs `GEMINI_API_KEY` with **billing enabled** on its Google AI Studio project: the free tier allows
      0 image generations (checked October 2026). The request has not yet run end to end.
    - Without billing: add `--print-prompt`, and hand the owner the layout, the reference and that prompt to
      paste into the free Gemini app.
 3. **Check before sending.**
    - The title is spelled exactly right (image models can garble letters; regenerate if so).
-   - At 320 px wide the face's emotion and the prop still read.
+   - Nothing from the reference's content leaked in (no stray red-eyed crowd or guitar in another film).
+   - At 320 px wide the emotion and the story object still read.
    - Nothing important in the bottom-right corner, where YouTube puts the video length.
-   - No stray colours (for example a purple rim), no extra text, logos or watermarks.
-   - 16:9, 1280x720, under 2 MB.
+   - No stray colours, extra text, logos or watermarks; 16:9, 1280x720, under 2 MB.
 4. **Offer 2 or 3 variants** for YouTube's Test & Compare rather than one guess.
