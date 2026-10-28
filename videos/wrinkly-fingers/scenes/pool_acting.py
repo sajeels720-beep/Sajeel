@@ -57,8 +57,9 @@ def wrist_matrix(rig, side, loc, fingers, palm):
     return Matrix.Translation(Vector(loc)) @ ((B1 @ B0.transposed()) @ W0.to_3x3()).to_4x4()
 
 
-def pose_arm(hero, side, loc, fingers, palm, pole, curl=None, frame=None, twist_share=0.5):
-    """Put the wrist at `loc` with the hand turned; key it on `frame` if given."""
+def pose_arm(hero, side, loc, fingers, palm, pole, curl=None, frame=None, twist_share=0.5, together=0.95):
+    """Put the wrist at `loc` with the hand turned; key it on `frame` if given. curl: a
+    finger shape for hand_shape() (fingers drawn `together`)."""
     rig = hero["rig"]
     W = wrist_matrix(rig, side, loc, fingers, palm)
     for name, basis in A.solve_arm(rig, side, W, Vector(pole), twist_share).items():
@@ -68,7 +69,46 @@ def pose_arm(hero, side, loc, fingers, palm, pole, curl=None, frame=None, twist_
         if frame is not None:
             pb.keyframe_insert("rotation_quaternion", frame=frame)
     if curl is not None:
-        A.curl(rig, side, curl, frame=frame)
+        hand_shape(hero, side, curl, together=together, frame=frame)
+    _update()
+
+
+# Finger shapes: degrees of bend at the three joints (thumb first). A relaxed hand bends a
+# little more at each finger from the index to the little finger (the cascade); bending them
+# all the same, with MPFB's rest-pose spread, made a claw.
+RELAXED_HAND = {"thumb": (4, 10, 8), "index": (9, 14, 9), "middle": (13, 18, 11), "ring": (17, 22, 13),
+                "little": (21, 26, 15)}
+LOOK_HAND = {"thumb": (2, 8, 8), "index": (5, 8, 5), "middle": (7, 10, 6), "ring": (10, 13, 8),
+             "little": (13, 16, 10)}      # looking at his fingertips: pads turned to his face
+
+
+def close_spread(rig, side):
+    """Degrees about each finger's base bone's local Z that line it up with the middle finger
+    (thumb: with the index). MPFB's rest pose spreads them 10-16 degrees apart."""
+    def frame(k):
+        return (rig.matrix_world @ rig.data.bones[f"finger{k}-1.{side}"].matrix_local).to_3x3()
+    out = {}
+    for k, name, ref in ((1, "thumb", 2), (2, "index", 3), (3, "middle", 3), (4, "ring", 3), (5, "little", 3)):
+        d = frame(k).inverted() @ frame(ref).col[1].normalized()
+        out[name] = math.degrees(math.atan2(-d.x, d.y))
+    return out
+
+
+def hand_shape(hero, side, curl, together=0.95, thumb_in=0.5, frame=None):
+    """Shape the fingers: curl = degrees per joint (like RELAXED_HAND); together = how far the
+    fingers close their rest-pose spread (1 = parallel); thumb_in = the thumb's share."""
+    rig = hero["rig"]
+    spread = close_spread(rig, side)
+    for finger, angles in curl.items():
+        z = spread[finger] * (thumb_in if finger == "thumb" else together)
+        for j, (bone, a) in enumerate(zip(A.FINGERS[finger], angles)):
+            pb = rig.pose.bones.get(f"{bone}.{side}")
+            if pb is None:
+                continue
+            pb.rotation_mode = "XYZ"
+            pb.rotation_euler = (math.radians(a), 0.0, math.radians(z) if j == 0 else 0.0)
+            if frame is not None:
+                pb.keyframe_insert("rotation_euler", frame=frame)
     _update()
 
 
@@ -93,8 +133,7 @@ def joint(hero, name, end="head"):
 BLISS = {"eyeBlinkLeft": 1.0, "eyeBlinkRight": 1.0, "mouthSmileLeft": 0.55, "mouthSmileRight": 0.55,
          "cheekSquintLeft": 0.25, "cheekSquintRight": 0.25, "browInnerUp": 0.15}
 LOUNGE_TORSO = {"neck01": (-8, 0, 0), "neck02": (-7, 0, 0), "head": (-12, 0, 4), "spine02": (-2, 0, 0)}
-LOUNGE_CURL = {"thumb": (8, 8, 8), "index": (10, 14, 10), "middle": (12, 18, 12), "ring": (14, 20, 12),
-               "little": (16, 22, 14)}
+LOUNGE_CURL = RELAXED_HAND
 
 
 def lounge(hero, frame=None):

@@ -97,7 +97,19 @@ def world(rot_deg=-8.0, strength=0.9, camera_strength=1.0, sky=True, light_sky=0
         tinted = SKY._mix(nt, cloud, tint, (2.6, 2.75, 2.9))           # a few soft white clouds stay
         cam_col = SKY._mix(nt, SKY._math(nt, "MULTIPLY", mask, 0.92), cam_col, tinted)
         light_col = SKY._mix(nt, SKY._math(nt, "MULTIPLY", mask, light_sky), light_col, tinted)
-        L.new(light_col, light.inputs["Color"])
+        # light from below the horizon is the HDRI's own turquoise pool: in EEVEE it lit his chin
+        # and neck grey-green, so it comes in dimmer and less green
+        below = SKY._map(nt, sep.outputs["Z"], 0.0, -0.35, 1.0, 0.55)
+        warm = SKY._mix(nt, SKY._map(nt, sep.outputs["Z"], 0.0, -0.35, 0.0, 0.5), light_col, (0.75, 0.68, 0.6))
+        dim = nt.nodes.new("ShaderNodeMix")
+        dim.data_type, dim.blend_type = "RGBA", "MULTIPLY"
+        dim.inputs[0].default_value = 1.0
+        L.new(warm, dim.inputs[6])
+        gray = nt.nodes.new("ShaderNodeCombineColor")
+        for i in range(3):
+            L.new(below, gray.inputs[i])
+        L.new(gray.outputs[0], dim.inputs[7])
+        L.new(dim.outputs[2], light.inputs["Color"])
     cam = nt.nodes.new("ShaderNodeBackground")
     cam.inputs["Strength"].default_value = camera_strength
     L.new(cam_col, cam.inputs["Color"])
