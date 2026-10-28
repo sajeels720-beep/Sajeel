@@ -172,14 +172,19 @@ def recolor_shirt(parts, color=SHIRT_COLOR):
     return None
 
 
-def chest_print(hero, text=None, size=0.05, height=0.815, ink=(0.012, 0.012, 0.014)):
+def chest_print(hero, text=None, size=0.05, height=0.815, ink=(0.012, 0.012, 0.014), shirt=None, lift=0.0012,
+                project=False):
     """Channel name across the chest (call in the rest pose, before apply_pose).
     height: fraction of body height for the text centre (upper chest, above the cup he
-    holds in his lap in shots 3, 4 and 19b)."""
+    holds in his lap in shots 3, 4 and 19b). shirt: the top to print on (default: the
+    casual suit). lift: gap between the print and the shirt (more on coarse shirts, whose
+    smoothed surface bulges out past the base mesh the print wraps to). project: start the
+    print in front of the chest and project it straight back onto the shirt (on a rounded
+    chest, the nearest-point wrap pulled the outer letters onto the shirt's inside)."""
     from mathutils import Vector
     text = text or CHANNEL_NAME
     body, rig = hero["body"], hero["rig"]
-    shirt = shirt_object(hero["parts"])
+    shirt = shirt or shirt_object(hero["parts"])
     top = max((body.matrix_world @ v.co).z for v in body.data.vertices)
     z = top * height
     pts = [shirt.matrix_world @ v.co for v in shirt.data.vertices]
@@ -204,7 +209,7 @@ def chest_print(hero, text=None, size=0.05, height=0.815, ink=(0.012, 0.012, 0.0
     cu.offset = size * 0.035                                      # thicker strokes: reads as a bold print
     cu.extrude = 0.0003
     ob.rotation_euler = (1.5708, 0, 0)                            # stand the text up, facing -Y
-    ob.location = (0.0, front.y - 0.004, z)
+    ob.location = (0.0, front.y - (0.05 if project else 0.004), z)
     dg = bpy.context.evaluated_depsgraph_get()
     me = bpy.data.meshes.new_from_object(ob.evaluated_get(dg))
     mesh_ob = bpy.data.objects.new("Chest_Print", me)
@@ -215,7 +220,13 @@ def chest_print(hero, text=None, size=0.05, height=0.815, ink=(0.012, 0.012, 0.0
     sub = mesh_ob.modifiers.new("Dense", "SUBSURF")
     sub.subdivision_type, sub.levels, sub.render_levels = "SIMPLE", 3, 3
     sw = mesh_ob.modifiers.new("HugShirt", "SHRINKWRAP")
-    sw.target, sw.wrap_method, sw.offset = shirt, "NEAREST_SURFACEPOINT", 0.0012
+    sw.target, sw.wrap_method, sw.offset = shirt, "NEAREST_SURFACEPOINT", lift
+    if project:                                                   # local -Z points back into the chest
+        sw.wrap_method = "PROJECT"
+        sw.use_project_x = sw.use_project_y = False
+        sw.use_project_z = True
+        sw.use_negative_direction, sw.use_positive_direction = True, False
+        sw.cull_face = "OFF"
     ink_mat = bpy.data.materials.new("Print_Ink")
     if getattr(ink_mat, "node_tree", None) is None:
         ink_mat.use_nodes = True

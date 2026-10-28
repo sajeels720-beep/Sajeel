@@ -150,6 +150,29 @@ def polyhaven(asset_id, kind="hdris", res="2k"):
     return out
 
 
+def polyhaven_model(asset_id, res="1k", col=None):
+    """Download a Poly Haven model (CC0) as glTF with its textures and import it.
+    Returns the imported objects (moved into `col` if given)."""
+    req = urllib.request.Request(f"https://api.polyhaven.com/files/{asset_id}", headers={"User-Agent": "vfx_kit/1.0"})
+    with urllib.request.urlopen(req, timeout=60) as r:
+        files = json.loads(r.read())
+    gl = files["gltf"].get(res) or next(iter(files["gltf"].values()))
+    gl = gl["gltf"]
+    folder = os.path.join(ASSET_DIR, "models", asset_id)
+    path = _get(gl["url"], os.path.join(folder, os.path.basename(gl["url"])))
+    for rel, info in gl.get("include", {}).items():
+        _get(info["url"], os.path.join(folder, rel))
+    before = set(bpy.data.objects)
+    bpy.ops.import_scene.gltf(filepath=path)
+    new = [o for o in bpy.data.objects if o not in before]
+    if col is not None:
+        for o in new:
+            for c in list(o.users_collection):
+                c.objects.unlink(o)
+            col.objects.link(o)
+    return new
+
+
 def sun_azimuth(hdri_path):
     """(azimuth_deg, elevation_deg) of the brightest spot (the sun) in an equirect HDRI,
     in the same convention as hdri_world rotation 0. Use it to place the sun:
