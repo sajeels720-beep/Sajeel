@@ -15,10 +15,11 @@ Outputs land in `output/<film>/`:
 | File | What it is |
 |---|---|
 | `what_will_people_say.mp4` | Final film, 1080p30 H.264, AAC audio at -14 LUFS |
-| `thumbnail.png` | 1280x720 thumbnail (`thumbnail_1920.png` is the full-size version) |
+| `thumbnail.png` | 1280x720 thumbnail; `thumbnail_a.png` ... `thumbnail_e.png` are variants for Test & Compare |
 | `audio/mix.wav` | The finished soundtrack; `audio/stems/` has the music stems |
 
-The YouTube title, description, chapters and tags live in `films/<film>/youtube.md`.
+The YouTube title, description, chapters and tags live in `films/<film>/youtube.md`. Thumbnails follow the
+house style in [`THUMBNAILS.md`](THUMBNAILS.md); `studio/polish.py` finishes a code-drawn layout in that style.
 
 ## Stages
 
