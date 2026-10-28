@@ -43,7 +43,7 @@ def counter(c, T, label, t0, t1, x=72, y=112, size=54):
     a = envelope(T, t0, t1, 0.12, 0.2)
     if a <= 0:
         return
-    text(c, label, x, y, size, 'Inter-Bold', 'white', a, align='left', tracking=2.0)
+    text(c, label, x, y, size, 'Inter-Bold', 'white', a, align='left', tracking=2.0, shadow=0.7)
 
 
 def title(c, T, s, t0, t1, y, size=120, name='PatrickHand', color='white', underline=None, ul_color='red'):

@@ -40,6 +40,7 @@ class Look:
     hat_color: str = 'beanie'
     hair: str | None = None           # 'short' | 'long' | 'bun' | 'spiky'
     hair_color: str = '#3A2E28'
+    mustache: str | None = None       # colour of a moustache, if any
     head_r: float = 62.0
     torso: float = 100.0
     upper_arm: float = 54.0
@@ -338,6 +339,8 @@ class Character:
             hair_front(c, R, L.hair, L.hair_color, L.outline)
         if not pose.get('back'):
             face(c, R, pose, L.outline)
+            if L.mustache:
+                mustache(c, R, pose, L.mustache, L.outline)
         else:
             # back of the head: soft shading and the hood drooping over the nape
             c.save()
@@ -372,6 +375,24 @@ class Character:
 
 
 # --- face parts (head-local: centre (0,0), radius R, facing +x) ----------------------
+
+def mustache(c, R, p, color, outline='outline'):
+    """A bushy moustache just above the mouth, scalloped along the bottom, following the face turn."""
+    fx = p.get('turn', 0.35) * R * 0.42
+    mx, my = fx + R * 0.03, R * (0.25 + p.get('mouth_dy', 0.0)) + p.get('face_dy', 0.0) * R * 0.5
+    w, h = R * 0.27, R * 0.1
+    path = skia.Path()
+    path.moveTo(mx - w, my + h * 0.7)
+    path.cubicTo(mx - w * 0.8, my - h * 1.3, mx + w * 0.8, my - h * 1.3, mx + w, my + h * 0.7)
+    n = 5
+    for k in range(n):
+        x0 = mx + w - 2 * w * k / n
+        x1 = mx + w - 2 * w * (k + 1) / n
+        path.quadTo((x0 + x1) / 2, my + h * 1.25, x1, my + h * 0.55)
+    path.close()
+    c.drawPath(path, paint(color))
+    c.drawPath(path, paint(outline, stroke=3.5))
+
 
 def brows(c, R, p, outline='outline'):
     turn = p.get('turn', 0.35)
@@ -557,6 +578,19 @@ def beanie(c, R, color, outline):
 
 
 def hair_front(c, R, style, color, outline):
+    if style == 'sides':
+        # greying hair left only at the temples: soft patches clipped to the head
+        head = skia.Path()
+        head.addCircle(0, 0, R)
+        c.save()
+        c.clipPath(head, doAntiAlias=True)
+        for sx in (-1, 1):
+            r = oval(sx * R * 1.02, -R * 0.12, R * 0.3, R * 0.46)
+            c.drawOval(r, paint(color))
+            c.drawOval(r, paint(outline, stroke=3))
+        c.restore()
+        c.drawCircle(0, 0, R, paint(outline, stroke=OUTLINE_W))
+        return
     if style == 'short':
         path = skia.Path()
         path.addArc(skia.Rect.MakeLTRB(-R - 2, -R - 4, R + 2, R), 195, 150)

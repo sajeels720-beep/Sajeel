@@ -303,3 +303,199 @@ def impact(seed=19):
 def reverse_swell(dur=1.2, seed=20):
     x = lp(white(dur, seed), 6000) * (t_axis(dur) / dur) ** 3
     return norm(x, 0.6)
+
+
+# --- home and school (film 2) ------------------------------------------------------------------------
+
+def buzz(dur=0.75, seed=21):
+    """A phone vibrating on a wooden desk: two motor pulses with a woody rattle."""
+    out = np.zeros(secs(dur), np.float32)
+    t = t_axis(dur)
+    for k, (t0, d) in enumerate(((0.0, 0.28), (0.4, 0.28))):
+        if t0 >= dur:
+            break
+        n = secs(min(d, dur - t0))
+        tt = t[:n]
+        motor = np.sign(np.sin(2 * np.pi * 168 * tt)) * 0.35 + np.sin(2 * np.pi * 336 * tt) * 0.2
+        rattle = bp(white(n / SR, seed + k), 300, 1800) * (np.sin(2 * np.pi * 42 * tt) * 0.5 + 0.5)
+        e = env_ad(n / SR, 0.01, 0.03, 1.0)
+        i = secs(t0)
+        out[i:i + n] += ((motor + rattle * 0.6) * e)[: len(out) - i]
+    return norm(lp(out, 2500), 0.7)
+
+
+def slap(seed=22):
+    """A sticky note slapped onto a wall."""
+    dur = 0.18
+    x = bp(white(dur, seed), 700, 4200) * env_exp(dur, 0.012, 0.001)
+    body = sine(glide(260, 140, 0.08), 0.08) * env_exp(0.08, 0.02) * 0.5
+    out = x.copy()
+    out[: len(body)] += body
+    return norm(out, 0.7)
+
+
+def thud(seed=23, heavy=1.0):
+    """A book dropped onto a pile."""
+    dur = 0.5
+    low = sine(glide(110, 62, 0.25), 0.25) * env_exp(0.25, 0.06) * heavy
+    knock = bp(white(0.12, seed), 180, 1400) * env_exp(0.12, 0.025)
+    flap = bp(white(dur, seed + 1), 1200, 5000) * env_exp(dur, 0.04) * 0.2
+    out = flap.copy()
+    out[: len(low)] += low
+    out[: len(knock)] += knock * 0.8
+    return norm(out, 0.8)
+
+
+def alarm_ring(dur=3.0, seed=24):
+    """A twin-bell alarm clock: a hammer trilling between two bells."""
+    out = np.zeros(secs(dur), np.float32)
+    rate = 17.0
+    k = 0
+    t = 0.0
+    while t < dur - 0.1:
+        bell = (2950, 4120) if k % 2 == 0 else (3330, 4710)
+        d = 0.16
+        s = (sine(bell[0], d) + 0.6 * sine(bell[1], d) + 0.3 * sine(bell[0] * 2.7, d)) * env_exp(d, 0.05, 0.001)
+        s += bp(white(d, seed + k), 3000, 8000) * env_exp(d, 0.004) * 0.6
+        i = secs(t)
+        out[i:i + len(s)] += s[: len(out) - i]
+        t += 1.0 / rate
+        k += 1
+    return norm(hp(out, 900), 0.6)
+
+
+def sludge(dur=4.0, seed=25):
+    """Quicksand: a slow churning drag with bubbles popping."""
+    t = t_axis(dur)
+    churn = lp(brown(dur, seed), 260) * (0.6 + 0.4 * np.sin(2 * np.pi * 0.7 * t))
+    out = churn * 1.2
+    r = rng(seed)
+    for k in range(int(dur * 6)):
+        d = r.uniform(0.04, 0.09)
+        f0 = r.uniform(140, 300)
+        b = sine(glide(f0, f0 * r.uniform(1.6, 2.4), d), d) * env_ad(d, 0.005, d * 0.8)
+        i = secs(r.uniform(0, dur - d))
+        out[i:i + len(b)] += b * r.uniform(0.2, 0.5)
+    return norm(out.astype(np.float32), 0.7)
+
+
+def page_flip(seed=26):
+    dur = 0.32
+    x = bp(pink(dur, seed), 1200, 6500) * env_ad(dur, 0.06, 0.22, 1.5)
+    crinkle = bp(white(dur, seed + 1), 3000, 9000) * env_exp(dur, 0.05) * 0.25
+    return norm(x + crinkle, 0.5)
+
+
+def drawer(open_=True, seed=27):
+    """A wooden drawer sliding open, or slammed shut."""
+    if open_:
+        dur = 0.4
+        slide = bp(white(dur, seed), 300, 2200) * (0.5 + 0.5 * np.abs(np.sin(2 * np.pi * 23 * t_axis(dur))))
+        return norm(slide * env_ad(dur, 0.04, 0.2), 0.5)
+    dur = 0.6
+    slam = sine(glide(150, 80, 0.2), 0.2) * env_exp(0.2, 0.04)
+    knock = bp(white(0.1, seed), 200, 2500) * env_exp(0.1, 0.02)
+    rattle = bp(white(dur, seed + 1), 1500, 6000) * env_exp(dur, 0.08) * 0.3
+    out = rattle.copy()
+    out[: len(slam)] += slam
+    out[: len(knock)] += knock
+    return norm(out, 0.85)
+
+
+def key_turn(seed=28):
+    """A small key turning in a lock: two metallic clicks."""
+    dur = 0.35
+    out = np.zeros(secs(dur), np.float32)
+    for k, t0 in enumerate((0.0, 0.14)):
+        c = hp(white(0.015, seed + k), 2500) * env_exp(0.015, 0.002)
+        ring = sine(3800 + 600 * k, 0.08) * env_exp(0.08, 0.015) * 0.3
+        i = secs(t0)
+        out[i:i + len(c)] += c
+        out[i:i + len(ring)] += ring
+    return norm(out, 0.6)
+
+
+def bang(seed=29):
+    """Something banging on the inside of a closed drawer."""
+    dur = 0.7
+    thump = sine(glide(120, 55, 0.3), 0.3) * env_exp(0.3, 0.07)
+    wood = bp(white(0.12, seed), 150, 1200) * env_exp(0.12, 0.03)
+    rattle = bp(white(dur, seed + 1), 900, 4000) * env_exp(dur, 0.1) * 0.35
+    out = rattle.copy()
+    out[: len(thump)] += thump
+    out[: len(wood)] += wood
+    return norm(lp(out, 3000), 0.9)
+
+
+def click(seed=30):
+    """A light switch or lamp switch."""
+    dur = 0.06
+    x = hp(white(dur, seed), 1800) * env_exp(dur, 0.003) + sine(2200, dur) * env_exp(dur, 0.006) * 0.3
+    return norm(x, 0.55)
+
+
+def door(open_=True, seed=31):
+    """A front door: a short creak and the latch, or the thump of it closing."""
+    if open_:
+        dur = 0.9
+        f = glide(420, 300, dur)
+        creak = sine(f, dur) * (0.5 + 0.5 * np.sign(np.sin(2 * np.pi * 38 * t_axis(dur)))) * env_ad(dur, 0.1, 0.5)
+        latch = hp(white(0.02, seed), 2000) * env_exp(0.02, 0.003)
+        out = lp(creak, 2500) * 0.4
+        out[: len(latch)] += latch
+        return norm(out, 0.6)
+    dur = 0.6
+    thump = sine(glide(90, 55, 0.3), 0.3) * env_exp(0.3, 0.06)
+    latch = hp(white(0.02, seed + 1), 2000) * env_exp(0.02, 0.003)
+    out = np.zeros(secs(dur), np.float32)
+    out[: len(thump)] += thump
+    i = secs(0.05)
+    out[i:i + len(latch)] += latch * 0.8
+    return norm(out, 0.8)
+
+
+def tape_rip(dur=1.2, seed=32):
+    """Duct tape pulled off the roll: dense crackle with a stretched tone."""
+    r = rng(seed)
+    out = np.zeros(secs(dur), np.float32)
+    t = 0.0
+    while t < dur - 0.01:
+        c = bp(white(0.004, int(t * 1e4)), 1200, 6000) * r.uniform(0.3, 1.0)
+        i = secs(t)
+        out[i:i + len(c)] += c[: len(out) - i]
+        t += r.uniform(0.002, 0.007)
+    tone = sine(glide(900, 1300, dur), dur) * 0.05
+    return norm((out + tone) * env_ad(dur, 0.05, 0.15), 0.5)
+
+
+def birds(dur, seed=33, level=0.2):
+    """Morning birdsong far off: little groups of chirps."""
+    out = np.zeros((secs(dur), 2), np.float32)
+    r = rng(seed)
+    t = r.uniform(0.0, 0.6)
+    while t < dur - 0.5:
+        pan = r.uniform(-0.8, 0.8)
+        f = r.uniform(3200, 5600)
+        for k in range(r.integers(2, 5)):
+            d = r.uniform(0.04, 0.09)
+            ch = sine(glide(f, f * r.uniform(1.1, 1.4), d), d) * env_ad(d, 0.005, d * 0.7)
+            i = secs(t + k * r.uniform(0.07, 0.12))
+            out[i:i + len(ch)] += stereo(ch * r.uniform(0.3, 0.7), pan)[: len(out) - i]
+        t += r.uniform(0.6, 1.8)
+    return norm(out, level)
+
+
+def tinnitus(dur=1.6, seed=34):
+    """A thin high ring as his mind goes blank."""
+    x = sine(6200, dur) * env_ad(dur, 0.6, 0.4) + sine(6230, dur) * env_ad(dur, 0.6, 0.4) * 0.5
+    return norm(x, 0.35)
+
+
+def puff_out(seed=35):
+    """The shadow dissolving into smoke."""
+    dur = 1.4
+    x = bp(pink(dur, seed), 300, 3000) * env_ad(dur, 0.05, 1.2)
+    down = sine(glide(220, 70, 1.0), 1.0) * env_exp(1.0, 0.3) * 0.4
+    out = x.copy()
+    out[: len(down)] += down
+    return norm(out, 0.6)
