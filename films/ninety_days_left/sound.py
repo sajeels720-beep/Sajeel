@@ -11,7 +11,7 @@ sys.path.insert(0, str(HERE.parents[1] / 'studio'))
 import numpy as np  # noqa: E402
 
 from audio import sfx, voices  # noqa: E402
-from audio.dsp import SR, lp, read_wav, write_wav  # noqa: E402
+from audio.dsp import SR, bp, hp, lp, read_wav, write_wav  # noqa: E402
 from audio.mix import Mix  # noqa: E402
 from audio.score import Score, chord, n  # noqa: E402
 from cues import DURATION, EV, ROAR, WHISPERS  # noqa: E402
@@ -173,6 +173,8 @@ def compose():
         s.ramp(name, ch, 47.0, 49.1, 110, 0)
     for name, ch in (('orch', HORN), ('orch', CHOIR), ('strings', TREM), ('strings', STR)):
         s.ramp(name, ch, 49.9, 50.0, 0, 100)
+    s.ramp('orch', PAD, 48.6, 49.2, 0, 50)
+    s.notes('orch', PAD, 48.6, 2.6, ['D3', 'A3'], 34)
 
     # 50-62: 5 AM: the father's theme on cello, plain piano underneath
     bpm = 84
@@ -356,8 +358,9 @@ def place_sfx(mx):
             add('sfx', sfx.whoosh(0.35, 400, 3000, int(t0)), t0 - 0.18, -16)
 
     # the quicksand bed
-    add('sfx', sfx.alarm_ring(4.6, 1), EV['alarm'], -1, pan=0.5, fade_out=0.6)
-    add('sfx', sfx.sludge(4.2, 2), EV['sink'], -4, fade_in=0.3, fade_out=1.0)
+    add('sfx', sfx.alarm_ring(4.6, 1), EV['alarm'], -1, pan=0.5, fade_out=2.6)
+    add('sfx', sfx.sludge(4.2, 2), EV['sink'], 3, fade_in=0.3, fade_out=1.0)
+    add('sfx', sfx.thoom(4), EV['sink'] + 0.1, -4)
     add('sfx', sfx.breath_in(3), EV['sit_up'] - 0.2, -12)
 
     # the mountain
@@ -374,7 +377,8 @@ def place_sfx(mx):
     add('sfx', sfx.heartbeat(70, 6.8), 42.0, -7, fade_in=1.0, fade_out=0.8)
 
     # 5 AM
-    add('sfx', sfx.beep(2100, 2), EV['clock_5am'], -12)
+    add('sfx', sfx.reverse_swell(1.1, 12), EV['clock_5am'] - 1.1, -14)
+    add('sfx', sfx.beep(2100, 2), EV['clock_5am'], -5)
     add('sfx', sfx.door(True, 4), EV['son_door'], -16, pan=-0.6)
     add('sfx', sfx.tape_rip(1.4, 5), EV['tape'] + 0.4, -10, pan=0.3)
     add('sfx', sfx.tape_rip(1.0, 6), EV['tape'] + 2.0, -12, pan=0.3)
@@ -405,14 +409,21 @@ def place_sfx(mx):
     add('sfx', sfx.sludge(1.6, 26), EV['alarm2'] + 0.3, -8, fade_out=0.4)
     add('sfx', sfx.whoosh(0.6, 300, 4000, 27), EV['break_free'] - 0.2, -6)
     add('sfx', sfx.footstep(True, 28), EV['break_free'] + 0.5, -8)
-    add('sfx', sfx.thud(29, 0.5), EV['fail'], -6)
     add('sfx', sfx.bang(30), 83.7, -12)
     add('sfx', sfx.bang(31), 84.5, -12)
     add('sfx', sfx.scribble(1.0, 32), EV['pencil_up'] + 0.2, -14)
     add('sfx', sfx.door(True, 33), EV['father_peek'] - 0.3, -18, pan=-0.4)
     add('sfx', sfx.door(False, 34), 95.2, -18, pan=-0.4)
     for k, t in enumerate(EV['scores']):
-        add('sfx', sfx.thud(35 + k, 0.4), t + 0.2, -8)
+        add('sfx', sfx.scribble(0.18, 35 + k), t, -12)
+        add('sfx', sfx.thud(35 + k, 0.5), t + 0.2, -2)
+        add('sfx', sfx.slap(45 + k), t + 0.2, -6)
+        add('sfx', sfx.bling(k), t + 0.25, -14 + 3 * k)
+    add('sfx', sfx.thud(39, 0.5), EV['fail'], -2)
+    add('sfx', sfx.slap(40), EV['fail'], -6)
+    from audio.dsp import reverb
+    add('sfx', reverb(sfx.tape_rip(0.8, 41), wet=0.6, length=2.4), EV['look_door'], -10)
+    add('sfx', sfx.reverse_swell(0.6, 42), EV['look_door'] - 0.6, -16)
     add('sfx', sfx.scribble(1.8, 38), 104.2, -16)
     add('sfx', sfx.riser(1.6, 39), 106.4, -10)
 
@@ -458,6 +469,10 @@ def place_voices(mx, work):
         if text in MUFFLED:
             # through the wood of the drawer
             x = lp(x, 1100, 4) * 1.6
+        else:
+            # less rumble, more consonant
+            x = hp(x, 170, 2)
+            x = x + 0.7 * bp(x, 2000, 4800)
         room = t1 - t0 + 0.6
         mx.add('voice', x, t0 + 0.02, -1, max_len=room + 1.5, fade_out=0.4)
         windows.append((t0, min(t1, t0 + len(x) / SR)))

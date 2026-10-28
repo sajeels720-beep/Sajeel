@@ -41,7 +41,8 @@ def post(c, T):
     a = max(a, smooth(158.6, 159.9, T))
     fade(c, W, H, a)
     flash(c, W, H, 0.22 * beat_env(T, LAPSE_FLASH, 0.1) + 0.75 * beat_env(T, [EV['drop']], 0.15)
-          + 0.4 * beat_env(T, [EV['release']], 0.25))
+          + 0.4 * beat_env(T, [EV['release']], 0.25)
+          + 0.5 * beat_env(T, [EV['look_door'], EV['pencil_up']], 0.18))
 
 
 def build():
@@ -50,5 +51,5 @@ def build():
         shots += act2.shots()
     if act3:
         shots += act3.shots()
-    extra_overlays = [act.overlays for act in (act2, act3) if act and hasattr(act, 'overlays')]
+    extra_overlays = [act.overlays for act in (act1, act2, act3) if act and hasattr(act, 'overlays')]
     return Film(DURATION, shots, overlays=[overlays] + extra_overlays, post=[post])

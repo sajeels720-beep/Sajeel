@@ -257,7 +257,8 @@ def wall_clock(c, x, y, r=60, hour=10.0):
 
 # --- the father's shoes ----------------------------------------------------------------------------
 
-def shoe(c, x, y, scale=1.0, facing=1, torn=0.0, tape=0.0, stitched=0.0, polish=0.0, color='#5A3E2B'):
+def shoe(c, x, y, scale=1.0, facing=1, torn=0.0, tape=0.0, stitched=0.0, polish=0.0, color='#5A3E2B',
+         tape_color='#9A9A9E'):
     """A worn leather work shoe in side view, sole resting on y, toe toward `facing`.
 
     torn: the sole peels away from the toe (0..1); tape: grey tape wrapped round the toe;
@@ -310,8 +311,8 @@ def shoe(c, x, y, scale=1.0, facing=1, torn=0.0, tape=0.0, stitched=0.0, polish=
         c.drawLine(lx, -64 + k * 3, lx + 12, -54 + k * 3, paint('#D8D0BE', stroke=3))
     if tape > 0:
         band = poly([(40, -48), (64, -40), (80, 14 + gap), (54, 14 + gap * 0.7)], True)
-        c.drawPath(band, paint('#9A9A9E', 0.95 * tape))
-        c.drawLine(52, -44, 66, 12 + gap * 0.8, paint('#BEBEC2', 0.8 * tape, stroke=2))
+        c.drawPath(band, paint(tape_color, 0.95 * tape))
+        c.drawLine(52, -44, 66, 12 + gap * 0.8, paint('#FFFFFF', 0.6 * tape, stroke=2))
         c.drawPath(band, paint('outline', tape, stroke=3))
     if stitched > 0:
         n = int(14 * stitched)

@@ -113,7 +113,6 @@ def phone_insert(c, t, T):
     for k, (fx, fy) in enumerate([(-168, 50), (-168, 140), (168, -30), (168, 70), (168, 170)]):
         circle(c, fx, fy, 38, 'skin', 'outline', 6)
     c.restore()
-    whisper(c, T, 'just five minutes.', 6.6, 8.6, 960, 180, 78, seed=1)
 
 
 def lean_back(c, t, T):
@@ -128,7 +127,6 @@ def lean_back(c, t, T):
     j = HERO.draw(c, pose, t=T)
     light_pool(c, hand_world[0] - 20, hand_world[1] - 10, 200, 160, '#9CC8FF', 0.32)
     phone(c, hand_world[0] + 8, hand_world[1] - 18, 12, 1.1, face_down=True)
-    whisper(c, T, 'just five minutes.', 6.6, 8.6, 640, 430, 60, seed=1)
 
 
 def cam_lean(t):
@@ -217,9 +215,23 @@ def quicksand(c, t, T):
                 smile=-0.3)
     c.save()
     c.clipRect(skia.Rect.MakeLTRB(-400, -400, W + 400, BED_TOP + 58))
-    HERO.draw(c, pose, t=T)
+    j = HERO.draw(c, pose, t=T)
     c.restore()
     pts = blanket(c, BED_X + 6, BED_X + BED_W - 30, BED_TOP + 2, wave=wave, sink=sink, t=T, swirl=wave)
+    grab = smooth(EV['sink'] - 0.1, EV['sink'] + 0.7, T) * (1 - smooth(EV['sunk'] + 0.2, EV['sunk'] + 1.0, T))
+    if grab > 0:
+        # the phone's shadow reaching up out of the bed to drag him down
+        for k, (bx, joint) in enumerate(((-150, 'sh_b'), (-40, 'el_f'), (70, 'sh_f'))):
+            tx, ty = hip[0] - j[joint][0], hip[1] + j[joint][1]
+            base = (hip[0] + bx, BED_TOP + 6)
+            tip = (base[0] + (tx - base[0]) * grab, base[1] + (ty - base[1]) * grab)
+            mid = ((base[0] + tip[0]) / 2 + 30 * math.sin(T * 3 + k), (base[1] + tip[1]) / 2 - 20)
+            arm = skia.Path()
+            arm.moveTo(*base)
+            arm.quadTo(*mid, *tip)
+            c.drawPath(arm, paint('red', 0.55 * grab, stroke=30, blur=8, blend='add'))
+            c.drawPath(arm, paint('#040405', grab, stroke=22))
+            c.drawCircle(*tip, 17 * grab, paint('#040405', grab))
     if sink > 0.55:
         # his arm stays up out of the quicksand, holding the phone
         from engine.draw import limb
@@ -368,6 +380,8 @@ def hall_5am(c, t, T):
         # the shoe: on the floor, then up in his lap while he winds tape round the toe
         sx = STOOL_X + 126 - 40 * lift
         sy = fy - 98 * lift
+        if lift > 0:
+            light_pool(c, sx, sy - 30, 260, 180, 'warm', 0.4 * lift)
         a = T * 5.0
         roll = (sx + 34 + 16 * math.cos(a), sy - 20 + 22 * math.sin(a))
         hand_b = to_local(hip, 1, (sx - 30, sy - 22)) if taping else (110 + 6 * tie, 108)
@@ -381,9 +395,10 @@ def hall_5am(c, t, T):
             cc.save()
             if j is not None:
                 cc.translate(-hip[0], -hip[1])
-            shoe(cc, sx, sy, 0.55, 1, torn=1.0 - 0.7 * tape, tape=tape, color='#4A3626')
+            shoe(cc, sx, sy, 0.55 + 0.2 * lift, 1, torn=1.0 - 0.7 * tape, tape=tape, color='#5A4030',
+                 tape_color='#D9DADF')
             if taping:
-                cc.drawCircle(*roll, 13, paint('#9A9A9E'))
+                cc.drawCircle(*roll, 13, paint('#D9DADF'))
                 cc.drawCircle(*roll, 13, paint('outline', stroke=3))
                 cc.drawCircle(*roll, 6, paint('#5A5A60'))
             cc.restore()
@@ -418,11 +433,15 @@ def cam_hall(t):
         return (900, 600, 1.05 + 0.1 * u)
     if T < EV['stand']:
         u = smooth(EV['tape'], EV['stand'], T)
-        return (STOOL_X + 70, HALL_FLOOR - 170, 2.5 + 0.2 * u)
+        return (STOOL_X + 80, HALL_FLOOR - 150, 3.0 + 0.25 * u)
     if T < 60.0:
         return (1180, 640, 1.45)
     u = smooth(60.0, 62.0, T)
     return (900 - 100 * u, 600, 1.15)
+
+
+def overlays(c, T):
+    whisper(c, T, 'just five minutes.', 6.6, 8.6, 960, 190, 78, seed=1)
 
 
 # --- assemble ------------------------------------------------------------------------------------------------

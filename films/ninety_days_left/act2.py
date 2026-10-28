@@ -197,13 +197,19 @@ def break_free(c, t, T):
         x = BED_X + BED_W - 170 - 260 * land
         y = ROOM_FLOOR - STAND_HIP - 120 * math.sin(math.pi * min(1.0, land)) * (1 - land * 0.6)
         blanket(c, BED_X + 6, BED_X + BED_W - 30, BED_TOP + 2, wave=0.2 * (1 - free), t=T)
-        bx = BED_X + 200 - 400 * free
-        c.save()
-        c.translate(bx, BED_TOP - 120 * math.sin(math.pi * min(1.0, free)))
-        c.rotate(-40 * free)
-        c.drawRRect(rrect(-150, -20, 300, 40, 16), paint('#4B5A7A'))
-        c.drawRRect(rrect(-150, -20, 300, 40, 16), paint('outline', stroke=4))
-        c.restore()
+        fly = smooth(EV['break_free'] - 0.15, EV['break_free'] + 0.9, T)
+        if fly < 1:
+            # the blanket thrown off: billowing up and away over the headboard
+            bx = BED_X + 300 + 380 * fly
+            by = BED_TOP - 40 - 260 * math.sin(math.pi * fly)
+            sheet = skia.Path()
+            sheet.moveTo(bx - 160, by)
+            sheet.cubicTo(bx - 80, by - 60 - 40 * math.sin(T * 9), bx + 80, by + 40, bx + 160, by - 10)
+            sheet.lineTo(bx + 140, by + 40)
+            sheet.cubicTo(bx + 60, by + 80, bx - 60, by + 10, bx - 150, by + 50)
+            sheet.close()
+            c.drawPath(sheet, paint('#4B5A7A', 1 - smooth(0.7, 1.0, fly)))
+            c.drawPath(sheet, paint('outline', 1 - smooth(0.7, 1.0, fly), stroke=4))
         pose = merge(standing(), walk(T, 1.2, 20) if T > EV['break_free'] + 0.8 else None,
                      x=x - 200 * smooth(EV['break_free'] + 0.8, 82.0, T), y=y, facing=-1, turn=0.3,
                      lean=10, tilt=0, eyes='dot', brow=-14, smile=0.15 * land, sf=-30 + 60 * (1 - land),
@@ -238,14 +244,24 @@ def fail_desk(c, t, T):
     whisper(c, T, 'you’re not smart enough.', 83.6, 85.6, 560, 470, 58, seed=9)
 
 
-def shoes_insert(c, t, T):
-    """What he sees through his door: his father's taped shoes by the front door, in the dawn light."""
-    c.drawPaint(paint('#121826'))
-    c.drawRect(skia.Rect.MakeLTRB(0, 800, W, H), paint('#0E1118'))
-    c.drawLine(0, 800, W, 800, paint('#283042', stroke=4))
-    light_pool(c, 960, 700, 800, 300, '#9DB7FF', 0.16)
-    shoe(c, 760, 800, 2.4, 1, torn=0.25, tape=1.0, color='#4A3626')
-    shoe(c, 1180, 800, 2.4, 1, torn=0.0, tape=0.0, color='#4A3626')
+def shoes_insert(c, t, T, memory=True):
+    """What he remembers: his father's taped shoes by the front door, soft and warm like a memory."""
+    from engine.thumbkit import blurred
+
+    def scene():
+        c.drawPaint(paint('#1A1E2A'))
+        c.drawRect(skia.Rect.MakeLTRB(0, 800, W, H), paint('#141822'))
+        c.drawLine(0, 800, W, 800, paint('#283042', stroke=4))
+        light_pool(c, 960, 700, 800, 300, 'warm', 0.22)
+        shoe(c, 760, 800, 2.4, 1, torn=0.25, tape=1.0, color='#5A4030', tape_color='#D9DADF')
+        shoe(c, 1180, 800, 2.4, 1, torn=0.0, tape=0.0, color='#5A4030')
+    if memory:
+        blurred(c, 3.5, scene)
+        c.drawPaint(paint('#FFD9A0', 0.10, blend='add'))
+        from engine.draw import vignette
+        vignette(c, W, H, 0.9, inner=0.25)
+    else:
+        scene()
 
 
 def father_peek(c, t, T):
@@ -263,8 +279,8 @@ def father_peek(c, t, T):
     smile = smooth(EV['father_smile'] - 0.4, EV['father_smile'] + 0.6, T)
     pose = merge(standing(), walk(T, 0.8, 16) if walking else idle(T, 6, 0.6),
                  x=x, y=fy - STAND_HIP, facing=-1, turn=0.35, eyes='happy' if smile > 0.6 else 'tired', bags=0.9,
-                 lx=0.6, ly=0.1, brow=-4 + 8 * smile, smile=-0.05 + 0.55 * smile, lean=4 + 6 * peek, tilt=6 * peek,
-                 eye=blink(T, 14), tears=0.4 * smooth(93.4, 94.2, T))
+                 lx=0.6, ly=0.1, brow=-4 + 6 * smile, smile=-0.05 + 0.33 * smile, mwide=0.8, lean=4 + 6 * peek,
+                 tilt=6 * peek, eye=blink(T, 14), tears=0.18 * smooth(93.4, 94.2, T))
     if peek > 0.05:
         pose['hand_f'] = to_local((x, fy - STAND_HIP), -1, (SON_DOOR[0] + SON_DOOR[1] - 26, fy - 200))
     FATHER.draw(c, pose, t=T)
@@ -350,8 +366,8 @@ def exam_wide(c, t, T):
         if i == HERO_DESK:
             continue
         w = math.sin(T * 12 + i * 2) * 0.6
-        extra(i + 1).draw(c, seated(x, fy, facing=1, turn=0.5, lean=24, tilt=18, hand_b=(78, -66),
-                                    hand_f=(118 + 6 * w, -66), eyes='dot', ly=0.7, lx=0.4, eye=blink(T, 20 + i)),
+        extra(i + 1).draw(c, seated(x, fy, facing=1, turn=0.5, lean=24, tilt=18, hand_b=(78, -28),
+                                    hand_f=(118 + 6 * w, -28), eyes='dot', ly=0.7, lx=0.4, eye=blink(T, 20 + i)),
                           t=T)
     # the hero takes his seat; the shadow walks in and sits behind him
     hx = ROW[HERO_DESK][0]
@@ -360,7 +376,7 @@ def exam_wide(c, t, T):
         HERO.draw(c, merge(standing(), walk(T, 1.0, 18), x=hx - 140 * (1 - sit), y=fy - STAND_HIP + 15 * sit,
                            facing=1, turn=0.3, brow=-12, smile=-0.2), t=T)
     else:
-        HERO.draw(c, seated(hx, fy, facing=1, turn=0.45, lean=10, tilt=6, hand_b=(78, -66), hand_f=(118, -66),
+        HERO.draw(c, seated(hx, fy, facing=1, turn=0.45, lean=10, tilt=6, hand_b=(78, -28), hand_f=(118, -28),
                             lx=-0.6 * smooth(EV['shade_sits'], EV['shade_sits'] + 0.4, T), brow=-12, smile=-0.2,
                             eye=blink(T, 21)), t=T)
     sx = ROW[HERO_DESK - 1][0]
@@ -390,8 +406,8 @@ def exam_two(c, t, T):
     SHADE.draw(c, seated(sx, fy, facing=1, turn=0.2, lean=24 + 26 * lean, tilt=10 + 10 * lean, eye=1.0,
                          hand_b=(70, -60), hand_f=(100 + 60 * lean, -90 - 40 * lean)), t=T)
     flip = smooth(EV['paper_flip'], EV['paper_flip'] + 0.4, T)
-    HERO.draw(c, seated(hx, fy, facing=1, turn=0.45, lean=12 + 8 * flip, tilt=8 + 10 * flip, hand_b=(78, -66),
-                        hand_f=(118, -66 - 20 * math.sin(math.pi * flip)), lx=0.4 * flip - 0.5 * (1 - flip), ly=0.6 * flip,
+    HERO.draw(c, seated(hx, fy, facing=1, turn=0.45, lean=12 + 8 * flip, tilt=8 + 10 * flip, hand_b=(78, -28),
+                        hand_f=(118, -28 - 20 * math.sin(math.pi * flip)), lx=0.4 * flip - 0.5 * (1 - flip), ly=0.6 * flip,
                         eyes='dot', brow=-14 - 6 * lean, smile=-0.25, eye=blink(T, 22), shiver=0.3 * lean), t=T)
     whisper(c, T, 'you’ll go blank.', 110.0, 112.0, hx - 80, fy - 400, 64, seed=10)
 
@@ -447,10 +463,11 @@ def eyes_shut(c, t, T):
     """His face, close: eyes shut, a breath."""
     exam_room(c, T, dim=0.85, red=0.4 * (1 - smooth(EV['breath'], EV['breath'] + 0.8, T)))
     hx = ROW[HERO_DESK][0]
+    side_desk(c, hx, HALL_Y)
     open_ = smooth(EV['eyes_open'] - 0.1, EV['eyes_open'] + 0.1, T)
     breath = math.sin(max(0.0, T - EV['breath']) * 3) * smooth(EV['breath'], EV['breath'] + 0.3, T)
-    HERO.draw(c, seated(hx, HALL_Y, facing=1, turn=0.15, lean=6, tilt=-4 + 4 * breath, hand_b=(78, -66),
-                        hand_f=(118, -66), eyes='closed' if open_ < 0.5 else 'dot', brow=-14 + 10 * open_,
+    HERO.draw(c, seated(hx, HALL_Y, facing=1, turn=0.15, lean=6, tilt=-4 + 4 * breath, hand_b=(78, -28),
+                        hand_f=(118, -28), eyes='closed' if open_ < 0.5 else 'dot', brow=-14 + 10 * open_,
                         smile=-0.2 + 0.2 * open_, breathe=0.8 * breath, lx=0.2, ly=0.3 * open_), t=T)
 
 
@@ -492,12 +509,12 @@ def exam_release(c, t, T):
         if i in (HERO_DESK - 1, HERO_DESK):
             continue
         w = math.sin(T * 12 + i * 2) * 0.6
-        extra(i + 1).draw(c, seated(x, fy, facing=1, turn=0.5, lean=24, tilt=18, hand_b=(78, -66),
-                                    hand_f=(118 + 6 * w, -66), eyes='dot', ly=0.7, lx=0.4, eye=blink(T, 20 + i)),
+        extra(i + 1).draw(c, seated(x, fy, facing=1, turn=0.5, lean=24, tilt=18, hand_b=(78, -28),
+                                    hand_f=(118 + 6 * w, -28), eyes='dot', ly=0.7, lx=0.4, eye=blink(T, 20 + i)),
                           t=T)
     hx, sx = ROW[HERO_DESK][0], ROW[HERO_DESK - 1][0]
     w = math.sin(T * 15)
-    HERO.draw(c, seated(hx, fy, facing=1, turn=0.5, lean=24, tilt=16, hand_b=(78, -66), hand_f=(122 + 10 * w, -66),
+    HERO.draw(c, seated(hx, fy, facing=1, turn=0.5, lean=24, tilt=16, hand_b=(78, -28), hand_f=(122 + 10 * w, -28),
                         eyes='dot', ly=0.7, lx=0.5, brow=-4, smile=0.1, eye=blink(T, 23)), t=T)
     gone = smooth(EV['shade_gone'] - 0.6, EV['shade_gone'] + 0.2, T)
     if gone < 1:
