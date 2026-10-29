@@ -398,6 +398,7 @@ def wrap_fibres(ves, nv, squeezed=0.45, col=None, seed=5):
         ob = V.link(bpy.data.objects.new(f"Nerve_Wrap_{k}", cu), col)
         ob.shape_key_add(name="Basis", from_mix=False)
         kb = ob.shape_key_add(name="Squeeze", from_mix=False)
+        kb.value = 0.0                                             # Blender 5 adds new keys switched on
         for i, p in enumerate(tight):
             kb.data[i].co = Vector(p)
         V.assign(ob, nv["mat"])

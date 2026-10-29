@@ -481,6 +481,6 @@ def nerves(hs, grow, pulse_at, side="R", col=None):
     for i, (k, pts) in enumerate(branches.items()):
         path = np.vstack([trunk, pts[1:]])
         s = pulse_at + i * 2
-        out.append(V.pulse(f"Nerve_Pulse{k}", path, s, s + 12, color=H("#FFF2B0"), size=0.0042, strength=9.0,
-                           col=col, trail=0.12))
+        out.append(V.pulse(f"Nerve_Pulse{k}", path, s, s + 12, color=H("#FFF8DC"), size=0.0075, strength=30.0,
+                           col=col, trail=0.18))                       # thicker than the nerve: it shows through the glass
     return out
