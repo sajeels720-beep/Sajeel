@@ -2,7 +2,7 @@
 A sunny backyard pool, as a time-lapse: he leans back against the pool wall, head tipped back to
 the sun, eyes closed, blissful (left arm on the stone edge, right arm in the water), while the
 sun swings over, palm shadows sweep across him, the water's light patterns race and the rubber
-duck drifts past. 28 mm, low just above the water, slow push-in. His acting is shared with
+duck drifts in and comes to rest by his arm. 28 mm, low just above the water, slow push-in. His acting is shared with
 shots 02-03 (scenes/opening_take.py).
 
 Run in a NEW Blender file:  blender -b -P shot01_lounge.py -a
@@ -40,10 +40,17 @@ def build():
     n = hi - lo + 1
     V.setup_shot(n / FPS, fps=FPS, engine="CYCLES" if PREVIEW else "EEVEE", samples=24 if PREVIEW else 64,
                  scale=50 if PREVIEW else 100)
-    parts = PS.build(duck_at=(-0.25, -0.15), duck_drift=(0.3, 0.0), duck_speed=SPEED, sun_az=-80, sun_el=58)
+    parts = PS.build(duck_at=None, sun_az=-80, sun_el=58, chop=1.3)
     PS.set_time_speed(SPEED)
     take = TAKE.perform("01")
     head = PA.joint(take["hero"], "head")
+    # the rubber duck drifts in from the right, side-on, and comes to rest by his left side
+    # (crossing his chest it hid the print and read as two orange balls)
+    sL, sR = PA.joint(take["hero"], "upperarm01.L"), PA.joint(take["hero"], "upperarm01.R")
+    rest = (sL.x - 0.015, sL.y - 0.22)
+    parts["duck"] = PS.duck(at=(rest[0] + 0.5, rest[1] - 0.04), to=rest, settle=1.1, heading=-70, speed=SPEED)
+    # small waves run out from his body: they break up his mirror image in the water
+    PS.body_waves(parts["water"], ((sL.x + sR.x) / 2, sL.y - 0.05), (abs(sL.x - sR.x) / 2 - 0.03, 0.1))
     # the sun swings across from his right to his left (the light crosses his face), the
     # shadows of palm fronds (out of shot) sweep over him, and clouds race over the sun
     sun = parts["sun"]

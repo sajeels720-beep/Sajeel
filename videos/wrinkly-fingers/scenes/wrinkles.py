@@ -338,13 +338,14 @@ def set_amount(hero, amount):
     knob("WR_Amount").default_value = amount
 
 
-def dense(hero, levels=3, keep=("wrist", "finger", "metacarpal", "lowerarm"), hide_parts=True):
-    """Extreme close-ups: keep only his forearms and hands, subdivide them `levels` times
-    and push the furrows in as real geometry (the shader bump then only adds the fine
-    detail). Hides his hair and clothes, which these shots never see."""
+def dense(hero, levels=3, keep=("wrist", "finger", "metacarpal", "lowerarm"), hide_parts=True, sides=("L", "R")):
+    """Extreme close-ups: keep only his forearms and hands (on `sides`), subdivide them
+    `levels` times and push the furrows in as real geometry (the shader bump then only adds
+    the fine detail). Hides his hair and clothes, which these shots never see."""
     body = hero["body"]
     vg = body.vertex_groups.get("WR_keep") or body.vertex_groups.new(name="WR_keep")
-    W = _group_weights(body, [g.name for g in body.vertex_groups if any(g.name.startswith(k) for k in keep)])
+    W = _group_weights(body, [g.name for g in body.vertex_groups if any(g.name.startswith(k) for k in keep)
+                              and g.name.endswith(tuple("." + s for s in sides))])
     sel = np.zeros(len(body.data.vertices), bool)
     for arr in W.values():
         sel |= arr > 0.01

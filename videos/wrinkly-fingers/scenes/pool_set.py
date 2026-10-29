@@ -335,8 +335,9 @@ def _box_uvs(ob, size=1.0):
     bm.free()
 
 
-def water(col=None, swell=0.012):
-    """The water surface: clear turquoise with ripples (shader) and gentle swells (geometry)."""
+def water(col=None, swell=0.012, chop=0.0):
+    """The water surface: clear turquoise with ripples (shader) and gentle swells (geometry).
+    chop: fine ripples on top (see water_material)."""
     col = col or _col("POOL")
     x0, x1 = EXTENT_X
     ob = _quad("Pool_Water", [(x0, EXTENT_Y, WATER_Z), (x1, EXTENT_Y, WATER_Z), (x1, WALL_Y, WATER_Z),
@@ -358,15 +359,17 @@ def water(col=None, swell=0.012):
     disp.texture, disp.texture_coords, disp.texture_coords_object = tex, "OBJECT", drift
     disp.strength, disp.mid_level = swell, 0.5
     ob.visible_shadow = False                                   # sunlight reaches the floor (both engines)
-    ob.data.materials.append(water_material())
+    ob.data.materials.append(water_material(chop=chop))
     return ob
 
 
-def water_material(name="Pool_Water", tint=H("#CDF2EC"), ripple=0.45, ior=1.333):
+def water_material(name="Pool_Water", tint=H("#CDF2EC"), ripple=0.45, ior=1.333, chop=0.0):
     """See-through water with a mirror sheen that grows at grazing angles (Fresnel). There is
     no refraction: EEVEE's screen-space refraction missed the floor from low angles (it showed
     the HDRI's own pool instead) and Cycles washed everything under it out, so the colour of
-    the water comes from underwater() on the things beneath it, the same in both engines."""
+    the water comes from underwater() on the things beneath it, the same in both engines.
+    chop: fine ripples on top (0..1). Seen from just above the water, calm water is a perfect
+    mirror, and the reflection of his shirt print read as a second, backwards print."""
     mat = bpy.data.materials.new(name)
     if getattr(mat, "node_tree", None) is None:
         mat.use_nodes = True
@@ -376,7 +379,10 @@ def water_material(name="Pool_Water", tint=H("#CDF2EC"), ripple=0.45, ior=1.333)
     geo = nt.nodes.new("ShaderNodeNewGeometry")
     time = _time_value(nt, "Ripple_Time")
     h = None
-    for sc, gain in ((1.3, 1.0), (4.2, 0.35), (11.0, 0.12)):
+    octaves = [(1.3, 1.0), (4.2, 0.35), (11.0, 0.12)]
+    if chop:
+        octaves += [(26.0, 0.09 * chop), (61.0, 0.035 * chop)]
+    for sc, gain in octaves:
         nz = nt.nodes.new("ShaderNodeTexNoise")
         nz.noise_dimensions = "4D"
         nz.inputs["Scale"].default_value = sc
@@ -473,9 +479,13 @@ def underwater_hero(hero):
 # --------------------------------------------------------------------------
 # Props
 # --------------------------------------------------------------------------
-def duck(col=None, at=(0.55, -0.55), heading=200.0, drift=(0.0, 0.0), bob=0.004, scale_to=0.11, speed=1.0):
+def duck(col=None, at=(0.55, -0.55), heading=200.0, drift=(0.0, 0.0), bob=0.004, scale_to=0.11, speed=1.0,
+         to=None, settle=0.5, yellow=0.035):
     """The CC0 rubber duck floating at `at` (x, y) on frame 0, bobbing; drift: metres per
-    second; speed: how fast its bobbing runs (a time-lapse speeds it up)."""
+    second; speed: how fast its bobbing runs (a time-lapse speeds it up). to=(x, y): instead
+    of drifting on, it glides from `at` and comes to rest there (`settle`: seconds to cover
+    most of the way). heading: where its beak points, degrees from -Y (90: towards +X).
+    yellow: a hue shift that turns the model's orange-yellow into a classic duck yellow."""
     col = col or _col("POOL")
     objs = V.polyhaven_model("rubber_duck_toy", "1k", col)
     meshes = [o for o in objs if o.type == "MESH"]
@@ -493,17 +503,43 @@ def duck(col=None, at=(0.55, -0.55), heading=200.0, drift=(0.0, 0.0), bob=0.004,
     zmin = min(p.z for p in pts)
     root.location.z = WATER_Z - (zmin - root.location.z) - scale_to * 0.22   # sits a little low in the water
     root.rotation_euler.z = math.radians(heading)
+    if yellow:
+        for o in meshes:
+            for m in o.data.materials:
+                _hue_shift(m, yellow)
     fps = bpy.context.scene.render.fps
     base = Vector((at[0], at[1], root.location.z))
     for f in range(-60, 241, 3):
         t = f / fps
         tb = t * speed
-        root.location = base + Vector((drift[0] * t, drift[1] * t, bob * math.sin(tb * 2.1)))
+        if to is None:
+            xy = Vector((drift[0] * t, drift[1] * t, 0.0))
+        else:
+            k = math.exp(-2.3 * t / settle)                     # 90% of the way in `settle` seconds
+            xy = Vector((to[0] - at[0], to[1] - at[1], 0.0)) * (1.0 - min(k, 4.0))
+        root.location = base + xy + Vector((0.0, 0.0, bob * math.sin(tb * 2.1)))
         root.rotation_euler = (math.radians(2.0 * math.sin(tb * 1.7)), math.radians(2.5 * math.sin(tb * 1.3 + 1)),
                                math.radians(heading + 6 * math.sin(tb * 0.5)))
         root.keyframe_insert("location", frame=f)
         root.keyframe_insert("rotation_euler", frame=f)
     return root
+
+
+def _hue_shift(mat, shift):
+    """Shift a material's base colour hue (texture or flat colour)."""
+    nt = mat.node_tree
+    b = next((n for n in nt.nodes if n.type == "BSDF_PRINCIPLED"), None)
+    if b is None or any(n.name == "Duck_Yellow" for n in nt.nodes):
+        return
+    sock = b.inputs["Base Color"]
+    hsv = nt.nodes.new("ShaderNodeHueSaturation")
+    hsv.name = "Duck_Yellow"
+    hsv.inputs["Hue"].default_value = 0.5 + shift
+    if sock.is_linked:
+        nt.links.new(sock.links[0].from_socket, hsv.inputs["Color"])
+    else:
+        hsv.inputs["Color"].default_value = tuple(sock.default_value)
+    nt.links.new(hsv.outputs["Color"], sock)
 
 
 def marble(col=None, at=(0.12, -0.32, None), radius=0.008):
@@ -613,6 +649,29 @@ def ripples(water_ob, events, speed=0.32, wavelength=0.045, width=0.07, life=1.0
         alive = m("MULTIPLY", m("GREATER_THAN", t, 0.0), m("EXPONENT", m("MULTIPLY", t, -1.0 / life)))
         h = m("ADD", h, m("MULTIPLY", m("MULTIPLY", wave, env), m("MULTIPLY", alive, 0.6 * amp)))
     L.new(h, bp.inputs["Height"])
+
+
+def body_waves(water_ob, center, radii, amp=0.12, wavelength=0.035, speed=0.13, reach=0.22):
+    """Small waves running out from someone sitting in the water, around an ellipse at the
+    waterline (center (x, y), radii (rx, ry)). Without them the water in front of him was a
+    perfect mirror. speed: metres per unit of the water's clock (set_time_speed runs it)."""
+    mat = water_ob.data.materials[0]
+    nt, L = mat.node_tree, mat.node_tree.links
+    bp = next(n for n in nt.nodes if n.bl_idname == "ShaderNodeBump")
+    h = bp.inputs["Height"].links[0].from_socket
+    time = nt.nodes["Ripple_Time"].outputs[0]
+    geo = nt.nodes.new("ShaderNodeNewGeometry")
+    sep = nt.nodes.new("ShaderNodeSeparateXYZ")
+    L.new(geo.outputs["Position"], sep.inputs[0])
+    m = lambda op, a, b=None: SKY._math(nt, op, a, b)
+    rx, ry = radii
+    dx = m("SUBTRACT", sep.outputs["X"], center[0])
+    dy = m("MULTIPLY", m("SUBTRACT", sep.outputs["Y"], center[1]), rx / ry)
+    d = m("MAXIMUM", m("SUBTRACT", m("SQRT", m("ADD", m("MULTIPLY", dx, dx), m("MULTIPLY", dy, dy))), rx), 0.0)
+    phase = m("MULTIPLY", m("SUBTRACT", d, m("MULTIPLY", time, speed)), 2 * math.pi / wavelength)
+    wave = m("SINE", m("ADD", phase, m("MULTIPLY", h, 4.0)))      # the ripples wobble the rings
+    env = m("EXPONENT", m("MULTIPLY", d, -1.0 / reach))
+    L.new(m("ADD", h, m("MULTIPLY", m("MULTIPLY", wave, env), amp)), bp.inputs["Height"])
 
 
 def falling_drop(name, start, pos, vel=(0.0, 0.0, 0.0), radius=0.0022, col=None):
@@ -768,12 +827,12 @@ def rim(target, from_dir=(-0.5, 1.0, 0.55), dist=2.6, power=260.0, size=1.6, col
 
 
 def build(duck_at=(0.55, -0.55), marble_at=(0.12, -0.32, None), hdri_rot=-8.0, sun_az=35.0, sun_el=48.0,
-          duck_drift=(0.0, 0.0), duck_speed=1.0):
+          duck_drift=(0.0, 0.0), duck_speed=1.0, chop=0.0):
     """The whole set. Returns its parts."""
     col = _col("POOL")
     world(rot_deg=hdri_rot)
     parts = pool(col)
-    parts["water"] = water(col)
+    parts["water"] = water(col, chop=chop)
     parts["duck"] = duck(col, at=duck_at, drift=duck_drift, speed=duck_speed) if duck_at else None
     parts["marble"] = marble(col, at=marble_at) if marble_at else None
     parts["sun"] = sun(sun_az, sun_el)
