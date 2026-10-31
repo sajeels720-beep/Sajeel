@@ -17,7 +17,9 @@ Video 3: a vertical Short of 25 seconds (750 frames at 30 fps) in the style of Z
   - `cutaway.py`: shots 9–10, the fingertip cut in half like a textbook: the vessels drain, the pad shrinks and the skin buckles.
   - `tyre_set.py`: shot 14, a rain tyre (modelled, no logos) on an alloy wheel rolling through water on a strip of wet road.
   - `closing_take.py`: his performance for shots 12–16 as one take: the baffled squint, the underwater grab of the marble, holding it up to the sun, the toss and the lean back at sunset.
-- `previews/`: test images from each step.
+- `previews/`: test images and preview clips from each step.
+- `VOICEOVER.md` and `SOUND_EFFECTS.md`: the voiceover parts and every sound to make in ElevenLabs, with file names, prompts and where each goes.
+- `timeline.py`, `assemble_cut.py` and `mix_audio.py`: the edit (as for video 2). The picture is fixed, so each voiceover part is split at its pauses and every phrase starts on its cue in the picture. `assemble_cut.py` joins the shots and burns in the captions; `mix_audio.py` adds the voice, sound effects and music and sets the loudness to YouTube level.
 
 ## One-time setup
 
@@ -46,7 +48,16 @@ import runpy
 runpy.run_path(r"C:\Users\asc\Sajeel\videos\wrinkly-fingers\shots\shot01_lounge.py", run_name="__main__")
 ```
 
-The edit (joining the shots, the captions, the voiceover, sound effects and music) is added once you have recorded the voiceover, as for video 2.
+## Build the final video
+
+Make the voiceover and the sounds first (`VOICEOVER.md`, `SOUND_EFFECTS.md`) and put the files in `videos/wrinkly-fingers/audio/`. This needs Python 3 and ffmpeg on your PATH (on Windows, type `py` instead of `python3`). Once every shot is rendered, run these two commands from the repository folder:
+
+```bash
+python3 videos/wrinkly-fingers/assemble_cut.py videos/wrinkly-fingers/renders wrinkles_captions.mp4 --captions --voiceover videos/wrinkly-fingers/audio
+python3 videos/wrinkly-fingers/mix_audio.py videos/wrinkly-fingers/audio wrinkles_captions.mp4 wrinkles_final.mp4
+```
+
+The first joins the 16 shots (every frame as rendered) and burns in the caption style: 2–4 white bold words at about 72% height, each group coming up as it is spoken, with no punctuation. The second puts every voiceover phrase on its cue, lines up the sound effects, fits the music's last hit to the moment he leans back, dips the music under the voice and sets the loudness YouTube expects (-14 LUFS). `wrinkles_final.mp4` is the finished Short. For a version without captions, leave out `--captions --voiceover videos/wrinkly-fingers/audio`.
 
 ## Credits (for the video description)
 
