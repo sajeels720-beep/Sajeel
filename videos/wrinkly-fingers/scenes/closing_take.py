@@ -222,7 +222,7 @@ def marble(take, col=None):
     splash, splash_at = None, None
     if max(frames) > release:
         p0 = hold[release]
-        v = (hold[release + 1] - hold[release - 1]) * fps / 2 + Vector((0.0, -0.4, 0.9))   # a flick up and out
+        v = (hold[release + 1] - hold[release - 1]) * fps / 2 + Vector((-0.25, -1.5, 2.3))   # tossed up and out in an arc
     for f in frames:
         if f < grab:
             p = rest
