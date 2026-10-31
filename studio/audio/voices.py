@@ -139,6 +139,23 @@ def process(x, style, tmpdir, pan=0.0, max_dur=None):
         y = 0.6 * low[:n_] + 0.3 * sub[:n_] + 0.6 * breath[:n_]
         y = soft_clip(hp(lp(y, 6500), 70) * 1.3, 1.4)
         y = reverb(stereo(y, pan, 0.8), wet=0.4, length=3.0, decay=0.8)
+    elif style == 'close':
+        # right at your ear: dry and crisp, so every word is understood
+        voice = ffmpeg_filter(x, 'rubberband=pitch=0.95:formant=preserved', tmpdir)
+        breath = whisperize(x)
+        n_ = min(len(voice), len(breath))
+        y = 0.75 * voice[:n_] + 0.6 * breath[:n_]
+        y = hp(y, 150)
+        y = y + 0.6 * bp(y, 2200, 5200)
+        y = reverb(stereo(y, pan, 0.25), wet=0.12, length=1.0, decay=0.35)
+    elif style == 'soft':
+        # close and intimate, almost kind: mostly breath, a little voice, a small room
+        voice = ffmpeg_filter(x, 'rubberband=pitch=0.97:formant=preserved', tmpdir)
+        breath = whisperize(x)
+        n_ = min(len(voice), len(breath))
+        y = 0.75 * breath[:n_] + 0.5 * voice[:n_]
+        y = hp(y, 140)
+        y = reverb(stereo(y, pan, 0.3), wet=0.16, length=1.2, decay=0.4)
     else:  # roar layer
         y = soft_clip(x * 1.8, 2.0)
         y = reverb(stereo(y, pan, 1.0), wet=0.45, length=3.2, decay=0.9)

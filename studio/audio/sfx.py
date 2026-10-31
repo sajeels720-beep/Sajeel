@@ -499,3 +499,272 @@ def puff_out(seed=35):
     out = x.copy()
     out[: len(down)] += down
     return norm(out, 0.6)
+
+
+# --- the gym, the street and the year (film 3) ------------------------------------------------------------------
+
+def _modes(freqs, decays, dur, amps=None, seed=0):
+    """Sum of decaying sine modes: the ring of struck metal."""
+    t = t_axis(dur)
+    out = np.zeros(len(t), np.float32)
+    amps = amps or [1.0] * len(freqs)
+    r = rng(seed)
+    for f, d, a in zip(freqs, decays, amps):
+        f *= r.uniform(0.97, 1.03)
+        out += (np.sin(2 * np.pi * f * t + r.uniform(0, 6)) * np.exp(-t / d) * a).astype(np.float32)
+    return out
+
+
+def clank(seed=0, heavy=1.0):
+    """Iron plates knocking together (heavy > 1 is lower and longer)."""
+    dur = 1.0
+    k = 1.0 / heavy
+    ring = _modes([310 * k, 870 * k, 1650 * k, 2400 * k, 3900 * k], [0.28 * heavy, 0.16, 0.1, 0.07, 0.04], dur,
+                  [1.0, 0.7, 0.5, 0.35, 0.2], seed)
+    hit = bp(white(dur, seed), 900, 6500) * env_exp(dur, 0.012)
+    thump = sine(glide(110 * k, 70 * k, dur), dur) * env_exp(dur, 0.05) * 0.8
+    return norm(ring * 0.5 + hit * 0.8 + thump, 0.9)
+
+
+def dumbbell_drop(seed=0):
+    """A dumbbell dropped on a rubber floor: a dull thud, a clank, a short roll."""
+    dur = 1.6
+    out = np.zeros(secs(dur), np.float32)
+    th = lp(white(0.3, seed), 500) * env_exp(0.3, 0.04) + sine(glide(70, 45, 0.3), 0.3) * env_exp(0.3, 0.07)
+    out[: len(th)] += th * 1.2
+    ck = clank(seed + 1, 0.8) * 0.45
+    out[: len(ck)] += ck[: len(out)]
+    t = t_axis(dur - 0.15)
+    roll = lp(brown(dur - 0.15, seed + 2), 300) * (0.5 + 0.5 * np.sin(2 * np.pi * 9 * t)) * np.exp(-t / 0.4)
+    i = secs(0.15)
+    out[i:i + len(roll)] += roll * 0.7
+    return norm(out, 0.9)
+
+
+def bar_rack(seed=0):
+    """A barbell set back in its hooks: two clanks a moment apart."""
+    a = clank(seed, 1.25)
+    b = clank(seed + 7, 1.1) * 0.55
+    out = np.zeros(len(a) + secs(0.09), np.float32)
+    out[: len(a)] += a
+    out[secs(0.09): secs(0.09) + len(b)] += b
+    return norm(out, 0.9)
+
+
+def treadmill(dur, seed=0, level=0.25):
+    """A treadmill running: motor whine and the belt's hum."""
+    t = t_axis(dur)
+    wob = 1 + 0.004 * np.sin(2 * np.pi * 0.7 * t)
+    whine = np.sin(2 * np.pi * 240 * wob * t) * 0.25 + np.sin(2 * np.pi * 480 * wob * t) * 0.12
+    belt = lp(pink(dur, seed), 260) * 0.8
+    return stereo(norm((whine + belt).astype(np.float32), level), width=0.4)
+
+
+def shoulder_tap(seed=0):
+    """A finger on a shoulder: a small, soft knock with something enormous under it."""
+    dur = 1.4
+    out = np.zeros(secs(dur), np.float32)
+    knock = bp(white(0.08, seed), 300, 1600) * env_exp(0.08, 0.008) + sine(190, 0.08) * env_exp(0.08, 0.02) * 0.6
+    out[: len(knock)] += knock
+    sub = sine(glide(54, 34, 1.3), 1.3) * env_ad(1.3, 0.04, 1.2) * 0.9
+    i = secs(0.03)
+    out[i:i + len(sub)] += sub
+    return norm(out, 0.9)
+
+
+def poof(seed=0, dur=1.8, dark=False):
+    """Someone going to smoke: an airy hiss that drifts up and thins out, a dark whoosh, a few crackles."""
+    air = bp(pink(dur, seed), 700 if not dark else 300, 6500 if not dark else 2500) * env_ad(dur, 0.12, dur - 0.12, 2.2)
+    low = lp(pink(dur, seed + 1), 240) * env_ad(dur, 0.05, 0.9) * 0.6
+    out = air + low
+    r = rng(seed)
+    for k in range(14):
+        t0 = r.uniform(0.0, dur * 0.7)
+        cl = bp(white(0.012, seed + 10 + k), 2500, 8000) * env_exp(0.012, 0.002) * r.uniform(0.1, 0.35)
+        i = secs(t0)
+        out[i:i + len(cl)] += cl
+    return norm(out, 0.8)
+
+
+def shutter(seed=0):
+    """An old camera: shutter clack and a bright flash pop."""
+    dur = 0.5
+    out = np.zeros(secs(dur), np.float32)
+    for t0, g in ((0.0, 1.0), (0.045, 0.7)):
+        c = hp(white(0.03, seed + int(t0 * 100)), 1500) * env_exp(0.03, 0.004) * g
+        i = secs(t0)
+        out[i:i + len(c)] += c
+    pop = sine(glide(2600, 5200, 0.2), 0.2) * env_exp(0.2, 0.05) * 0.12
+    out[: len(pop)] += pop
+    return norm(out, 0.8)
+
+
+def chalk_clap(seed=0):
+    dur = 0.6
+    clap = bp(white(dur, seed), 700, 4200) * env_exp(dur, 0.012)
+    dust = lp(pink(dur, seed + 1), 1800) * env_ad(dur, 0.02, 0.5) * 0.35
+    return norm(clap + dust, 0.8)
+
+
+def rope_turn(seed=0):
+    """One turn of a skipping rope: a fast swish and a tick on the floor."""
+    dur = 0.3
+    sw = whoosh(0.18, 900, 3500, seed) * 0.6
+    out = np.zeros(secs(dur), np.float32)
+    out[: len(sw)] += sw
+    tk = bp(white(0.02, seed + 1), 1500, 6000) * env_exp(0.02, 0.003)
+    i = secs(0.17)
+    out[i:i + len(tk)] += tk
+    return norm(out, 0.7)
+
+
+def firework_launch(seed=0, dur=0.7):
+    t = t_axis(dur)
+    whistle = sine(glide(700, 2600, dur), dur) * np.sin(np.pi * t / dur) * 0.3
+    hiss = bp(white(dur, seed), 1500, 7000) * env_ad(dur, 0.05, dur - 0.05) * 0.4
+    return norm(whistle + hiss, 0.6)
+
+
+def firework_boom(seed=0, dur=2.6):
+    """The burst: a deep boom and a crackling tail (stereo)."""
+    boom = sine(glide(64, 30, dur), dur) * env_exp(dur, 0.35, 0.004)
+    rumble = lp(brown(dur, seed), 180) * env_exp(dur, 0.6)
+    out = stereo(norm(boom + rumble, 0.9), width=0.6)
+    r = rng(seed)
+    for k in range(60):
+        t0 = r.uniform(0.25, dur - 0.1) * (0.6 + 0.4 * r.uniform())
+        cl = bp(white(0.01, seed + 30 + k), 2000, 9000) * env_exp(0.01, 0.0015) * r.uniform(0.05, 0.3)
+        i = secs(t0)
+        out[i:i + len(cl)] += stereo(cl, r.uniform(-0.9, 0.9))[: len(out) - i]
+    return norm(out, 0.9)
+
+
+def crowd_cheer(dur, seed=0, level=0.6):
+    """A happy crowd at midnight: clapping, chatter and whoops."""
+    out = applause(dur, 55, seed, 0.7, swell=(0.05, dur * 0.8)) + murmur(dur, 16, seed + 1, 0.5)
+    r = rng(seed)
+    for k in range(int(dur * 2.5)):
+        t0 = r.uniform(0.0, dur - 0.6)
+        d = r.uniform(0.25, 0.5)
+        f0 = r.uniform(380, 700)
+        x = sine(glide(f0, f0 * r.uniform(1.3, 1.8), d), d)
+        x = bp(x + 0.3 * bp(pink(d, seed + 50 + k), f0, f0 * 3), 300, 3000) * env_ad(d, 0.03, d - 0.03) * 0.5
+        i = secs(t0)
+        out[i:i + len(x)] += stereo(x, r.uniform(-0.8, 0.8))[: len(out) - i]
+    return norm(out, level)
+
+
+def wind(dur, seed=0, level=0.2, gusty=1.0):
+    t = t_axis(dur)
+    x = bp(pink(dur, seed), 180, 1400)
+    gust = 0.55 + 0.45 * np.sin(2 * np.pi * 0.13 * t + 1.0) * np.sin(2 * np.pi * 0.31 * t) * gusty
+    y = bp(pink(dur, seed + 1), 200, 1600)
+    return np.stack([norm(x * gust, level), norm(y * gust[::-1], level)], axis=1)
+
+
+def rain(dur, seed=0, level=0.25):
+    hiss = bp(white(dur, seed), 1200, 9000) * 0.5
+    body = lp(pink(dur, seed + 1), 900) * 0.4
+    out = hiss + body
+    r = rng(seed)
+    for k in range(int(dur * 70)):
+        t0 = r.uniform(0, dur - 0.02)
+        d = bp(white(0.012, seed + 100 + (k % 50)), 1800, 7000) * env_exp(0.012, 0.002) * r.uniform(0.2, 0.6)
+        i = secs(t0)
+        out[i:i + len(d)] += d
+    y = np.roll(out, secs(0.013))
+    return np.stack([norm(out, level), norm(y, level)], axis=1)
+
+
+def cicadas(dur, seed=0, level=0.12):
+    t = t_axis(dur)
+    out = np.zeros((len(t), 2), np.float32)
+    r = rng(seed)
+    for v in range(3):
+        f = r.uniform(4200, 5600)
+        am = (np.sin(2 * np.pi * r.uniform(48, 62) * t) * 0.5 + 0.5) ** 3
+        phrase = np.clip(np.sin(2 * np.pi * r.uniform(0.08, 0.2) * t + r.uniform(0, 6)) * 1.5, 0, 1)
+        x = np.sin(2 * np.pi * f * t) * am * phrase
+        out += stereo(x.astype(np.float32), r.uniform(-0.7, 0.7))
+    return norm(out, level)
+
+
+def rustle(dur, seed=0, level=0.15):
+    t = t_axis(dur)
+    x = bp(white(dur, seed), 1600, 8000)
+    env = np.clip(np.sin(2 * np.pi * 0.4 * t) * np.sin(2 * np.pi * 0.17 * t + 2), 0, 1) ** 1.5 + 0.15
+    return stereo(norm(x * env, level), width=0.8)
+
+
+def light_buzz(dur, seed=0, level=0.05, flicker=None):
+    """Fluorescent tubes: a mains hum; flicker: list of times for a stutter."""
+    t = t_axis(dur)
+    hum = np.sin(2 * np.pi * 100 * t) * 0.6 + np.sin(2 * np.pi * 200 * t) * 0.25 + np.sin(2 * np.pi * 300 * t) * 0.1
+    x = (hum + 0.15 * hp(white(dur, seed), 3000)).astype(np.float32)
+    for f in flicker or []:
+        i = secs(f)
+        c = bp(white(0.03, seed + int(f * 10)), 1000, 6000) * env_exp(0.03, 0.004) * 4
+        x[i:i + len(c)] += c[: len(x) - i]
+    return stereo(norm(x, level), width=0.5)
+
+
+def bell(seed=0, f0=660.0, dur=3.5):
+    """A clear chime (midnight)."""
+    ratios = [0.5, 1.0, 1.19, 1.56, 2.0, 2.66, 3.01]
+    decays = [2.6, 2.2, 1.6, 1.2, 1.0, 0.7, 0.5]
+    amps = [0.5, 1.0, 0.6, 0.45, 0.35, 0.25, 0.15]
+    x = _modes([f0 * r for r in ratios], decays, dur, amps, seed)
+    strike = bp(white(dur, seed), 2000, 8000) * env_exp(dur, 0.005) * 0.4
+    return norm(x + strike, 0.8)
+
+
+def snow_step(seed=0):
+    """A footstep in snow: a short granular crunch."""
+    dur = 0.2
+    out = np.zeros(secs(dur), np.float32)
+    r = rng(seed)
+    for k in range(40):
+        t0 = r.uniform(0, 0.12)
+        g = bp(white(0.004, seed + k), 1200, 6000) * r.uniform(0.2, 1.0)
+        i = secs(t0)
+        out[i:i + len(g)] += g
+    out += lp(white(dur, seed + 99), 500) * env_exp(dur, 0.03) * 0.6
+    return norm(lp(out, 5000), 0.55)
+
+
+def splash_step(seed=0):
+    dur = 0.35
+    x = bp(white(dur, seed), 500, 4500) * env_ad(dur, 0.005, 0.3, 3.0)
+    slosh = lp(pink(dur, seed + 1), 900) * env_ad(dur, 0.03, 0.3) * 0.6
+    return norm(x + slosh, 0.6)
+
+
+def car_horn(seed=0, dur=0.45):
+    """A distant two-tone car horn (New Year's Eve in the street)."""
+    t = t_axis(dur)
+    x = np.zeros(len(t), np.float32)
+    for f in (392.0, 494.0):
+        x += np.sign(np.sin(2 * np.pi * f * t)).astype(np.float32) * 0.3
+    x = lp(bp(x, 300, 2500), 1800) * env_ad(dur, 0.02, 0.08)
+    return norm(reverb(x, wet=0.5, length=1.6, decay=0.6), 0.5)
+
+
+def sizzle(dur=1.6, seed=0):
+    """Something crumbling to ash: a dry crackle over a soft hiss."""
+    out = bp(white(dur, seed), 3000, 9000) * env_ad(dur, 0.05, dur * 0.7) * 0.25
+    r = rng(seed)
+    for k in range(int(dur * 90)):
+        t0 = r.uniform(0, dur - 0.02)
+        c = bp(white(0.006, seed + 7 + (k % 40)), 2500, 9000) * r.uniform(0.2, 1.0)
+        i = secs(t0)
+        out[i:i + len(c)] += c * (1 - t0 / dur)
+    return norm(out, 0.7)
+
+
+def grunt(seed=0, dur=0.55):
+    """A wordless effort sound: a voiced push of breath through closed teeth."""
+    t = t_axis(dur)
+    f0 = 118 * (1 + 0.06 * np.sin(2 * np.pi * 7 * t))
+    buzz = np.sign(np.sin(2 * np.pi * np.cumsum(f0) / SR)).astype(np.float32)
+    voiced = bp(buzz, 300, 1400) * 0.5 + bp(pink(dur, seed), 500, 3000) * 0.6
+    return norm(voiced * env_ad(dur, 0.04, 0.3, 1.5), 0.6)

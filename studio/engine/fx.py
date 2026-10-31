@@ -6,7 +6,7 @@ import math
 import skia
 
 from .core import clamp, hrand, hrange, noise1, smooth
-from .draw import font, paint, poly, text
+from .draw import font, oval, paint, poly, text
 
 
 def dust_motes(c, x0, y0, x1, y1, t, n=60, seed=1, color='#FFE6B0', a=0.6, size=(1.2, 3.2), speed=12.0):
@@ -211,3 +211,183 @@ def light_rays(c, x, y, t, n=14, length=1600, a=0.12, color='warm', spin=0.05, w
         path = poly([(x, y), (x + math.cos(ang - w) * length, y + math.sin(ang - w) * length),
                      (x + math.cos(ang + w) * length, y + math.sin(ang + w) * length)], True)
         c.drawPath(path, paint(color, a * (0.5 + 0.5 * math.sin(t * 1.3 + i)), blur=24, blend='add'))
+
+
+# --- quitting: turning to smoke ---------------------------------------------------------------------------
+
+def _crumble_mask(box, thr, seed, freq=0.045, k=7.0, from_top=False):
+    """A paint that keeps pixels where noise + height < thr (the bottom of the box goes first, or the top)."""
+    x0, y0, x1, y1 = box
+    noise = skia.PerlinNoiseShader.MakeFractalNoise(freq, freq, 3, float(seed % 97))
+    ends = [skia.Color(0, 0, 0, 255), skia.Color(255, 255, 255, 255)]
+    grad = skia.GradientShader.MakeLinear(points=[(x0, y0), (x0, y1)], colors=ends[::-1] if from_top else ends)
+    comb = skia.Shaders.Blend(skia.BlendMode.kPlus, noise, grad)
+    m = [0, 0, 0, 0, 0,
+         0, 0, 0, 0, 0,
+         0, 0, 0, 0, 0,
+         -k, 0, 0, 0, k * thr]
+    p = skia.Paint()
+    p.setShader(comb.makeWithColorFilter(skia.ColorFilters.Matrix(m)))
+    p.setBlendMode(skia.BlendMode.kDstIn)
+    return p
+
+
+def dissolve(c, draw_fn, box, t, t0, dur=1.7, seed=1, smoke='#A3A8B2', smoke_a=0.55, grey=0.6, rise=260,
+             embers=None, n=34, drift=40.0):
+    """Draw draw_fn(c) as someone quitting: the colour drains out, then the figure crumbles away from the feet
+    up while smoke rises from the crumbling edge. box: (x0, y0, x1, y1) around the figure (world units).
+    Before t0 - 0.5 it is drawn untouched; the smoke keeps rising for a while after it is gone."""
+    x0, y0, x1, y1 = box
+    u = (t - t0) / dur
+    if u < 1:
+        if t < t0 - 0.55:
+            draw_fn(c)
+            return
+        c.saveLayer(skia.Rect.MakeLTRB(x0 - 60, y0 - 80, x1 + 60, y1 + 40), None)
+        draw_fn(c)
+        g = grey * smooth(t0 - 0.55, t0 + 0.25, t)
+        if g > 0:
+            gp = paint('#7E848F', g)
+            gp.setBlendMode(skia.BlendMode.kSrcATop)
+            c.drawRect(skia.Rect.MakeLTRB(x0 - 60, y0 - 80, x1 + 60, y1 + 40), gp)
+        if u > 0:
+            thr = 1.75 - 2.1 * u
+            c.drawRect(skia.Rect.MakeLTRB(x0 - 60, y0 - 80, x1 + 60, y1 + 40), _crumble_mask(box, thr, seed))
+        c.restore()
+    # smoke puffs born along the crumbling edge, which climbs the figure over `dur`
+    life = 1.9
+    for i in range(n):
+        born = t0 + dur * (i / n) * 0.95
+        age = t - born
+        if age < 0 or age > life:
+            continue
+        v = age / life
+        front = y1 - (y1 - y0) * ((born - t0) / dur) * 1.05
+        bx = x0 + (x1 - x0) * (0.25 + 0.5 * hrand(i, seed))
+        px = bx + noise1(age * 0.9 + i, seed) * drift + (hrand(i, seed, 3) - 0.5) * 60 * v
+        py = front - rise * (1 - (1 - v) ** 1.6) - 10
+        r = (16 + 22 * hrand(i, seed, 2)) * (0.6 + 1.3 * v)
+        alpha = smoke_a * smooth(0.0, 0.12, v) * (1 - smooth(0.45, 1.0, v))
+        c.drawCircle(px, py, r, paint(smoke, alpha, blur=r * 0.55))
+        if embers and hrand(i, seed, 5) > 0.5:
+            c.drawCircle(px + 6, py + 4, 2.6, paint(embers, alpha * 1.4, blur=1.5, blend='add'))
+
+
+def crumble(c, draw_fn, box, amount, seed=1, from_top=True, grey=0.0, freq=0.09):
+    """Draw draw_fn(c) partly eaten away (amount 0 = whole, 1 = gone), e.g. fingertips going to smoke."""
+    x0, y0, x1, y1 = box
+    if amount <= 0.001 and grey <= 0:
+        draw_fn(c)
+        return
+    c.saveLayer(skia.Rect.MakeLTRB(x0 - 40, y0 - 40, x1 + 40, y1 + 40), None)
+    draw_fn(c)
+    if grey > 0:
+        gp = paint('#8E949E', grey)
+        gp.setBlendMode(skia.BlendMode.kSrcATop)
+        c.drawRect(skia.Rect.MakeLTRB(x0 - 40, y0 - 40, x1 + 40, y1 + 40), gp)
+    if amount > 0.001:
+        c.drawRect(skia.Rect.MakeLTRB(x0 - 40, y0 - 40, x1 + 40, y1 + 40),
+                   _crumble_mask(box, 1.75 - 2.1 * amount, seed, freq=freq, from_top=from_top))
+    c.restore()
+
+
+def wisps(c, points, t, a=1.0, color='#B6BBC4', rise=120, seed=4, width=7.0):
+    """Thin smoke streams curling up from each point (fingertips starting to go)."""
+    if a <= 0:
+        return
+    for k, (x, y) in enumerate(points):
+        for j in range(3):
+            phase = (t * 0.7 + j / 3 + hrand(k, seed)) % 1.0
+            path = skia.Path()
+            pts = []
+            for m in range(9):
+                u = m / 8
+                yy = y - rise * u * (0.6 + 0.4 * phase)
+                xx = x + math.sin(u * 5 + t * 2.4 + k + j) * 12 * u + noise1(t * 0.8 + j, k + seed) * 10 * u
+                pts.append((xx, yy))
+            path.moveTo(*pts[0])
+            for p in pts[1:]:
+                path.lineTo(*p)
+            alpha = a * 0.5 * (1 - phase) * smooth(0.0, 0.2, phase)
+            c.drawPath(path, paint(color, alpha, stroke=width * (1.2 - 0.6 * phase), blur=3))
+
+
+# --- the year outside: fireworks, snow, rain, leaves --------------------------------------------------------
+
+FIREWORK_COLORS = ['#FFD36E', '#FF7A59', '#7FD3FF', '#C59BFF', '#9CFFB8', '#FFFFFF']
+
+
+def firework(c, x, y, t, t0, color='#FFD36E', n=40, radius=230, seed=0, life=1.9, rocket=0.65, a=1.0, size=1.0):
+    """A rocket climbs for `rocket` seconds, then bursts at (x, y) at t0 into falling sparks."""
+    if t < t0 - rocket or t > t0 + life:
+        return
+    if t < t0:
+        u = (t - (t0 - rocket)) / rocket
+        ry = y + 420 * size * (1 - u) ** 1.4
+        for k in range(6):
+            tr = y + 420 * size * (1 - max(0.0, u - k * 0.02)) ** 1.4
+            c.drawCircle(x + math.sin(k + t * 30) * 1.5, tr, 3.0 - 0.4 * k, paint('#FFE7B8', a * (1 - k / 6)))
+        c.drawCircle(x, ry, 10, paint(color, 0.5 * a, blur=6, blend='add'))
+        return
+    age = t - t0
+    v = age / life
+    if age < 0.2:
+        c.drawCircle(x, y, radius * size * 0.32, paint(color, a * 0.2 * (1 - age / 0.2), blur=40, blend="add"))
+    for i in range(n):
+        ang = math.tau * i / n + hrand(i, seed) * 0.2
+        sp = radius * size * (0.7 + 0.3 * hrand(i, seed, 1))
+        reach = 1 - (1 - min(1.0, age / 0.9)) ** 3
+        fall = 70 * size * age * age
+        px = x + math.cos(ang) * sp * reach
+        py = y + math.sin(ang) * sp * reach + fall
+        tail = 0.12 * sp * (1 - reach) + 6
+        tx = px - math.cos(ang) * tail
+        ty = py - math.sin(ang) * tail - 2
+        alpha = a * (1 - smooth(0.5, 1.0, v)) * (0.6 + 0.4 * math.sin(age * 30 + i) ** 2)
+        c.drawLine(tx, ty, px, py, paint(color, alpha * 0.8, stroke=3.2 * size, blur=2, blend='add'))
+        c.drawCircle(px, py, 2.4 * size, paint('#FFFFFF', alpha))
+
+
+def snowfall(c, x0, y0, x1, y1, t, n=90, seed=1, wind=24.0, speed=55.0, size=(1.6, 4.4), a=0.85, color='#F4F6FF'):
+    w, h = x1 - x0, y1 - y0
+    for i in range(n):
+        sp = speed * (0.6 + 0.8 * hrand(i, seed))
+        px = x0 + (hrand(i, seed, 1) * w + t * wind * (0.5 + hrand(i, seed, 2)) + math.sin(t * 1.3 + i) * 12) % w
+        py = y0 + (hrand(i, seed, 3) * h + t * sp) % h
+        r = size[0] + (size[1] - size[0]) * hrand(i, seed, 4)
+        c.drawCircle(px, py, r, paint(color, a * (0.55 + 0.45 * hrand(i, seed, 5))))
+
+
+def rainfall(c, x0, y0, x1, y1, t, n=110, seed=2, slant=0.18, speed=1300.0, length=38.0, a=0.35, color='#BFD3EA'):
+    w, h = x1 - x0, y1 - y0
+    p = paint(color, a, stroke=2.2)
+    for i in range(n):
+        sp = speed * (0.8 + 0.4 * hrand(i, seed))
+        py = y0 + (hrand(i, seed, 1) * h + t * sp) % h
+        px = x0 + (hrand(i, seed, 2) * w + (py - y0) * slant) % w
+        c.drawLine(px, py, px - length * slant, py - length, p)
+
+
+def falling_leaves(c, x0, y0, x1, y1, t, n=24, seed=3, colors=('#E07B39', '#C9572B', '#E8A93A', '#B5452A'),
+                   speed=70.0, size=11.0, a=1.0, petals=False):
+    w, h = x1 - x0, y1 - y0
+    for i in range(n):
+        sp = speed * (0.6 + 0.8 * hrand(i, seed))
+        py = y0 + (hrand(i, seed, 1) * h + t * sp) % h
+        px = x0 + (hrand(i, seed, 2) * w + math.sin(t * 1.4 + i) * 40 + t * 30) % w
+        rot = t * 140 * (hrand(i, seed, 3) - 0.5) + i * 40
+        s = size * (0.7 + 0.6 * hrand(i, seed, 4))
+        c.save()
+        c.translate(px, py)
+        c.rotate(rot)
+        c.scale(1.0, 0.45 + 0.55 * abs(math.sin(t * 2 + i)))
+        if petals:
+            c.drawOval(oval(0, 0, s * 0.8, s * 0.55), paint(colors[i % len(colors)], a))
+        else:
+            leaf = skia.Path()
+            leaf.moveTo(-s, 0)
+            leaf.quadTo(0, -s * 0.8, s, 0)
+            leaf.quadTo(0, s * 0.8, -s, 0)
+            c.drawPath(leaf, paint(colors[i % len(colors)], a))
+            c.drawLine(-s, 0, s, 0, paint('#000000', 0.25 * a, stroke=1.2))
+        c.restore()

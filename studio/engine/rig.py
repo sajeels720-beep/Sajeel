@@ -12,7 +12,7 @@ from dataclasses import dataclass, field, replace
 import skia
 
 from .core import hrand, noise1, smooth
-from .draw import OUTLINE_W, circle, col, limb, oval, paint, poly, smooth_path
+from .draw import OUTLINE_W, circle, col, limb, oval, paint, poly, smooth_path, text
 
 BASE_POSE = dict(
     x=0.0, y=0.0, facing=1, scale=1.0, alpha=1.0,
@@ -41,6 +41,13 @@ class Look:
     hair: str | None = None           # 'short' | 'long' | 'bun' | 'spiky'
     hair_color: str = '#3A2E28'
     mustache: str | None = None       # colour of a moustache, if any
+    beard: str | None = None          # colour of a full beard, if any
+    headband: str | None = None       # colour of a sweatband, if any
+    brow_color: str | None = None     # eyebrows (default: the outline colour), e.g. white for an old man
+    sleeve: str = 'long'              # 'long', 'short' (t-shirt) or 'none' (vest): bare skin below the sleeve
+    shorts: str | None = None         # colour of shorts; the lower legs are then bare
+    print_text: str | None = None     # a slogan printed on the chest
+    print_color: str = '#2B2416'
     head_r: float = 62.0
     torso: float = 100.0
     upper_arm: float = 54.0
@@ -127,7 +134,7 @@ def solve(look: Look, pose: dict):
         h0 = _add(hip, perp, off)
         tgt = pose.get(f'foot_{side}')
         if tgt is not None:
-            kn, ft = two_bone(h0, tgt, L.thigh, L.shin, bend=-1.0)
+            kn, ft = two_bone(h0, tgt, L.thigh, L.shin, bend=pose.get(f'ikl_{side}', -1.0))
         else:
             kn = _add(h0, _dir(pose[f'h{side}']), L.thigh)
             ft = _add(kn, _dir(pose[f'h{side}'] - pose[f'k{side}']), L.shin)
@@ -162,8 +169,12 @@ class Character:
             return j
         c.save()
         c.translate(pose['x'], pose['y'])
+        if pose.get('rot'):
+            c.rotate(pose['rot'])
         s = pose['scale']
         c.scale(s * pose['facing'], s)
+        self._facing = pose['facing']
+        self._pose = pose
         if alpha < 1:
             c.saveLayerAlpha(None, int(alpha * 255))
         if 'behind' in layers:
@@ -181,15 +192,33 @@ class Character:
     def _arm(self, c, j, side, top=None):
         L = self.look
         sleeve = L.sleeves or L.top
-        limb(c, [j[f'sh_{side}'], j[f'el_{side}'], j[f'hand_{side}']], sleeve, L.arm_w, L.outline)
-        self._hand(c, j[f'hand_{side}'])
+        sh, el, hand = j[f'sh_{side}'], j[f'el_{side}'], j[f'hand_{side}']
+        if L.sleeve == 'long':
+            limb(c, [sh, el, hand], sleeve, L.arm_w, L.outline)
+        else:
+            limb(c, [sh, el, hand], L.skin, L.arm_w * 0.9, L.outline)
+            if L.sleeve == 'short':
+                cuff = (sh[0] + (el[0] - sh[0]) * 0.6, sh[1] + (el[1] - sh[1]) * 0.6)
+                limb(c, [sh, cuff], sleeve, L.arm_w + 6, L.outline)
+        if not getattr(self, '_pose', {}).get(f'no_hand_{side}'):
+            self._hand(c, hand)
+
+    def arm(self, c, j, side='f'):
+        """Draw just one arm (in the character's local frame), e.g. from a layer with an effect applied."""
+        self._arm(c, j, side)
 
     def _hand(self, c, p):
         circle(c, p[0], p[1], 10.5, self.look.skin, self.look.outline, 4.5)
 
     def _leg(self, c, j, side):
         L = self.look
-        limb(c, [j[f'hj_{side}'], j[f'kn_{side}'], j[f'ft_{side}']], L.pants, L.leg_w, L.outline)
+        hj, kn = j[f'hj_{side}'], j[f'kn_{side}']
+        if L.shorts:
+            limb(c, [hj, kn, j[f'ft_{side}']], L.skin, L.leg_w * 0.82, L.outline)
+            hem = (hj[0] + (kn[0] - hj[0]) * 0.86, hj[1] + (kn[1] - hj[1]) * 0.86)
+            limb(c, [hj, hem], L.shorts, L.leg_w + 9, L.outline)
+        else:
+            limb(c, [hj, kn, j[f'ft_{side}']], L.pants, L.leg_w, L.outline)
         fx, fy = j[f'ft_{side}']
         knee = j[f'kn_{side}']
         # foot points forward; tilt slightly along the shin when the leg is raised
@@ -235,6 +264,21 @@ class Character:
             mid = _add(j['hip'], j['spine'], 30)
             pk = poly([_add(_add(mid, j['perp'], -17), j['spine'], -8), _add(_add(mid, j['perp'], 17), j['spine'], -8)])
             c.drawPath(pk, paint(L.outline, 0.55, stroke=3.5))
+        if L.print_text:
+            # stacked words, set a little toward the back so the front arm doesn't cover them
+            chest = _add(_add(j['hip'], j['spine'], L.torso * 0.6), j['perp'], -L.shoulder_w * 0.09)
+            lean = math.degrees(math.atan2(j['spine'][0], -j['spine'][1]))
+            lines = L.print_text.split('\n')
+            size = L.shoulder_w * 0.23
+            c.save()
+            c.translate(*chest)
+            c.rotate(lean)
+            if getattr(self, '_facing', 1) < 0:
+                c.scale(-1, 1)
+            for k, line in enumerate(lines):
+                y = (k - (len(lines) - 1) / 2) * size * 0.92 + size * 0.36
+                text(c, line, 0, y, size, 'Fredoka-700', L.print_color)
+            c.restore()
         if L.tie:
             n = _add(j['neck'], j['spine'], -10)
             tip = _add(n, j['spine'], -62)
@@ -273,13 +317,16 @@ class Character:
 
     def _draw_body(self, c, pose, j, layers):
         self._body_parts(c, pose, j, layers)
+        front_arm = not pose.get('no_arm_f')
         if pose.get('arm_over_head'):
             self._head(c, pose, j)
             if 'over_head' in layers:
                 layers['over_head'](c, j)
-            self._arm(c, j, 'f')
+            if front_arm:
+                self._arm(c, j, 'f')
         else:
-            self._arm(c, j, 'f')
+            if front_arm:
+                self._arm(c, j, 'f')
             self._head(c, pose, j)
             if 'over_head' in layers:
                 layers['over_head'](c, j)
@@ -337,8 +384,12 @@ class Character:
         circle(c, 0, 0, R, L.skin, L.outline, OUTLINE_W)
         if L.hair:
             hair_front(c, R, L.hair, L.hair_color, L.outline)
+        if L.headband:
+            headband(c, R, L.headband, L.outline)
         if not pose.get('back'):
-            face(c, R, pose, L.outline)
+            if L.beard:
+                beard(c, R, pose, L.beard, L.outline)
+            face(c, R, pose, L.outline, L.brow_color)
             if L.mustache:
                 mustache(c, R, pose, L.mustache, L.outline)
         else:
@@ -360,7 +411,7 @@ class Character:
         if L.hat == 'beanie':
             beanie(c, R, L.hat_color, L.outline)
         if pose.get('brows_over_hat') and not pose.get('back'):
-            brows(c, R, pose, L.outline)
+            brows(c, R, pose, L.outline, L.brow_color)
         c.restore()
 
     def draw_head(self, c, x, y, pose_in: dict, angle=0.0, scale=1.0, facing=1):
@@ -394,7 +445,45 @@ def mustache(c, R, p, color, outline='outline'):
     c.drawPath(path, paint(outline, stroke=3.5))
 
 
-def brows(c, R, p, outline='outline'):
+def beard(c, R, p, color, outline='outline'):
+    """A full, rounded beard from temple to temple, hanging a little below the chin; the mouth sits on it."""
+    fx = p.get('turn', 0.35) * R * 0.42
+    dy = p.get('face_dy', 0.0) * R * 0.5
+    path = skia.Path()
+    path.moveTo(-R * 0.97, -R * 0.12)
+    path.cubicTo(-R * 1.02, R * 0.75, fx - R * 0.55, R * 1.22 + dy, fx + R * 0.05, R * 1.2 + dy)
+    path.cubicTo(fx + R * 0.6, R * 1.18 + dy, R * 1.0, R * 0.7, R * 0.97, -R * 0.12)
+    path.cubicTo(R * 0.86, R * 0.2, fx + R * 0.5, R * 0.14 + dy, fx + R * 0.32, R * 0.24 + dy)
+    path.quadTo(fx, R * 0.18 + dy, fx - R * 0.32, R * 0.24 + dy)
+    path.cubicTo(fx - R * 0.5, R * 0.14 + dy, -R * 0.86, R * 0.2, -R * 0.97, -R * 0.12)
+    path.close()
+    c.drawPath(path, paint(color))
+    c.drawPath(path, paint(outline, stroke=4))
+    for k in range(5):
+        u = (k + 0.5) / 5
+        x = fx - R * 0.45 + R * 0.9 * u
+        c.drawLine(x, R * 0.62 + dy, x + R * 0.03, R * 0.85 + dy, paint(outline, 0.18, stroke=2.5))
+
+
+def headband(c, R, color, outline='outline'):
+    """A sweatband round the forehead, tied at the back."""
+    head = skia.Path()
+    head.addCircle(0, 0, R - 1)
+    for tail in (((-R * 0.95, -R * 0.5), (-R * 1.32, -R * 0.2)), ((-R * 0.95, -R * 0.48), (-R * 1.25, -R * 0.02))):
+        c.drawLine(*tail[0], *tail[1], paint(outline, stroke=13))
+        c.drawLine(*tail[0], *tail[1], paint(color, stroke=7))
+    c.save()
+    c.clipPath(head, doAntiAlias=True)
+    band = skia.Rect.MakeLTRB(-R * 1.1, -R * 0.66, R * 1.1, -R * 0.42)
+    c.drawRect(band, paint(color))
+    c.drawRect(band, paint('#FFFFFF', 0.12))
+    for y in (-R * 0.66, -R * 0.42):
+        c.drawLine(-R * 1.1, y, R * 1.1, y, paint(outline, stroke=4))
+    c.restore()
+    c.drawCircle(0, 0, R, paint(outline, stroke=OUTLINE_W))
+
+
+def brows(c, R, p, outline='outline', color=None):
     turn = p.get('turn', 0.35)
     fx = turn * R * 0.42
     hs = R * 0.30 * (1 - 0.32 * turn)
@@ -406,10 +495,14 @@ def brows(c, R, p, outline='outline'):
         # inner end (toward the nose) drops for anger, rises for worry
         a = math.radians(brow) * inner
         dx, dy = math.cos(a) * bl, math.sin(a) * bl
-        c.drawLine(ex - dx, by - dy, ex + dx, by + dy, paint(outline, stroke=6.5))
+        if color:
+            c.drawLine(ex - dx, by - dy, ex + dx, by + dy, paint(outline, stroke=10.5))
+            c.drawLine(ex - dx, by - dy, ex + dx, by + dy, paint(color, stroke=6.5))
+        else:
+            c.drawLine(ex - dx, by - dy, ex + dx, by + dy, paint(outline, stroke=6.5))
 
 
-def face(c, R, p, outline='outline'):
+def face(c, R, p, outline='outline', brow_color=None):
     turn = p.get('turn', 0.35)
     fx = turn * R * 0.42
     hs = R * 0.30 * (1 - 0.32 * turn)
@@ -458,7 +551,7 @@ def face(c, R, p, outline='outline'):
                            paint(outline, stroke=4))
 
     if not p.get('brows_over_hat'):
-        brows(c, R, p, outline)
+        brows(c, R, p, outline, brow_color)
 
     mx, my = fx + R * 0.03, R * (0.38 + p.get('mouth_dy', 0.0))
     mw = R * 0.2 * p.get('mwide', 1.0)
@@ -639,6 +732,29 @@ def walk(t, speed=1.0, stride=26.0, phase=0.0):
         sf=-stride * 0.7 * s - 4, ef=18, sb=stride * 0.7 * s + 6, eb=18,
         head_dy=-abs(math.cos(w)) * 5, breathe=0.0,
     )
+
+
+def run(t, speed=1.0, stride=38.0, phase=0.0):
+    """Procedural run cycle angles (merge into a pose); 'dy' is the hip bounce to add to y.
+    Same phase as walk(): a leg reaches full stride at t = (0.25 + 0.5 k) / speed."""
+    w = (t * speed * 2.0 + phase) * math.pi
+    s, co = math.sin(w), math.cos(w)
+    return dict(
+        hf=stride * s + 6, kf=12 + 78 * max(0.0, co) ** 1.4,
+        hb=-stride * s + 6, kb=12 + 78 * max(0.0, -co) ** 1.4,
+        sf=-stride * 1.0 * s, ef=95 + 10 * s, sb=stride * 1.0 * s, eb=95 - 10 * s,
+        lean=11.0, head_dy=0.0, breathe=0.0, dy=-9 * abs(s),
+    )
+
+
+def to_local(pose, world):
+    """A world point -> the character's local frame (undoing x/y, rot, scale and facing), for IK targets."""
+    dx, dy = world[0] - pose.get('x', 0.0), world[1] - pose.get('y', 0.0)
+    rot = math.radians(pose.get('rot', 0.0))
+    cr, sr = math.cos(-rot), math.sin(-rot)
+    dx, dy = dx * cr - dy * sr, dx * sr + dy * cr
+    s = pose.get('scale', 1.0)
+    return dx / s * pose.get('facing', 1), dy / s
 
 
 def idle(t, seed=0, amount=1.0):
