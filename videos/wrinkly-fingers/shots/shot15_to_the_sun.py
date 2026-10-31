@@ -60,8 +60,9 @@ def build():
     a1 = held.lerp(head, 0.55)
     c1 = a1 + K.look_dir(28, -6) * 1.25                            # on his left: the raised arm stays off his face
     r = V.camera_rig("Cam_Shot15", lens=LENS, fstop=5.6)
-    V.cam_keys(r, [(1, c0, a0, LENS), (9, c0.lerp(c1, 0.03), a0.lerp(a1, 0.03), LENS), (32, c1.lerp(c0, 0.05), a1, LENS),
-                   (n, c1, a1, LENS)])
+    out = held + v * 0.55                                          # first straight back out, away from the hand
+    V.cam_keys(r, [(1, c0, a0, LENS), (9, held + v * 0.15, a0, LENS), (18, out, held.lerp(a1, 0.3), LENS),
+                   (32, c1.lerp(c0, 0.05), a1, LENS), (n, c1, a1, LENS)])
     V.handheld(r, amount=0.0012, aim_amount=0.001)
     TAKE.glint(m["ob"])
     HS.catch_light(held, (0.0, -0.4, 1.0), c0, dist=0.5, size=0.04, power=6.0)     # a sun glint in the marble

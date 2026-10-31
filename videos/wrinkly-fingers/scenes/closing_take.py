@@ -158,7 +158,7 @@ def _arm_poses(hero, off):
     up = (head + Vector((-0.1, -0.3, 0.1)), (0.1, -0.1, 1.0), (0.1, 1.0, 0.1), (-1.0, 0.0, -1.0))     # elbow a little bent
     up2 = (up[0] + Vector((0.01, 0.0, 0.012)), (0.18, -0.12, 1.0), (0.05, 1.0, 0.12), (-1.0, 0.0, -1.0))
     wind = (up[0] + Vector((0.02, 0.08, -0.04)), (0.1, 0.2, 1.0), (0.1, 1.0, -0.1), (-1.0, 0.0, -1.0))
-    throw = (up[0] + Vector((-0.02, -0.16, -0.12)), (0.0, -0.8, 0.5), (0.0, -0.5, -1.0), (-1.0, 0.0, -1.0))
+    throw = (up[0] + Vector((-0.13, -0.12, -0.1)), (-0.4, -0.7, 0.4), (0.0, -0.5, -1.0), (-1.0, 0.0, -1.0))   # off to his right
     rest = (Vector((sR.x - 0.1, sR.y - 0.16, sR.z - 0.52)), (-0.15, -0.35, -1.0), (1.0, 0.0, 0.0), (-0.35, 1.0, -0.2))
     keys = [(START, face), (DOWN[0], face2), (SURFACE_IN - 4, lower), (DOWN[1] - 5, above), (DOWN[1], at), (PINCH[1] + 2, at),
             (LIFT[0] + 14, lift1), (SURFACE_OUT - 2, surface), (LIFT[1], up), (668, up2), (TOSS[0], up2), (TOSS[0] + 4, wind),
@@ -222,7 +222,7 @@ def marble(take, col=None):
     splash, splash_at = None, None
     if max(frames) > release:
         p0 = hold[release]
-        v = (hold[release + 1] - hold[release - 1]) * fps / 2 + Vector((-0.25, -1.5, 2.3))   # tossed up and out in an arc
+        v = (hold[release + 1] - hold[release - 1]) * fps / 2 + Vector((-1.1, -0.7, 2.3))   # tossed up and off to his right, across the frame
     for f in frames:
         if f < grab:
             p = rest
