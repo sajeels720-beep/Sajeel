@@ -140,3 +140,9 @@ EV = {
 }
 
 DAY_FLASH = EV['days'][1:]
+
+# The title card's lines: (text, start, end)
+TITLE_CARD = [
+    ('EVERYONE QUITS IN FEBRUARY.', 148.4, 159.6),
+    ('Be the one who stays.', 151.0, 159.6),
+]

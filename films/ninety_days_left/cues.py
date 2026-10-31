@@ -148,3 +148,10 @@ GRIND_BPM = 120
 
 # A soft exposure flash on every time-lapse and countdown cut
 LAPSE_FLASH = EV['lapse_cuts'][1:] + EV['mountain_cuts'][1:]
+
+# The title card's lines: (text, start, end)
+TITLE_CARD = [
+    ('90 DAYS LEFT.', 148.5, 159.2),
+    ('How many days do you have left?', 151.2, 159.2),
+    ('Start today.', 154.6, 159.2),
+]

@@ -33,6 +33,11 @@ Subscribe to Brave Films for more short films about the fights we all have with 
 
 #shortfilm #animation #newyearsresolution #motivation #discipline
 
+## Subtitles
+`output/everyone_quits_in_february/subtitles.srt`: YouTube Studio > Subtitles > Add language (English) > Add >
+Upload file > With timing. (Or paste `transcript.txt` into Auto-sync; the timed file is more exact, because most
+lines are on-screen text with no voice for Auto-sync to hear.)
+
 ## Tags
 animated short film, new year's resolution, new year new me, gym motivation, discipline, consistency, don't quit, quitting, motivational short film, self improvement, fitness motivation, habits, january gym, quitter's day
 

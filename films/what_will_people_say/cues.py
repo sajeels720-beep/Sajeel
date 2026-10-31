@@ -89,3 +89,11 @@ EV = {
 
 # The opening scene's guitar strums at 80 BPM, eighth notes
 JOY_BPM = 80
+
+# The title card's lines: (text, start, end)
+TITLE_CARD = [
+    ('WHAT WILL PEOPLE SAY?', 148.5, 159.2),
+    ('Their opinion lasts a minute.', 151.0, 159.2),
+    ('Your regret lasts a lifetime.', 152.8, 159.2),
+    ('Start anyway.', 155.2, 159.2),
+]

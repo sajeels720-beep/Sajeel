@@ -4,7 +4,7 @@
     .venv/bin/python studio/make_film.py films/what_will_people_say sheet 0 22 1.5
     .venv/bin/python studio/make_film.py films/what_will_people_say still 15.2
 
-Stages: audio (score, effects, whispers, mix), video (picture), thumb, mux, all.
+Stages: audio (score, effects, whispers, mix), video (picture), thumb, subs (subtitles), mux, all.
 """
 from __future__ import annotations
 
@@ -29,7 +29,7 @@ def load(film_dir: Path):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('film_dir')
-    ap.add_argument('stage', choices=['still', 'sheet', 'video', 'audio', 'thumb', 'mux', 'all'])
+    ap.add_argument('stage', choices=['still', 'sheet', 'video', 'audio', 'thumb', 'subs', 'mux', 'all'])
     ap.add_argument('args', nargs='*', type=float)
     ap.add_argument('--workers', type=int, default=4)
     ap.add_argument('--out', default=None)
@@ -72,6 +72,9 @@ def main():
     if a.stage in ('thumb', 'all'):
         thumb = importlib.import_module('thumbnail')
         print('thumbnail ->', thumb.build(out_dir))
+    if a.stage in ('subs', 'all'):
+        import subtitles
+        print('subtitles ->', subtitles.build(film_dir, out_dir))
     if a.stage in ('mux', 'all'):
         final = out_dir / f'{film_dir.name}.mp4'
         print('final ->', render.mux(out_dir / 'picture.mp4', out_dir / 'audio' / 'mix.wav', final))

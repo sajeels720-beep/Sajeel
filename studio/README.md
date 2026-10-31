@@ -16,6 +16,7 @@ Outputs land in `output/<film>/`:
 |---|---|
 | `what_will_people_say.mp4` | Final film, 1080p30 H.264, AAC audio at -14 LUFS |
 | `thumbnail.png` | 1280x720 thumbnail; `thumbnail_a.png` ... `thumbnail_e.png` are variants for Test & Compare |
+| `subtitles.srt`, `transcript.txt` | Subtitles: upload the .srt "with timing", or paste the transcript into Auto-sync |
 | `audio/mix.wav` | The finished soundtrack; `audio/stems/` has the music stems |
 
 The YouTube title, description, chapters and tags live in `films/<film>/youtube.md`. Thumbnails follow the
@@ -29,6 +30,7 @@ make_film.py <film> still 15.2       # one full-size frame
 make_film.py <film> audio            # score -> stems, effects, whispers, mix
 make_film.py <film> video [t0 t1]    # picture only (4 parallel workers)
 make_film.py <film> thumb            # thumbnail
+make_film.py <film> subs             # subtitles.srt (timed) and transcript.txt (for YouTube's Auto-sync)
 make_film.py <film> mux              # picture + soundtrack -> final mp4
 make_film.py <film> all              # everything
 ```
