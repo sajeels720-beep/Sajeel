@@ -768,6 +768,78 @@ def key_sun(ob, keys, interp="LINEAR"):
         V.ease_id(idd, interp)
 
 
+def golden(start, end, warm=(1.0, 0.6, 0.36), dim=0.75):
+    """Late afternoon turning to sunset: the HDRI's light and what the camera sees of the sky
+    warm up and dim a little between `start` and `end` (key the sun itself with key_sun)."""
+    w = bpy.context.scene.world
+    nt = w.node_tree
+    for bg in [n for n in nt.nodes if n.bl_idname == "ShaderNodeBackground"]:
+        sock = bg.inputs["Color"]
+        if not sock.is_linked:
+            continue
+        src = sock.links[0].from_socket
+        mix = nt.nodes.new("ShaderNodeMix")
+        mix.data_type, mix.blend_type = "RGBA", "MULTIPLY"
+        mix.name = "Golden_" + bg.name
+        nt.links.new(src, mix.inputs[6])
+        mix.inputs[7].default_value = (warm[0] * dim, warm[1] * dim, warm[2] * dim, 1.0)
+        nt.links.new(mix.outputs[2], sock)
+        fac = mix.inputs[0]
+        for f, v in ((start, 0.0), (end, 1.0)):
+            fac.default_value = v
+            fac.keyframe_insert("default_value", frame=f)
+    V.ease_id(nt, "BEZIER")
+
+
+def water_haze(color=(0.05, 0.36, 0.44), near=0.25, far=3.5, amount=0.85):
+    """For a camera under the water: everything fades into the water's turquoise with distance
+    (the water is only a surface, so this stands in for the water in between). Adds a fog to
+    every material but the water's own."""
+    for m in bpy.data.materials:
+        nt = m.node_tree
+        if nt is None or "Water" in m.name or "Haze" in [n.name for n in nt.nodes]:
+            continue
+        out = next((n for n in nt.nodes if n.bl_idname == "ShaderNodeOutputMaterial" and n.is_active_output), None)
+        if out is None or not out.inputs["Surface"].is_linked:
+            continue
+        surf = out.inputs["Surface"].links[0].from_socket
+        cam = nt.nodes.new("ShaderNodeCameraData")
+        fog = nt.nodes.new("ShaderNodeMapRange")
+        fog.name = "Haze"
+        fog.interpolation_type = "SMOOTHSTEP"
+        fog.inputs["From Min"].default_value, fog.inputs["From Max"].default_value = near, far
+        fog.inputs["To Max"].default_value = amount
+        nt.links.new(cam.outputs["View Distance"], fog.inputs["Value"])
+        em = nt.nodes.new("ShaderNodeEmission")
+        em.inputs["Color"].default_value = (*color, 1)
+        mix = nt.nodes.new("ShaderNodeMixShader")
+        nt.links.new(fog.outputs["Result"], mix.inputs[0])
+        nt.links.new(surf, mix.inputs[1])
+        nt.links.new(em.outputs[0], mix.inputs[2])
+        nt.links.new(mix.outputs[0], out.inputs["Surface"])
+
+
+def step(centre, size=(0.5, 0.42), top=None, col=None):
+    """A tiled step (a block standing on the pool floor) with its top at `top`."""
+    col = col or _col("POOL")
+    z_floor = WATER_Z - DEPTH
+    top = centre[2] if top is None else top
+    bpy.ops.mesh.primitive_cube_add(size=1.0)
+    ob = bpy.context.active_object
+    ob.name = "Pool_Step"
+    for c in list(ob.users_collection):
+        c.objects.unlink(ob)
+    col.objects.link(ob)
+    ob.scale = (size[0], size[1], top - z_floor)
+    ob.location = (centre[0], centre[1], (top + z_floor) / 2)
+    bpy.ops.object.transform_apply(scale=True)
+    bev = ob.modifiers.new("Round", "BEVEL")
+    bev.width, bev.segments, bev.limit_method = 0.012, 3, "ANGLE"
+    _box_uvs(ob)
+    ob.data.materials.append(bpy.data.materials.get("Pool_Floor_Tiles") or tile_material("Pool_Floor_Tiles", TILE_COLOR))
+    return ob
+
+
 def cloud_flicker(ob, dips, strength=None):
     """Clouds racing over the sun in a time-lapse: the sun dims for a few frames at a time.
     dips = [(frame, frames long, how dark 0..1)]."""
