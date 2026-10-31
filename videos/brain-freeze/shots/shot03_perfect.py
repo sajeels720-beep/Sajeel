@@ -1,0 +1,180 @@
+"""SHOT 03 (3.0-5.6 s, 90 frames @30fps: room for a slower read of the line) - "and for a second, it's perfect."
+The protagonist on a sunny park bench, ice cream cup in his lap, eyes closed, smile
+growing, head tipping back in bliss. Backlit by the sun, slow orbit, shallow depth of field.
+"""
+import math
+import os
+import sys
+
+ROOT = os.environ.get("BRAIN_FREEZE_ROOT") or os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+for p in (os.path.join(ROOT, "scenes"), os.path.join(ROOT, "..", "production"),
+          os.path.join(ROOT, "..", "..", "blender-expert")):
+    p = os.path.abspath(p)
+    if p not in sys.path:
+        sys.path.insert(0, p)
+
+import bpy
+import numpy as np
+from mathutils import Euler, Matrix, Quaternion, Vector
+
+import character as C
+import claude_sculpt_kit as K
+import icecream_set as ICE
+import park_set as PARK
+import vfx_kit as V
+
+PREVIEW = os.environ.get("SHOT_PREVIEW") == "1"
+FPS, SECONDS = 30, 3.0
+N = 90
+POSE = "callharvey3d_sittingnatural"
+BLISS_START = {"eyeBlinkLeft": 1.0, "eyeBlinkRight": 1.0, "mouthSmileLeft": 0.6, "mouthSmileRight": 0.6,
+               "cheekSquintLeft": 0.4, "cheekSquintRight": 0.4, "browInnerUp": 0.6, "browOuterUpLeft": 0.2,
+               "browOuterUpRight": 0.2, "mouthDimpleLeft": 0.2, "mouthDimpleRight": 0.2}
+BLISS = {"eyeBlinkLeft": 1.0, "eyeBlinkRight": 1.0, "mouthSmileLeft": 1.3, "mouthSmileRight": 1.3,
+         "cheekSquintLeft": 1.0, "cheekSquintRight": 1.0, "browInnerUp": 1.2, "browOuterUpLeft": 0.4,
+         "browOuterUpRight": 0.4, "mouthDimpleLeft": 0.4, "mouthDimpleRight": 0.4}
+BLISS_HEAD = (-16, 0, 6)                                          # head tipped back at the end (shot 04 starts here)
+END_LOOK, END_DIST = (-14, 7), 1.45                               # final camera, continued by shot 04
+
+
+def bone_world(rig, name, tail=False):
+    pb = rig.pose.bones[name]
+    return rig.matrix_world @ (pb.tail if tail else pb.head)
+
+
+def hero_on_bench(pose=POSE):
+    """Shared by shots 03, 04 and 19: branded hero seated on the park bench, cup in lap."""
+    hero = C.build_hero()
+    C.brand(hero)
+    C.apply_pose(hero, pose)
+    butt, feet = C.seat_heights(hero)
+    seat_top = float(np.clip(butt - feet, 0.38, 0.52))
+    park = PARK.build(seat_top=seat_top)
+    C.place_on_seat(hero, seat_top, seat_y=0.02)
+    bpy.context.view_layer.update()
+    # ice cream cup (bite already taken) resting in his lap
+    ice = ICE.build("SET_CUP")
+    for k in ("table", "chunk"):
+        bpy.data.objects.remove(ice[k])
+    bpy.data.objects.remove(ice["scoops"]["Vanilla"])
+    lap = lap_point(hero) + Vector((-0.115, -0.07, 0.12))         # his right, stomach height: in the safe area
+                                                                  # and clear of the channel name on the shirt
+    ctrl = V.link(bpy.data.objects.new("Cup_ctrl", None), ice["col"])
+    for ob in list(ice["col"].objects):
+        if ob is not ctrl and ob.parent is None:
+            ob.parent = ctrl
+    ctrl.location = lap
+    ctrl.rotation_euler = (math.radians(-6), 0, math.radians(20))
+    # spoon stands in the cup
+    ice["spoon"].parent = ctrl
+    ice["spoon"].location = (0.012, 0.0, 0.11)                    # bowl in the vanilla, handle up toward camera
+    ice["spoon"].rotation_euler = (math.radians(110), math.radians(10), 0)
+    hold_cup(hero, ctrl)
+    return hero, park, ice, ctrl
+
+
+def hold_cup(hero, cup, side="R"):
+    """IK the arm so the hand wraps round the cup: the wrist sits outside the wall at the
+    cup's back corner, the hand aims forward along its side (thumb up) and the fingers curl
+    round it (about local Z in this rig; X bends them sideways). The aim empty rides with
+    the target, so moving the target (shot 19b) carries the whole grip."""
+    rig = hero["rig"]
+    s = -1 if side == "R" else 1
+    tgt = V.link(bpy.data.objects.new(f"Hand_{side}_target", None), V.collection("RIG_TARGETS"))
+    tgt.location = cup.location + Vector((0.065 * s, 0.045, 0.03))
+    ik = rig.pose.bones[f"lowerarm02.{side}"].constraints.new("IK")
+    ik.target, ik.chain_count = tgt, 4
+    aim = V.link(bpy.data.objects.new(f"Hand_{side}_aim", None), V.collection("RIG_TARGETS"))
+    aim.parent = tgt
+    aim.location = (0, -0.165, 0.005)
+    wrist = rig.pose.bones[f"wrist.{side}"]
+    wrist.rotation_mode = "QUATERNION"
+    wrist.rotation_quaternion = Quaternion((0, 1, 0), math.radians(-60 * s))
+    dt = wrist.constraints.new("DAMPED_TRACK")
+    dt.target, dt.track_axis = aim, "TRACK_Y"
+    for i in (1, 2, 3):
+        for f in ("finger2", "finger3", "finger4", "finger5"):
+            name = f"{f}-{i}.{side}"
+            if name in rig.pose.bones:
+                pb = rig.pose.bones[name]
+                pb.rotation_mode = "XYZ"
+                pb.rotation_euler = (0, 0, math.radians((50 if i == 1 else 60) * s))
+    bpy.context.view_layer.update()
+    return tgt
+
+
+def lap_point(hero):
+    """Top of the lap between the thighs (where the cup rests)."""
+    body = hero["body"]
+    rest = np.array([tuple(body.matrix_world @ v.co) for v in body.data.vertices])
+    posed = C.evaluated_points(body)
+    top = rest[:, 2].max()
+    thigh = (rest[:, 2] > top * 0.38) & (rest[:, 2] < top * 0.46) & (np.abs(rest[:, 0]) < 0.14)
+    p = posed[thigh]
+    return Vector((float(np.median(p[:, 0])), float(np.percentile(p[:, 1], 30)), float(p[:, 2].max()) - 0.005))
+
+
+def key_head(rig, keys):
+    """keys = [(frame, (rx, ry, rz) degrees added to the posed head rotation)]."""
+    pb = rig.pose.bones["head"]
+    pb.rotation_mode = "QUATERNION"
+    base = pb.rotation_quaternion.copy()
+    for f, rot in keys:
+        pb.rotation_quaternion = base @ Euler([math.radians(a) for a in rot]).to_quaternion()
+        pb.keyframe_insert("rotation_quaternion", frame=f)
+    V.ease_id(rig, data_path='pose.bones["head"]')
+
+
+def sun_rim_lights(head, power_key=60, power_rim=150):
+    lights = V.collection("LIGHTS")
+    out = {}
+    for name, az, el, dist, power, size, color in (("Key_lgt", -35, 18, 1.6, power_key, 1.2, (1.0, 0.93, 0.86)),
+                                                   ("Rim_lgt", 165, 25, 1.6, power_rim, 0.6, (1.0, 0.86, 0.68)),
+                                                   ("Fill_lgt", 60, 5, 2.0, power_key * 0.25, 1.5, (0.8, 0.88, 1.0))):
+        lt = bpy.data.lights.new(name, "AREA")
+        lt.energy, lt.size, lt.color = power, size, color
+        ob = V.link(bpy.data.objects.new(name, lt), lights)
+        ob.location = head + K.look_dir(az, el) * dist
+        K._aim(ob, head)
+        out[name] = ob
+    return out
+
+
+def build():
+    V.start_fresh()
+    V.setup_shot(SECONDS, fps=FPS, engine="CYCLES" if PREVIEW else "EEVEE", samples=32 if PREVIEW else 64,
+                 scale=50 if PREVIEW else 100)
+    hero, park, ice, cup = hero_on_bench()
+    rig, body = hero["rig"], hero["body"]
+    # bliss: eyes closed, a big smile grows, brows lift, head tips back (his faces read bigger than life)
+    C.face(body, BLISS_START, frame=1)
+    C.face(body, BLISS, frame=N)
+    head = (bone_world(rig, "head") + bone_world(rig, "head", tail=True)) / 2
+    eyes = (bone_world(rig, "eye.L") + bone_world(rig, "eye.R")) / 2
+    key_head(rig, [(1, (0, 0, 0)), (N, BLISS_HEAD)])
+    sun_rim_lights(head)
+
+    r = V.camera_rig("Cam_Shot03", lens=50, fstop=2.2)
+    face_dir = Vector((0, -1, 0))
+    low = Vector((0, 0, -0.26))                                   # frame head to lap: the cup sits low in frame
+    c0 = eyes + low + K.look_dir(-30, 4) * 1.55
+    c1 = eyes + low + K.look_dir(*END_LOOK) * END_DIST
+    V.cam_keys(r, [(1, c0, eyes + low, 50), (N, c1, eyes + low + Vector((0, 0, 0.03)), 50)])
+    fo = V.link(bpy.data.objects.new("Focus_eyes", None), V.collection("CAMERA"))
+    fo.parent, fo.parent_type, fo.parent_bone = rig, "BONE", "head"   # focus rides on the eyes as the head tips
+    bpy.context.scene.frame_set(1)
+    fo.matrix_world = Matrix.Translation(eyes)
+    r["cam"].data.dof.focus_object = fo
+    V.handheld(r, amount=0.002, aim_amount=0.0015)
+    V.compositor(glow=0.35, threshold=1.1, dispersion=0.006)
+    if PREVIEW:
+        V.fast_preview(bounces=(4, 2, 2, 4, 8))
+    return {"hero": hero, "park": park, "cup": cup}
+
+
+if __name__ in ("__main__", "<run_path>", "shot"):
+    build()
+    V.output_to(os.path.join(ROOT, "renders", os.path.basename(__file__).split("_")[0]))
+    out = os.environ.get("SHOT_BLEND")
+    if out:
+        bpy.ops.wm.save_as_mainfile(filepath=out)

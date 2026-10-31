@@ -4,3 +4,8 @@
 # Python bytecode from running skill scripts
 __pycache__/
 *.pyc
+
+# Rendered frames from the video shot scripts
+videos/brain-freeze/renders/
+videos/sneeze/renders/
+videos/wrinkly-fingers/renders/
