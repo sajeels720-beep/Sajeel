@@ -85,6 +85,7 @@ def perform(shot, dense=False):
     SW.set_waterline(hero, PS.WATER_Z)
     PA.key_bones(hero, BODY, off)
     PA.key_face(hero, FACE, off)
+    PA.plant(hero, "L", hero["left_rest"], range(1 - off, 153 - off + 1))   # his left hand stays put on the stone
     PA.hand_shape(hero, "R", PA.RELAXED_HAND, frame=OPEN_EYES - off)
     PA.hand_shape(hero, "R", PA.LOOK_HAND, frame=LIFT[1] - 4 - off)
     if hi >= LIFT[0]:

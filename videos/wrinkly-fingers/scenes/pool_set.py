@@ -22,6 +22,7 @@ import os
 import sys
 
 import bpy
+import numpy as np
 from mathutils import Vector
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -39,6 +40,9 @@ DEPTH = 1.2                    # water depth: up to his lower chest, so the shir
 WALL_Y = 0.30                  # the wall behind him
 COPING_TOP = 0.11              # top of the stone edge above the water
 COPING_DEPTH = 0.36            # front to back
+COPING_OVERHANG = 0.035        # how far it overhangs the wall
+COPING_THICK = 0.055
+DECK_TOP = COPING_TOP - 0.004  # the deck behind it
 EXTENT_X = (-14.0, 14.0)
 EXTENT_Y = -28.0               # the pool runs this far in front of him
 DECK_Y = 16.0                  # and the deck this far behind
@@ -286,7 +290,7 @@ def pool(col=None):
     col = col or _col("POOL")
     x0, x1 = EXTENT_X
     z_floor = WATER_Z - DEPTH
-    lip = COPING_TOP - 0.055                                        # underside of the edge
+    lip = COPING_TOP - COPING_THICK                                 # underside of the edge
     floor = _quad("Pool_Floor", [(x0, EXTENT_Y, z_floor), (x1, EXTENT_Y, z_floor), (x1, WALL_Y, z_floor),
                                  (x0, WALL_Y, z_floor)],
                   [(x0, EXTENT_Y), (x1, EXTENT_Y), (x1, WALL_Y), (x0, WALL_Y)], col)
@@ -301,8 +305,8 @@ def pool(col=None):
     for c in list(edge.users_collection):
         c.objects.unlink(edge)
     col.objects.link(edge)
-    edge.scale = (x1 - x0, COPING_DEPTH, 0.055)
-    edge.location = (0.0, WALL_Y - 0.035 + COPING_DEPTH / 2, COPING_TOP - 0.0275)
+    edge.scale = (x1 - x0, COPING_DEPTH, COPING_THICK)
+    edge.location = (0.0, WALL_Y - COPING_OVERHANG + COPING_DEPTH / 2, COPING_TOP - COPING_THICK / 2)
     bpy.ops.object.transform_apply(scale=True)
     bev = edge.modifiers.new("Round", "BEVEL")
     bev.width, bev.segments, bev.limit_method = 0.024, 6, "ANGLE"
@@ -310,12 +314,30 @@ def pool(col=None):
     _box_uvs(edge)
     for p in edge.data.polygons:
         p.use_smooth = True
-    deck_y0 = WALL_Y - 0.035 + COPING_DEPTH
-    deck = _quad("Pool_Deck", [(x0, deck_y0, COPING_TOP - 0.004), (x1, deck_y0, COPING_TOP - 0.004),
-                               (x1, DECK_Y, COPING_TOP - 0.004), (x0, DECK_Y, COPING_TOP - 0.004)],
+    deck_y0 = WALL_Y - COPING_OVERHANG + COPING_DEPTH
+    deck = _quad("Pool_Deck", [(x0, deck_y0, DECK_TOP), (x1, deck_y0, DECK_TOP),
+                               (x1, DECK_Y, DECK_TOP), (x0, DECK_Y, DECK_TOP)],
                  [(x0, deck_y0), (x1, deck_y0), (x1, DECK_Y), (x0, DECK_Y)], col)
     deck.data.materials.append(bpy.data.materials["Pool_Stone"])
     return {"floor": floor, "wall": wall, "edge": edge, "deck": deck}
+
+
+def stone_clearance(P):
+    """How far points (an N x 3 array, world) stay above the stone edge and the deck: the lowest
+    height of the points over them, negative if any are in the stone. Points under the edge's
+    overhang are in the water and don't count; a point in the wall counts as minus its depth.
+    1.0 if no point is over the stone."""
+    front = WALL_Y - COPING_OVERHANG
+    lip = COPING_TOP - COPING_THICK
+    top = np.where(P[:, 1] > front + COPING_DEPTH, DECK_TOP, COPING_TOP)
+    over = (P[:, 1] > front) & (P[:, 2] > lip)
+    wall = (P[:, 1] > WALL_Y) & (P[:, 2] <= lip)
+    c = 1.0
+    if over.any():
+        c = min(c, float((P[over, 2] - top[over]).min()))
+    if wall.any():
+        c = min(c, -float((P[wall, 1] - WALL_Y).max()))
+    return c
 
 
 def _box_uvs(ob, size=1.0):
@@ -569,7 +591,8 @@ def marble(col=None, at=(0.12, -0.32, None), radius=0.008):
         col.objects.link(vane)
         vane.scale = (radius * 0.55, radius * 1.5, 1.0)
         vane.rotation_euler = (math.radians(90), 0.0, math.radians(120 * i))
-        bpy.ops.object.transform_apply(scale=True, rotation=True)
+        bpy.ops.object.transform_apply(location=False, scale=True, rotation=True)   # (location too, by default:
+        # the vane then sat off its origin and the twist swept it into a 50 cm orange ring)
         sub = vane.modifiers.new("Dense", "SUBSURF")
         sub.subdivision_type, sub.levels, sub.render_levels = "SIMPLE", 4, 4
         tw = vane.modifiers.new("Twist", "SIMPLE_DEFORM")

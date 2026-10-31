@@ -67,6 +67,10 @@ BODY = [(START, OPEN.LOOK_AT_HAND), (503, TILT), (526, TILT), (545, REACH), (596
 OPEN_REACH = {"thumb": (0, 4, 4), "index": (4, 6, 4), "middle": (6, 8, 5), "ring": (8, 10, 6), "little": (10, 12, 7)}
 GRIP_REST = {"index": (22, 34, 18), "middle": (12, 18, 10), "ring": (16, 22, 12), "little": (20, 26, 14)}
 # (an "OK" pinch: the other fingers stay loose; curled in, it read as a fist hiding the marble)
+TUCK = {"middle": (30, 45, 25), "ring": (40, 55, 30), "little": (50, 60, 35)}
+REACH_TUCK = {**OPEN_REACH, **TUCK}               # reaching for the marble, the other fingers out of the way
+GRIP_TUCK = {**GRIP_REST, **TUCK}                 # (loose, they went into the step under the marble)
+RELAX = 619                                       # once out of the water (in the tyre cutaway) they relax open
 
 
 DUCK_REST = (0.172, -0.037)        # where the rubber duck came to rest in shot 01, by his left side
@@ -97,12 +101,12 @@ def tips(hero, side="R"):
     return W @ rig.pose.bones[f"finger1-3.{side}"].tail, W @ rig.pose.bones[f"finger2-3.{side}"].tail
 
 
-def pinch(hero, side="R", gap=0.024, frame=None):
-    """Thumb and index meet around the marble: the other fingers curl in, and the thumb's
+def pinch(hero, side="R", gap=0.024, frame=None, rest=GRIP_REST):
+    """Thumb and index meet around the marble (the other fingers as in `rest`), and the thumb's
     rotation is searched until its tip is `gap` from the index tip, in front of the palm.
     Keys it on `frame`. Returns the pinch point (between the tips)."""
     rig = hero["rig"]
-    PA.hand_shape(hero, side, {**GRIP_REST, "thumb": (10, 20, 15)}, together=0.9, frame=None)
+    PA.hand_shape(hero, side, {**rest, "thumb": (10, 20, 15)}, together=0.9, frame=None)
     base, mid, end = (rig.pose.bones[f"finger1-{k}.{side}"] for k in (1, 2, 3))
     for pb in (base, mid, end):
         pb.rotation_mode = "XYZ"
@@ -179,14 +183,22 @@ def perform(shot, dense=False):
     SW.set_waterline(hero, PS.WATER_Z)
     PA.key_bones(hero, BODY, off)
     PA.key_face(hero, FACE, off)
-    # right hand: looking, open on the way down, the pinch, open after the toss
+    # the left hand stays where it lies on the stone while he leans and turns (solved on every frame)
+    PA.plant(hero, "L", hero["left_rest"], range(START - off, END - off + 1))
+    # right hand: looking, reaching (the other fingers tucked out of the way), the pinch, relaxing
+    # open once out of the water, open after the toss
     PA.hand_shape(hero, "R", PA.LOOK_HAND, frame=START - off)
     PA.hand_shape(hero, "R", PA.LOOK_HAND, frame=DOWN[0] - off)
-    PA.hand_shape(hero, "R", OPEN_REACH, frame=DOWN[1] - 6 - off)
-    PA.hand_shape(hero, "R", OPEN_REACH, frame=PINCH[0] - off)
+    PA.hand_shape(hero, "R", OPEN_REACH, frame=SURFACE_IN - off)
+    PA.hand_shape(hero, "R", REACH_TUCK, frame=DOWN[1] - 7 - off)
+    PA.hand_shape(hero, "R", REACH_TUCK, frame=PINCH[0] - off)
     PA.arm_path(hero, "R", _arm_poses(hero, off), range(START - off, END - off + 1))
     bpy.context.scene.frame_set(PINCH[1] - off)
-    pinch(hero, "R", frame=PINCH[1] - off)
+    pinch(hero, "R", frame=PINCH[1] - off, rest=GRIP_TUCK)
+    bpy.context.scene.frame_set(SURFACE_OUT - off)
+    pinch(hero, "R", frame=SURFACE_OUT - off, rest=GRIP_TUCK)
+    bpy.context.scene.frame_set(RELAX - off)
+    pinch(hero, "R", frame=RELAX - off)
     bpy.context.scene.frame_set(TOSS[1] - off)
     pinch(hero, "R", frame=TOSS[1] - off)
     PA.hand_shape(hero, "R", OPEN_REACH, frame=TOSS[1] + 2 - off)
@@ -204,14 +216,19 @@ def pinch_point(hero, frame):
 
 
 def marble(take, col=None):
-    """The marble: it lies where his fingertips close on it (on the step) until he pinches it,
-    stays in his fingertips until he lets go, then flies, plops into the pool and sinks. Keys
-    it on every frame of the shot (shot frames). Returns dict(ob, rest (where it lay),
-    splash (frame or None), splash_at)."""
+    """The marble: it lies on the step under where his fingertips close on it (the step's top
+    is just under the lowest point his hand reaches there, so nothing goes into it), is lifted as
+    the pinch closes, stays in his fingertips until he lets go, then flies, plops into the pool
+    and sinks. Keys it on every frame of the shot (shot frames). Returns dict(ob, rest (where it
+    lay), step_top, splash (frame or None), splash_at)."""
     hero, off = take["hero"], take["off"]
     sc = bpy.context.scene
     grab, release = PINCH[1] - off, TOSS[1] - off
-    rest = pinch_point(hero, grab)
+    held = pinch_point(hero, grab)
+    low = min(float(PA.arm_points(hero, "R")[:, 2].min()) for f in range(grab - 14, grab + 9)
+              if sc.frame_set(f) is None)                     # the lowest his hand gets near the step
+    step_top = min(held.z - MARBLE_R, low - 0.0015)
+    rest = Vector((held.x, held.y, step_top + MARBLE_R))      # it lies on the step; his fingers lift it off
     ob = PS.marble(col, at=tuple(rest))
     fps = sc.render.fps
     frames = list(range(sc.frame_start - 1, sc.frame_end + 2))
@@ -223,9 +240,12 @@ def marble(take, col=None):
     if max(frames) > release:
         p0 = hold[release]
         v = (hold[release + 1] - hold[release - 1]) * fps / 2 + Vector((-1.1, -0.7, 2.3))   # tossed up and off to his right, across the frame
+    close = PINCH[0] - off
     for f in frames:
-        if f < grab:
+        if f < close:
             p = rest
+        elif f < grab:
+            p = rest.lerp(held, (f - close) / (grab - close))          # picked up as the pinch closes
         elif f <= release:
             p = hold[f]
         else:
@@ -239,7 +259,7 @@ def marble(take, col=None):
         ob.keyframe_insert("location", frame=f)
     V.ease_id(ob, "LINEAR")
     sc.frame_set(1)
-    return {"ob": ob, "rest": rest, "splash": splash, "splash_at": splash_at}
+    return {"ob": ob, "rest": rest, "step_top": step_top, "splash": splash, "splash_at": splash_at}
 
 
 def glint(marble_ob, toward=(0.0, -0.4, 0.9), strength=40.0):

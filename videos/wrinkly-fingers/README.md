@@ -9,7 +9,7 @@ Video 3: a vertical Short of 25 seconds (750 frames at 30 fps) in the style of Z
   - `pool_set.py`: the sunny backyard pool (Poly Haven "Pool" HDRI with a bluer sky, mosaic tiles with dancing light patterns, the stone edge and deck, the water, the rubber duck, the marble), plus the time-lapse controls, ripples, falling drops, palm-frond shadows and the lights.
   - `swimmer.py`: the new character, wet, in a red Jay3Dfilms swim shirt.
   - `wrinkles.py`: the wrinkles that grow on his fingertips (real geometry in the close-ups).
-  - `pool_acting.py`: placing and posing him in the pool (arms, hands, face and body over time).
+  - `pool_acting.py`: placing and posing him in the pool (arms, hands, face and body over time). His left arm rests along the stone edge with the hand lying flat on it, checked against the stone on every frame so it touches but never goes in.
   - `opening_take.py`: his performance for shots 1–3, animated as one take so the acting carries across the cuts.
   - `hand_set.py`: his hand alone on the studio blue for shots 4–5 (open, palm up): the drops that soak in, his red "?", and the X-ray (glass skin, bones and nerves fitted inside his hand).
   - `skin_macro.py`: shot 6, the fingerprint ridges up close, with sweat pores and drops of water draining into them.

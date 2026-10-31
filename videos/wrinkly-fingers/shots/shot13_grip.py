@@ -38,7 +38,7 @@ def build():
     parts, take = TAKE.pool_scene("13")
     m = TAKE.marble(take)
     rest = m["rest"]
-    PS.step((rest.x + 0.03, rest.y - 0.06, 0.0), top=rest.z - TAKE.MARBLE_R)
+    PS.step((rest.x + 0.03, rest.y - 0.06, 0.0), top=m["step_top"])
     PS.underwater_materials([bpy.data.materials["Marble_Glass"], bpy.data.materials["Marble_Swirl"]])
     PS.water_haze()
     # camera: low beside the step, looking at the marble as the hand comes down; then it rises
