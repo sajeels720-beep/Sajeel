@@ -667,12 +667,17 @@ def pulse(name, points, start, end, color=(1.0, 0.1, 0.06), size=0.01, strength=
     cu.bevel_factor_mapping_start = cu.bevel_factor_mapping_end = "SPLINE"
     ob = link(bpy.data.objects.new(name, cu), col)
     assign(ob, mat)
-    for f, head in ((start, 0.0), (end, 1.0 + trail)):
+    # keyed on every frame: with only two keys the clamping at 1.0 made start and end equal all
+    # the way, a streak of no length that never showed
+    span = max(end - start, 1)
+    for f in range(start - 1, end + 2):
+        t = min(max((f - start) / span, 0.0), 1.0)
+        head = (1.0 + trail) * (1.0 - math.cos(t * math.pi / 2))          # eased in: it speeds up
         cu.bevel_factor_end = min(head, 1.0)
         cu.bevel_factor_start = max(0.0, min(head - trail, 1.0))
         cu.keyframe_insert("bevel_factor_end", frame=f)
         cu.keyframe_insert("bevel_factor_start", frame=f)
-    ease_id(cu, "SINE", "EASE_IN")
+    ease_id(cu, "LINEAR")
     return ob
 
 
