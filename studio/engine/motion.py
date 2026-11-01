@@ -203,7 +203,8 @@ class Gait:
     """
 
     def __init__(self, x_of_t, t0, t1, floor_y, scale=1.0, step=84.0, lift=18.0, run=False, arm=22.0,
-                 lean=4.0, bob=1.0, leg=LEG, duty=0.36, heel=1.0, facing=None, hunch=0.0, reach=0.35, ground=None):
+                 lean=4.0, bob=1.0, leg=LEG, duty=0.36, heel=1.0, facing=None, hunch=0.0, reach=0.35, ground=None,
+                 blend_steps=0.7):
         self.x = x_of_t
         self.t0, self.t1 = t0, t1
         self.xa, self.xb = x_of_t(t0), x_of_t(t1)
@@ -223,6 +224,7 @@ class Gait:
             self.S = self.D / (self.n - 1) if self.D > 0 else step * scale
         self.lift, self.arm, self.lean, self.bob = lift, arm, lean, bob
         self.duty, self.heel, self.hunch, self.reach = duty, heel, hunch, reach
+        self.blend_steps = blend_steps     # how far (in steps) a run blends from and to standing at its ends
 
     def _phase(self, d):
         """Distance travelled -> (walking step index, progress 0..1 within that step)."""
@@ -247,9 +249,15 @@ class Gait:
         if self.D <= 1 or t <= self.t0 or t >= self.t1:
             return self._stand(x)
         if self.run:
-            w = clamp(min(d, self.D - d) / (0.7 * self.S))
+            w = clamp(min(d, self.D - d) / (self.blend_steps * self.S))
             w = w * w * (3 - 2 * w)
-            return blend(self._stand(x), self._run(t, x, d), w)
+            pose = blend(self._stand(x), self._run(t, x, d), w)
+            if 0 < w < 1:
+                # push off (or skid to a stop) with a little hop, so the change of stance happens in the air
+                hop = 4 * w * (1 - w) * 14
+                pose['foot_f'] = (pose['foot_f'][0], pose['foot_f'][1] - hop)
+                pose['foot_b'] = (pose['foot_b'][0], pose['foot_b'][1] - hop)
+            return pose
         s = self.s
         k, u = self._phase(d)
         frm, to, stance = self._land(k - 2), self._land(k), self._land(k - 1)

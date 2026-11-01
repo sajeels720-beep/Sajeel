@@ -218,7 +218,7 @@ cam_stand = CamPath([(0.0, (870, 690, 1.55)), (5.0, (890, 670, 1.5))], handheld=
 OUT_WALK = Curve([(107.9, 800.0), (108.9, 1010.0)])
 OUT_RUN = Curve([(109.1, 1010.0), (111.2, 1880.0, 'smooth')])
 GAIT_OUT = Gait(OUT_WALK, 107.9, 108.9, PATH_Y, step=88)
-RUN_OUT = Gait(OUT_RUN, 109.1, 111.2, PATH_Y, step=118, run=True, lean=9, arm=34, lift=13)
+RUN_OUT = Gait(OUT_RUN, 109.1, 111.2, PATH_Y, step=118, run=True, lean=9, arm=34, lift=13, blend_steps=0.3)
 
 
 def out_shot(c, t, T):
@@ -262,11 +262,10 @@ def track(cam_curve, y=600, z=1.15, seed=0, hh=3):
 
 # DAY 3: he runs out of breath; the old man catches up with his stick
 D3 = EV['days'][0]
-D3_RUN = Curve([(D3, 400.0), (D3 + 2.3, 1060.0, 'stop'), (D3 + 3.65, 1060.0), (D3 + 4.2, 1250.0)])
-D3_GAIT1 = Gait(Curve([(D3, 400.0), (D3 + 2.3, 1060.0)]), D3, D3 + 2.3, PATH_Y, step=104, run=True, lean=8,
-                arm=26, lift=10, duty=0.4)
-D3_GAIT2 = Gait(Curve([(D3 + 3.65, 1060.0), (D3 + 4.3, 1300.0)]), D3 + 3.65, D3 + 4.3, PATH_Y, step=104, run=True,
-                lean=8, arm=26, lift=10)
+D3_GAIT1 = Gait(Curve([(D3 - 1.4, 0.0), (D3 + 2.3, 1060.0, 'stop')]), D3 - 1.4, D3 + 2.3, PATH_Y, step=104,
+                run=True, lean=8, arm=26, lift=10, duty=0.4, blend_steps=0.25)
+D3_GAIT2 = Gait(Curve([(D3 + 3.65, 1060.0), (D3 + 4.6, 1420.0)]), D3 + 3.65, D3 + 4.6, PATH_Y, step=104, run=True,
+                lean=8, arm=26, lift=10, blend_steps=0.25)
 D3_OLD = Curve([(D3 + 0.6, 560.0), (D3 + 3.2, 900.0)])
 D3_OLD_GAIT = Gait(D3_OLD, D3 + 0.6, D3 + 3.2, PATH_Y, step=44, lift=8, arm=6, lean=2)
 
@@ -291,7 +290,7 @@ def day3(c, t, T):
         p.update(mopen=0.3, sweat=0.8, brow=-6)
     elif T < D3 + 3.65:
         bent = smooth(D3 + 2.3, D3 + 2.6, T) * (1 - smooth(D3 + 3.45, D3 + 3.65, T))
-        p = stand_feet(1060, PATH_Y, 1.0, 1)
+        p = D3_GAIT1._stand(1060.0)            # the same stance the run stops in and starts from
         pant = math.sin((T - D3) * 14)
         p.update(lean=48 * bent, tilt=10 * bent - 14 * smooth(D3 + 3.3, D3 + 3.5, T), mopen=0.35 + 0.15 * pant,
                  sweat=1.2, brow=-10, hand_f=(40 * bent + 4, 30 * bent), hand_b=(30 * bent, 36 * bent),
@@ -470,14 +469,14 @@ def cam_day77(t):
     hx = D77_HERO(T)
     ox = D77_OLD(T)
     reveal = smooth(3.6, 4.6, t)
-    cx = hx + 430 + (((hx + ox) / 2) - (hx + 430)) * reveal
+    cx = hx + 520 + (((hx + ox) / 2) - (hx + 520)) * reveal
     return (cx, 640 + noise1(t * 0.5, 66) * 3, z, 0.0)
 
 
 # --- the last temptation (135-145) ---------------------------------------------------------------------------------------
 
 def temptation(c, t, T):
-    up = smooth(EV['up_through'], EV['up_through'] + 0.45, T)
+    up = smooth(EV['up_through'], EV['up_through'] + 0.75, T)
     speak = 0.0
     for text_, t0, t1, who in SPEECH:
         if who == 'hero' and t0 <= T <= t1:
@@ -545,8 +544,8 @@ def temptation(c, t, T):
         else:
             def body(c2):
                 shade_emissive(c2, EV['shade_gone'], 474, 792, lean=22, eye=1.0, scale=1.22)
-            dissolve(cc, body, (360, 420, 700, 900), TT, EV['shade_gone'], dur=1.4, seed=9, smoke='#2A0A0A',
-                     smoke_a=0.7, rise=200)
+            dissolve(cc, body, (360, 420, 700, 900), TT, EV['shade_gone'], dur=1.9, seed=9, smoke='#2A0A0A',
+                     smoke_a=0.7, rise=240)
     R.after = after
     draw_room(c, T, R)
     w = WHISPERS[7]
