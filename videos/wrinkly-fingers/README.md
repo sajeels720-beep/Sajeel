@@ -11,7 +11,7 @@ Video 3: a vertical Short of 25 seconds (750 frames at 30 fps) in the style of Z
   - `wrinkles.py`: the wrinkles that grow on his fingertips (real geometry in the close-ups).
   - `pool_acting.py`: placing and posing him in the pool (arms, hands, face and body over time).
   - `opening_take.py`: his performance for shots 1–3, animated as one take so the acting carries across the cuts.
-  - `hand_set.py`: his hand alone on the studio blue for shots 4–5 (open, palm up): the drops that soak in, his red "?", and the X-ray (glass skin, bones and nerves fitted inside his hand).
+  - `hand_set.py`: his hand alone on the studio blue for shots 4–5 (open, palm up): the drops that soak in, his red "?", and the X-ray. The skin turns to glass over a real hand skeleton: every finger bone with its base, waisted shaft and rounded head, joint spaces between them, the eight wrist bones, and the ends of the radius and ulna, glowing brightest at their edges like an X-ray. The nerves come with it, and everything is fitted inside his hand.
   - `skin_macro.py`: shot 6, the fingerprint ridges up close, with sweat pores and drops of water draining into them.
   - `finger_inside.py`: shots 7–8 inside the fingertip (the warm tissue backdrop of videos 1 and 2): the nerve ending sparks, a pulse races down the nerve, the vessels squeeze and the blood cells slow.
   - `cutaway.py`: shots 9–10, the fingertip cut in half like a textbook: the vessels drain, the pad shrinks and the skin buckles.
