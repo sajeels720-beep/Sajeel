@@ -11,19 +11,21 @@ Every Day You Waste, He Gets Weaker.
 `thumbnail_b.png` for Test & Compare - text: HE'S YOU.
 
 ## Description
-Every night at 2:47 AM, someone sits at the foot of his bed.
+Every night at 2:47 AM, someone sits at the foot of his bed. He never looks up.
 It's him. Fifty years from now.
 And every day he wastes, the old man gets weaker.
 
-HE'S WAITING. is a short animated film about your future self: the person every scroll, every "start tomorrow" and every "you have time" is quietly taking from.
+Then, one night, his phone dies.
+
+HE'S WAITING. is a short animated film about your future self: the person every scroll, every "start tomorrow" and every "you have time" is quietly taking from. "One day" never comes. Day one can start tonight.
 
 One day you'll meet him. Make sure he's proud.
 
 0:00 2:47 AM
 0:23 Every night
 0:43 The mirror
-1:07 4:12 AM
-1:32 Day 1
+1:07 4:12 AM: the phone dies
+1:32 Day one
 1:51 The year
 2:15 "You have time."
 2:37 The summit
@@ -41,7 +43,7 @@ With timing. (Or paste `transcript.txt` into Auto-sync; the timed file is more e
 on-screen text with no voice for Auto-sync to hear.)
 
 ## Tags
-animated short film, future self, your future self, doomscrolling, procrastination, stop wasting time, you have time, discipline, self improvement, motivational short film, regret, wake up early, 2am scrolling, brave films
+animated short film, future self, your future self, doomscrolling, procrastination, stop wasting time, you have time, one day or day one, day one, discipline, self improvement, motivational short film, regret, wake up early, 2am scrolling, brave films
 
 ## Settings
 - Category: Film & Animation

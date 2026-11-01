@@ -31,6 +31,11 @@ every on-screen or spoken line there.
   movement, no character voices). Only the shadow (which has no mouth) whispers.
 - **Music is dark and cinematic** where the story needs tension or emotional weight: low drones, heavy hits,
   slow builds, a sombre lead line. Avoid warm, cosy or light-hearted music under the drama.
+- **It must make sense to a random first-time viewer.** Every turn in the story needs a cause on screen: why the
+  hero can or can't see something, why the characters feel what they feel, what makes him change and how he
+  starts. Plant it early (a caption, a prop on the wall) and pay it off. Film 4 shows how: "He never looks up." in
+  the hook; his phone dies, so he finally looks up; the "ONE DAY." poster becomes "One day never came." and then
+  "DAY ONE.". Before delivering, have Gemini watch the finished film and explain the story back.
 
 ## Every film is its own film
 

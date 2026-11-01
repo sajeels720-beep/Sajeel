@@ -17,7 +17,7 @@ import skia  # noqa: E402
 
 from cues import EV, VITALITY  # noqa: E402
 from engine.core import H, W, clamp, hrand, hrange, noise1, smooth  # noqa: E402
-from engine.draw import circle, col, mixc, oval, paint, poly, rrect, text  # noqa: E402
+from engine.draw import circle, col, mixc, oval, paint, poly, rrect, text, text_width  # noqa: E402
 from engine.light import beam, begin_light, end_light, pool, rim  # noqa: E402
 from engine.motion import Curve, breath, settle  # noqa: E402
 from engine.rig import SHADOW, Character, Look, blink  # noqa: E402
@@ -213,8 +213,20 @@ def scroll_screen(c, w, h, T, swipes=None, seed=0):
         c.drawRect(skia.Rect.MakeXYWH(w * 0.1, top + h * 0.86, w * 0.4, h * 0.04), paint('#FFFFFF', 0.45))
 
 
-def phone_side(c, x, y, angle, T, scale=1.0, on=True, swipes=None):
-    """A phone seen at a slant, screen tipped toward us a little so its light and content read."""
+def battery_icon(c, cx, cy, w, a=1.0, level=0.06, color='#FF4B4B'):
+    """An almost-empty battery: a red outline with a sliver of charge."""
+    h = w * 0.48
+    body = rrect(cx - w / 2, cy - h / 2, w, h, h * 0.18)
+    c.drawRRect(body, paint(color, a, stroke=max(1.2, w * 0.08)))
+    c.drawRRect(rrect(cx + w / 2 + w * 0.03, cy - h * 0.22, w * 0.08, h * 0.44, w * 0.03), paint(color, a))
+    pad = w * 0.1
+    c.drawRect(skia.Rect.MakeXYWH(cx - w / 2 + pad, cy - h / 2 + pad, (w - 2 * pad) * level, h - 2 * pad),
+               paint(color, a))
+
+
+def phone_side(c, x, y, angle, T, scale=1.0, on=True, swipes=None, low=0.0, dark=0.0):
+    """A phone seen at a slant, screen tipped toward us a little so its light and content read.
+    low: the low-battery warning over the clip (0..1); dark: the screen dying to black (0..1)."""
     c.save()
     c.translate(x, y)
     c.rotate(angle)
@@ -223,14 +235,22 @@ def phone_side(c, x, y, angle, T, scale=1.0, on=True, swipes=None):
     body = rrect(-w / 2, -h / 2, w, h, 8)
     c.drawRRect(body, paint('#16171C'))
     scr = rrect(-w / 2 + 3, -h / 2 + 4, w - 6, h - 8, 5)
-    if on:
+    if on and dark < 1.0:
         c.save()
         c.clipRRect(scr, doAntiAlias=True)
         c.translate(-w / 2 + 3, -h / 2 + 4)
         scroll_screen(c, w - 6, h - 8, T, swipes)
+        if low > 0:
+            c.drawRect(skia.Rect.MakeXYWH(0, 0, w - 6, h - 8), paint('#000000', 0.6 * low))
+            battery_icon(c, (w - 6) / 2 - 1, (h - 8) * 0.42, 22, low)
+            text(c, '1%', (w - 6) / 2, (h - 8) * 0.68, 13, 'Inter-Bold', '#FF6B6B', low)
+        if dark > 0:
+            c.drawRect(skia.Rect.MakeXYWH(0, 0, w - 6, h - 8), paint('#0C0D10', dark))
         c.restore()
     else:
         c.drawRRect(scr, paint('#0C0D10'))
+        # dead glass still catches a little light
+        c.drawLine(-w / 2 + 8, -h / 2 + 22, w / 2 - 10, -h / 2 + 8, paint('#9DB7FF', 0.12, stroke=3))
     c.drawRRect(body, paint('outline', stroke=3.5))
     c.restore()
 
@@ -334,7 +354,18 @@ def sky(c, x, y, w, h, T, mode='night', seed=0):
             c.drawCircle(dx, dy + slide, 3.2, paint('#DDE8F5', 0.55))
 
 
-def mountain_poster(c, x, y, w, h):
+def poster_marks(T):
+    """Day 1: how far the marker line through ONE DAY. (strike) and the new words DAY ONE. (write) are drawn."""
+    s0 = EV['strike'] + 0.15
+    w0 = EV['write'] + 0.1
+    return clamp((T - s0) / 0.45), clamp((T - w0) / 1.3)
+
+
+STRIKE_LINE = [(0.1, 0.885), (0.5, 0.875), (0.9, 0.862)]   # across ONE DAY., in poster units
+WRITE_AT = (0.5, 0.2, -5.0, 0.215)                          # DAY ONE. centre x, baseline y, angle, size (x w)
+
+
+def mountain_poster(c, x, y, w, h, T=0.0):
     r = rrect(x, y, w, h, 4)
     sh = skia.GradientShader.MakeLinear(points=[(x, y), (x, y + h)], colors=[col('#F7B267'), col('#F25F5C')])
     c.drawRRect(r, paint('#F7B267', shader=sh))
@@ -349,6 +380,28 @@ def mountain_poster(c, x, y, w, h):
     c.drawPath(snow, paint('#F4EFEA'))
     c.restore()
     text(c, 'ONE DAY.', x + w / 2, y + h - 18, 26, 'LuckiestGuy', '#FFF6E6')
+    st, wr = poster_marks(T)
+    if st > 0:
+        # Day 1: a black marker line through ONE DAY. ...
+        (ax, ay), (mx_, my_), (bx, by) = STRIKE_LINE
+        path = skia.Path()
+        path.moveTo(x + w * ax, y + h * ay)
+        path.quadTo(x + w * mx_, y + h * my_ + 3, x + w * bx, y + h * by)
+        meas = skia.PathMeasure(path, False)
+        seg = skia.Path()
+        meas.getSegment(0, meas.getLength() * st, seg, True)
+        c.drawPath(seg, paint('#141418', stroke=6.5))
+    if wr > 0:
+        # ... and DAY ONE. written in the sky above the mountain, left to right
+        cx, by_, ang, sz = WRITE_AT
+        size = sz * w
+        tw = text_width('DAY ONE.', 'CaveatBrush', size)
+        c.save()
+        c.translate(x + w * cx, y + h * by_)
+        c.rotate(ang)
+        c.clipRect(skia.Rect.MakeLTRB(-tw / 2 - 4, -size * 1.2, -tw / 2 + (tw + 8) * wr, size * 0.5))
+        text(c, 'DAY ONE.', 0, 0, size, 'CaveatBrush', '#141418')
+        c.restore()
     c.drawRRect(r, paint('outline', stroke=4))
     c.drawCircle(x + w / 2, y + 8, 4, paint('#C8463D'))
 
@@ -522,7 +575,7 @@ def room_shell(c, T, door_open=0.0, door_light=0.0):
     x, y, w, h = WINDOW
     c.drawRect(skia.Rect.MakeLTRB(x - 14, y - 14, x + w + 14, y + h + 14), paint('#E3DED3'))
     c.drawRect(skia.Rect.MakeLTRB(x - 14, y - 14, x + w + 14, y + h + 14), paint('outline', stroke=4))
-    mountain_poster(c, *POSTER)
+    mountain_poster(c, *POSTER, T=T)
     # wall calendar and notes above the desk
     return (x, y, w, h)
 

@@ -6,15 +6,14 @@ import math
 
 import skia
 
-from common import (BED, FLOOR, HERO, LIE_HIP, MATT, NIGHTSTAND, SHADE, WINDOW, Room, blanket, cane, draw_room,
-                    phone_angle,
-                    in_world, lying_blanket_contour, lying_pose, old_man, phone_light, phone_side, phone_spot,
-                    pocket_watch, sit_edge_pose, to_world, vitality)
+from common import (BED, FLOOR, HERO, LIE_HIP, MATT, NIGHTSTAND, POSTER, SHADE, WINDOW, Room, battery_icon, blanket,
+                    cane, draw_room, in_world, lying_blanket_contour, lying_pose, old_face, old_man, phone_angle,
+                    phone_light, phone_side, phone_spot, pocket_watch, sit_edge_pose, to_world, vitality)
 from cues import CHORUS, EV, WHISPERS
 from engine.captions import title, whisper
 from engine.core import H, W, beat_env, clamp, hrand, hrange, noise1, smooth
 from engine.rig import blink
-from engine.draw import mixc, oval, paint, poly, text
+from engine.draw import col, mixc, oval, paint, poly, rrect, text
 from engine.motion import CamPath, Curve, settle
 from engine.render import Shot
 
@@ -23,8 +22,9 @@ OLD_X = 1040          # where the old man sits on the end of the bed
 
 # --- the people in the night bedroom ---------------------------------------------------------------------------
 
-def hero_in_bed(*, laugh_at=(), sleepy=0.0, phone=True, face_fn=None, swipes=None):
-    """Draw fn for the Room: the hero half-reclined under the quilt, scrolling."""
+def hero_in_bed(*, laugh_at=(), sleepy=0.0, phone=True, face_fn=None, swipes=None, screen=None):
+    """Draw fn for the Room: the hero half-reclined under the quilt, scrolling.
+    screen: (low_fn, dark_fn) for a phone that warns 1% and dies."""
     def draw(c, T, rim_pass=False):
         laugh = sum(math.exp(-max(0.0, T - t0) / 0.35) * (T >= t0) for t0 in laugh_at)
         face = face_fn(T) if face_fn else None
@@ -41,7 +41,8 @@ def hero_in_bed(*, laugh_at=(), sleepy=0.0, phone=True, face_fn=None, swipes=Non
             HERO.draw(c, p, layers={'mid': quilt}, t=T)
         if phone:
             px, py = phone_spot(T)
-            phone_side(c, px, py, phone_angle(T), T, 1.0, swipes=swipes)
+            low, dark = (screen[0](T), screen[1](T)) if screen else (0.0, 0.0)
+            phone_side(c, px, py, phone_angle(T), T, 1.0, swipes=swipes, low=low, dark=dark)
             hand = to_world(p, p['hand_f'])
             c.drawCircle(hand[0] + 4, hand[1] - 14, 7, paint(HERO.look.skin))
             c.drawCircle(hand[0] + 4, hand[1] - 14, 7, paint('outline', stroke=3.5))
@@ -742,23 +743,37 @@ def cam_watch(t):
     return (960, 520, 1.0 + 0.12 * u, 0.0)
 
 
-# --- 11. rock bottom (67-90.6) -----------------------------------------------------------------------------------------
+# --- 11. rock bottom (67-92.6) -----------------------------------------------------------------------------------------
+#
+# 4:12 AM. The watch stops; the phone warns 1% and dies. In the black glass he sees his own face, and it is the old
+# man's. He lowers the phone and, for the first time, looks up: the old man is there. "I'm you." The old man looks at
+# the poster on the wall, ONE DAY.: "One day never came." "I waited for you... my whole life." The boy cries. Black.
 
-BOTTOM_SWIPES = [67.3, 68.9, 70.6, 71.9]
+BOTTOM_SWIPES = [67.3, 68.9, 70.6, 71.65]
+LOW_BATT = (71.0, 71.65)            # the 1% warning comes up over the clip; he swipes it away
 
 
-def watch_fall(T):
-    """0 while he holds it; then it slips and swings on its chain."""
-    t0 = EV['watch_stops']
-    return T >= t0
+def batt_low(T):
+    return smooth(LOW_BATT[0], LOW_BATT[0] + 0.12, T) * (1 - smooth(LOW_BATT[1], LOW_BATT[1] + 0.1, T))
 
 
-def slumped(T, extra_head=0.0, look=0.0):
+def screen_dark(T):
+    """0 while the phone is alive, 1 once it has died."""
+    return smooth(EV['phone_dies'], EV['phone_dies'] + 0.14, T)
+
+
+def bottom_phone(c, x, y, angle, T, scale=1.0):
+    phone_side(c, x, y, angle, T, scale, swipes=BOTTOM_SWIPES, low=batt_low(T), dark=screen_dark(T))
+
+
+def slumped(T, extra_head=0.0, look=0.0, face=None):
     def draw(cc, TT, rim_pass=False):
         v = vitality(TT)
         pp = sit_edge_pose(OLD_X, TT, v, head_up=extra_head, look=look)
         pp['lean'] += 10 * (1 - extra_head)
         pp['tilt'] += 8 * (1 - extra_head)
+        if face:
+            pp.update(face(TT) if callable(face) else face)
         m = cc.getTotalMatrix()
         dropped = TT >= EV['watch_stops']
         if dropped:
@@ -788,12 +803,24 @@ def slumped(T, extra_head=0.0, look=0.0):
     return draw
 
 
+def _bottom_face(TT):
+    d = screen_dark(TT)
+    if d <= 0:
+        return None
+    # the screen goes black and he keeps staring at it
+    return dict(reflect=None, brow=-5 * d, eye=0.92 * blink(TT, 1, 5.0), ly=-0.6, lx=0.25)
+
+
 def slump(c, t, T):
-    R = Room(light='night', sky='night', curtain=0.86, hero=hero_in_bed(swipes=BOTTOM_SWIPES), old=slumped(T),
-             phone_at=phone_spot(T), old_rim=0.7, hero_rim=0.5)
+    dark = screen_dark(T)
+    low = batt_low(T)
+    R = Room(light='night', sky='night', curtain=0.86,
+             hero=hero_in_bed(swipes=BOTTOM_SWIPES, face_fn=_bottom_face, screen=(batt_low, screen_dark)),
+             old=slumped(T), phone_at=phone_spot(T), phone_amt=(1 - 0.45 * low) * (1 - dark), old_rim=0.7,
+             hero_rim=0.5 * (1 - dark))
 
     def after(cc, TT):
-        phone_side(cc, *phone_spot(TT), phone_angle(TT), TT, 1.0, swipes=BOTTOM_SWIPES)
+        bottom_phone(cc, *phone_spot(TT), phone_angle(TT), TT)
         from engine.rig import eye_pair
         eye_pair(cc, 486, 690, 72, corner_eyes(TT, WHISPERS[6][1], WHISPERS[6][2]), 18)
     R.after = after
@@ -802,45 +829,160 @@ def slump(c, t, T):
     whisper(c, T, w[0], w[1], w[2], 600, 540, 56, seed=60)
 
 
-cam_slump = CamPath([(0.0, (880, 668, 1.4)), (5.6, (930, 690, 1.7))], handheld=4, seed=41)
+cam_slump = CamPath([(0.0, (880, 668, 1.4)), (4.0, (900, 676, 1.6)), (5.6, (840, 652, 1.86))], handheld=4, seed=41)
 
 
-def lowered_phone(T):
-    u = smooth(EV['lower_phone'], EV['lower_phone'] + 1.4, T)
-    px, py = phone_spot(T)
-    return (px + 50 * u, py + 120 * u), u
+# --- the black glass (72.6-76.2) ----------------------------------------------------------------------------------------
+
+BLACK_PHONE = (960, 520, 520, 1040)       # centre x, centre y, width, height of the phone in the close-up
 
 
-def silence(c, t, T):
-    def hero(cc, TT, rim_pass=False):
-        (px, py), u = lowered_phone(TT)
-        face = dict(eye=(0.78 + 0.22 * u) * blink(TT, 1, 3.6), lx=0.3 + 0.7 * u, ly=-0.5 + 0.7 * u, brow=6 * u,
-                    smile=0.05 - 0.15 * u, reflect=None if u > 0.5 else (phone_light(TT, BOTTOM_SWIPES)[0], 0.8))
-        p = lying_pose(TT, phone=True, face=face, swipes=BOTTOM_SWIPES)
-        p['hand_f'] = to_local_pose(p, (px + 2, py + 30))
-        p['back_arm_late'] = True
-        p['tilt'] = -8 + 14 * u
-        quilt = in_world(cc, lambda c2: blanket(c2, p['x'] - 130, lying_blanket_contour(p)))
-        if rim_pass:
-            from common import under_quilt
-            cc.save()
-            under_quilt(cc, p['x'] - 130, lying_blanket_contour(p))
-            HERO.draw(cc, p, t=TT)
-            cc.restore()
-            return p
-        HERO.draw(cc, p, layers={'mid': quilt}, t=TT)
-        phone_side(cc, px, py, 18 + 40 * u, TT, 1.0, swipes=BOTTOM_SWIPES)
-        return p
-
-    (px, py), u = lowered_phone(T)
-    R = Room(light='night', sky='night', curtain=0.86, hero=hero, old=slumped(T), phone_at=(px, py),
-             phone_amt=1.0 - 0.4 * u, old_rim=0.7, hero_rim=0.5)
-    R.after = lambda cc, TT: phone_side(cc, px, py, 18 + 40 * u, TT, 1.0, swipes=BOTTOM_SWIPES)
-    draw_room(c, T, R)
+def phone_drop(T):
+    """The phone sinks out of the frame as he lowers it."""
+    u = smooth(74.95, 75.6, T)
+    return 1180 * u * u
 
 
-cam_silence = CamPath([(0.0, (690, 680, 2.5)), (3.0, (700, 684, 2.6))], handheld=3, seed=42)
+def _beyond(c, T, blur):
+    """Past the phone, out of focus: the moonlit end of the room and the old man sitting at the foot of the bed."""
+    pnt = skia.Paint(ImageFilter=skia.ImageFilters.Blur(blur, blur)) if blur > 0.3 else None
+    c.saveLayer(None, pnt)
+    c.drawPaint(paint('#0D1019'))
+    # the window on the far wall, the moon's light coming through it
+    c.drawRect(skia.Rect.MakeLTRB(170, 150, 520, 600), paint('#1B2238'))
+    c.drawRect(skia.Rect.MakeLTRB(196, 176, 494, 574), paint('#2C3A5E'))
+    c.drawLine(345, 176, 345, 574, paint('#1B2238', stroke=16))
+    c.drawLine(196, 375, 494, 375, paint('#1B2238', stroke=16))
+    c.drawCircle(345, 330, 300, paint('#7F95D6', 0.14, blur=110, blend='add'))
+    c.drawRect(skia.Rect.MakeLTRB(-200, 780, 2200, 1300), paint('#121522'))
+    # the old man on the end of the bed, facing him, slumped, the stopped watch hanging from his hand
+    v = vitality(T)
+    p = dict(x=1030, y=880, scale=2.1, facing=-1, turn=0.12, lean=16, tilt=18, sb=2, eb=8, sf=6, ef=12,
+             hand_f=(30, 30), hand_b=(-30, 30), ik_f=1.0, ik_b=1.0, hb=-90, kb=0, hf=-90, kf=0)
+    p.update(old_face(v, T))
+    p.update(shiver=0.0, eye=0.45, ly=0.8, lx=0.0, alpha=1.0)
+    old_man(v).draw(c, p, t=T)
+    # moonlight: the far side of the room and the old man in a cold half-light
+    moon = skia.GradientShader.MakeRadial((700, 420), 1100, [col('#A9B6DC'), col('#5D6A8E'), col('#262C40')],
+                                          [0.0, 0.5, 1.0])
+    ml = skia.Paint(Shader=moon)
+    ml.setBlendMode(skia.BlendMode.kModulate)
+    c.drawRect(skia.Rect.MakeLTRB(-200, -200, 2200, 1400), ml)
+    c.drawCircle(860, 560, 360, paint('#9DB7FF', 0.06, blur=90, blend='add'))
+    # the quilt over his own legs, a dark hump close to the lens
+    hump = skia.Path()
+    hump.moveTo(-200, 1200)
+    hump.cubicTo(200, 900, 700, 880, 980, 950)
+    hump.cubicTo(1260, 1010, 1700, 930, 2200, 1030)
+    hump.lineTo(2200, 1300)
+    hump.lineTo(-200, 1300)
+    hump.close()
+    c.drawPath(hump, paint('#1C2740'))
+    c.restore()
 
+
+def _reflection(c, T, gx, gy, gw, gh):
+    """His face in the dead glass, lit by the moon from the window, turning into the old man's."""
+    a = 0.7 * smooth(73.05, 73.6, T)
+    if a <= 0:
+        return
+    from engine.rig import BASE_POSE, solve
+    age = smooth(EV['reflection'], EV['reflection'] + 1.1, T)
+    shock = smooth(74.3, 74.6, T)
+    rect = skia.Rect.MakeXYWH(gx, gy, gw, gh)
+    c.saveLayerAlpha(rect, int(255 * a))
+    s = 3.1
+    base = dict(facing=-1, turn=0.0, lean=0.0, tilt=0.0, sb=4.0, eb=4.0, sf=4.0, ef=4.0, shiver=0.0, lx=0.0,
+                ly=-0.1, breathe=0.0, head_dx=0.0, head_dy=0.0)
+    pp = dict(BASE_POSE)
+    pp.update(base)
+    hx_, hy_ = solve(HERO.look, pp)['head']
+    head = (gx + gw * 0.5, gy + gh * 0.31)
+    base.update(x=head[0] + hx_ * s, y=head[1] - hy_ * s, scale=s, hand_f=(84, 150), hand_b=(-84, 150), ik_f=1.0,
+                ik_b=1.0)
+    if age < 1:
+        young = dict(base, eye=0.82 * blink(T, 1, 4.5), bags=0.9, brow=-3, smile=-0.04)
+        if age > 0:
+            c.saveLayerAlpha(rect, int(255 * (1 - age)))
+        HERO.draw(c, young, t=T)
+        if age > 0:
+            c.restore()
+    if age > 0:
+        v = vitality(T)
+        old = dict(base)
+        old.update(old_face(v, T))
+        old.update(shiver=0.0, eye=(0.72 + 0.28 * shock) * blink(T, 3, 6.0), brow=-10 - 6 * shock, wet=age,
+                   smile=-0.2, bags=1.1, lx=0.0, ly=-0.1, breathe=0.0)
+        c.saveLayerAlpha(rect, int(255 * age))
+        old_man(v).draw(c, old, t=T)
+        c.restore()
+    # moonlight from the left on the face in the glass, the rest of it lost in the dark
+    sh = skia.GradientShader.MakeLinear(points=[(gx, gy), (gx + gw, gy)],
+                                        colors=[col('#C8D4F2'), col('#6A7690'), col('#232838')])
+    lit = skia.Paint(Shader=sh)
+    lit.setBlendMode(skia.BlendMode.kModulate)
+    c.drawRect(rect, lit)
+    # only the face catches the light; below it the reflection sinks into the black glass
+    fall = skia.GradientShader.MakeRadial(head, 62 * s * 2.2, [col('#FFFFFF'), col('#FFFFFF'), col('#000000')],
+                                          [0.0, 0.45, 1.0])
+    lit2 = skia.Paint(Shader=fall)
+    lit2.setBlendMode(skia.BlendMode.kModulate)
+    c.drawRect(rect, lit2)
+    c.restore()
+
+
+def black_mirror(c, t, T):
+    drop = phone_drop(T)
+    focus = smooth(75.3, 76.0, T)
+    _beyond(c, T, 16.0 * (1 - focus) + 0.2)
+    cx, cy, w, h = BLACK_PHONE
+    cy += drop
+    c.save()
+    c.translate(cx, cy)
+    c.rotate(-3.0 + 2.0 * noise1(T * 0.5, 6))
+    body = rrect(-w / 2, -h / 2, w, h, 64)
+    c.drawRRect(body, paint('#000000', 0.5, blur=30))
+    c.drawRRect(body, paint('#17181D'))
+    gx, gy, gw, gh = -w / 2 + 18, -h / 2 + 18, w - 36, h - 36
+    glass = rrect(gx, gy, gw, gh, 50)
+    c.save()
+    c.clipRRect(glass, doAntiAlias=True)
+    c.drawRRect(glass, paint('#050609'))
+    _reflection(c, T, gx, gy, gw, gh)
+    # a dead battery, once, as he presses the button
+    ba = smooth(72.62, 72.7, T) * (1 - smooth(72.95, 73.15, T))
+    if ba > 0:
+        battery_icon(c, 0, -60, 130, ba, level=0.0)
+    # the glass: a cold sheen across it
+    sheen = skia.GradientShader.MakeLinear(points=[(gx, gy), (gx + gw, gy + gh * 0.6)],
+                                           colors=[col('#FFFFFF', 0.0), col('#BFD0FF', 0.10), col('#FFFFFF', 0.0)],
+                                           positions=[0.25, 0.42, 0.6])
+    c.drawRect(skia.Rect.MakeXYWH(gx, gy, gw, gh), skia.Paint(Shader=sheen))
+    c.restore()
+    c.drawRRect(glass, paint('#2A2C33', stroke=3))
+    c.drawRRect(body, paint('outline', stroke=6))
+    # his thumbs on the edges
+    skin = HERO.look.skin
+    for side in (-1, 1):
+        c.save()
+        c.translate(side * (w / 2 - 6), h * 0.2)
+        c.rotate(-side * 18)
+        th = skia.RRect.MakeRectXY(skia.Rect.MakeXYWH(-42, -30, 84, 60), 30, 30)
+        c.drawRRect(th, paint(skin))
+        c.drawRRect(th, paint('#000000', 0.35))
+        c.drawRRect(th, paint('outline', stroke=6))
+        c.restore()
+    c.restore()
+
+
+def cam_black(t):
+    from engine.core import shake
+    k = 3.0 * smooth(1.9, 2.3, t) * (1 - smooth(2.8, 3.3, t))
+    sx, sy = shake(t, k)
+    return (960 + sx, 540 + sy, 1.0 + 0.1 * smooth(0.0, 3.0, t), 0.0)
+
+
+# --- he looks up (76.2-78.8) ---------------------------------------------------------------------------------------------
 
 def sitting_hero(up_fn, face_fn=None, phone_dead=None):
     from common import sit_blanket_contour, sit_up_pose
@@ -872,80 +1014,131 @@ def look_up_fn(T):
     return smooth(EV['sit_up'], EV['sit_up'] + 1.6, T)
 
 
+def old_lift(T):
+    return smooth(EV['old_lifts'], EV['old_lifts'] + 1.8, T)
+
+
+def _moon_on_bed(c):
+    from engine.light import pool
+    pool(c, 760, 650, 300, 260, '#9DB7FF', 0.28)
+
+
+def _seeing(TT):
+    """Wide awake, staring at the old man; the shock softening as he sits up."""
+    soft = smooth(EV['sit_up'] + 1.2, EV['sit_up'] + 2.4, TT)
+    return dict(lx=0.9, ly=0.35, brow=-9 - 3 * soft, eye=(1.0 - 0.1 * soft) * blink(TT, 1, 4.2), smile=-0.06,
+                bags=0.7, reflect=None)
+
+
 def look_shot(c, t, T):
     R = Room(light='night', sky='night', curtain=0.86,
-             hero=sitting_hero(look_up_fn, lambda TT: dict(lx=0.9, ly=0.4, brow=-6, eye=blink(TT, 1, 3.4),
-                                                           smile=-0.1)),
-             old=slumped(T), phone_at=(800, 740), phone_amt=0.5, old_rim=0.75, hero_rim=0.3)
+             hero=sitting_hero(look_up_fn, _seeing, phone_dead=EV['phone_dies']),
+             old=slumped(T, extra_head=0.85 * old_lift(T), look=old_lift(T), face=dict(shiver=0.08)),
+             old_rim=0.8)
+    R.lights_extra = _moon_on_bed
     draw_room(c, T, R)
 
 
-cam_look = CamPath([(0.0, (860, 690, 1.45)), (3.0, (880, 694, 1.55))], handheld=4, seed=43)
+cam_look = CamPath([(0.0, (860, 690, 1.45)), (2.6, (884, 692, 1.56))], handheld=4, seed=43)
 
 
-def speak_mouth(T):
-    """Rough syllables for the old man's two lines."""
-    from cues import SPEECH
-    m = 0.0
-    for text_, t0, t1, who in SPEECH[:2]:
-        if t0 <= T <= t1:
-            env = smooth(t0, t0 + 0.1, T) * (1 - smooth(t1 - 0.25, t1, T))
-            m = max(m, env * (0.08 + 0.2 * abs(math.sin((T - t0) * 9.5)) * (0.6 + 0.4 * noise1(T * 4, 7))))
-    return m
-
+# --- "I'm you." (78.8-81) -------------------------------------------------------------------------------------------------
 
 def speak_two(c, t, T):
-    lift = smooth(EV['old_lifts'], EV['old_lifts'] + 1.8, T)
     R = Room(light='night', sky='night', curtain=0.86,
-             hero=sitting_hero(lambda TT: 1.0, lambda TT: dict(lx=0.9, ly=0.4, brow=-8, eye=blink(TT, 1, 3.4))),
-             old=slumped(T, extra_head=0.85 * lift, look=1.0), phone_at=(800, 740), phone_amt=0.5, old_rim=0.8)
+             hero=sitting_hero(lambda TT: 1.0, lambda TT: dict(lx=0.9, ly=0.4, brow=-12, eye=0.95 * blink(TT, 1, 3.4),
+                                                               smile=-0.06, reflect=None),
+                               phone_dead=EV['phone_dies']),
+             old=slumped(T, extra_head=0.85 * old_lift(T), look=1.0, face=dict(shiver=0.06, smile=-0.25)),
+             old_rim=0.8)
+    R.lights_extra = _moon_on_bed
     draw_room(c, T, R)
 
 
-cam_speak_two = CamPath([(0.0, (900, 690, 1.6)), (2.4, (930, 680, 1.75))], handheld=3, seed=44)
+cam_speak_two = CamPath([(0.0, (900, 690, 1.6)), (2.2, (930, 680, 1.75))], handheld=3, seed=44)
 
 
-def speak_close(c, t, T):
-    lift = 0.85 + 0.15 * smooth(81.0, 82.0, T)
+# --- "One day never came." (81-84.4): he looks up at the poster ------------------------------------------------------
 
+def _poster_face(TT):
+    up = smooth(EV['poster_look'] + 0.1, EV['poster_look'] + 0.9, TT)
+    back = smooth(84.0, 84.4, TT)
+    u = up * (1 - back)
+    return dict(lx=0.9 - 0.3 * u, ly=-0.3 - 0.75 * u, tilt=-6 - 10 * u, wet=0.6, brow=-14, smile=-0.25,
+                shiver=0.05, eye=0.85 * blink(TT, 2, 5.5))
+
+
+def poster_shot(c, t, T):
     def old(cc, TT, rim_pass=False):
         v = vitality(TT)
-        pp = sit_edge_pose(OLD_X, TT, v, head_up=lift, look=1.0)
-        pp.update(wet=smooth(81.0, 83.0, TT), mopen=0.0, brow=-16, eye=0.8 * blink(TT, 2, 5.0),
-                  smile=-0.15 + 0.25 * smooth(86.6, 87.6, TT), lx=0.9, ly=-0.3, turn=0.42,
-                  tears=0.6 * smooth(85.6, 87.4, TT))
+        pp = sit_edge_pose(OLD_X, TT, v, head_up=1.0, look=1.0)
+        pp.update(_poster_face(TT))
+        pp['turn'] = 0.42
         if TT >= EV['watch_stops']:
             pp['hand_f'] = (34, 18)
         old_man(v).draw(cc, pp, t=TT)
         return pp
 
-    R = Room(light='night', sky='night', curtain=0.86, hero=None, old=old, phone_at=(800, 740), phone_amt=0.55,
-             old_rim=0.9)
+    R = Room(light='night', sky='night', curtain=0.86, hero=None, old=old, old_rim=0.85)
+
+    def lights(cc):
+        from engine.light import pool
+        x, y, w, h = POSTER
+        pool(cc, x + w / 2, y + h / 2, w * 1.9, h * 1.6, '#B8C8FF', 0.55)
+        pool(cc, OLD_X - 40, 650, 220, 200, '#9DB7FF', 0.35)
+    R.lights_extra = lights
+    draw_room(c, T, R)
+
+
+cam_poster = CamPath([(0.0, (1010, 640, 3.0)), (0.5, (1006, 638, 3.0)), (1.8, (850, 520, 2.85)),
+                      (3.4, (836, 508, 3.05))], handheld=3, seed=47)
+
+
+# --- "I waited for you... my whole life." (84.4-89.6) -----------------------------------------------------------------
+
+def speak_close(c, t, T):
+    def old(cc, TT, rim_pass=False):
+        v = vitality(TT)
+        pp = sit_edge_pose(OLD_X, TT, v, head_up=1.0, look=1.0)
+        # a still face: the words are captions, his mouth never moves
+        pp.update(wet=1.0, mopen=0.0, brow=-16, eye=0.8 * blink(TT, 2, 5.0), smile=-0.22, lx=0.9, ly=-0.3,
+                  turn=0.42, tears=0.6 * smooth(86.9, 88.7, TT), shiver=0.0)
+        if TT >= EV['watch_stops']:
+            pp['hand_f'] = (34, 18)
+        old_man(v).draw(cc, pp, t=TT)
+        return pp
+
+    R = Room(light='night', sky='night', curtain=0.86, hero=None, old=old, old_rim=0.9)
     R.lights_extra = lambda cc: _soft_face(cc)
     draw_room(c, T, R)
 
 
 def _soft_face(c):
     from engine.light import pool
-    pool(c, OLD_X - 40, 650, 220, 200, '#9DB7FF', 0.35)
+    pool(c, OLD_X - 40, 650, 220, 200, '#9DB7FF', 0.42)
 
 
-cam_speak_close = CamPath([(0.0, (1004, 650, 3.2)), (9.0, (1000, 652, 3.6))], handheld=3, seed=45)
+cam_speak_close = CamPath([(0.0, (1004, 650, 3.2)), (5.2, (1000, 652, 3.6))], handheld=3, seed=45)
 
+
+# --- his tear (89.6-91.6) ----------------------------------------------------------------------------------------------
 
 def tear_shot(c, t, T):
-    dead = EV['phone_dies']
-
     def face(TT):
-        return dict(lx=0.9, ly=0.2, brow=-14, eye=0.85 * blink(TT, 1, 6.0), tears=0.8 * smooth(EV['tear'], EV['tear'] + 1.6, TT),
-                    wet=1.0, smile=-0.2, mouth='curve')
-    on = 1.0 - smooth(dead, dead + 0.08, T)
-    R = Room(light='night', sky='night', curtain=0.86, hero=sitting_hero(lambda TT: 1.0, face, phone_dead=dead),
-             old=None, phone_at=(820, 730), phone_amt=0.9 * on, hero_rim=0.45 * on, moon=0.85)
+        return dict(lx=0.9, ly=0.2, brow=-14, eye=0.85 * blink(TT, 1, 6.0), wet=1.0, smile=-0.2, reflect=None,
+                    tears=0.8 * smooth(EV['tear'], EV['tear'] + 1.4, TT))
+    R = Room(light='night', sky='night', curtain=0.86, hero=sitting_hero(lambda TT: 1.0, face,
+                                                                          phone_dead=EV['phone_dies']),
+             old=None, moon=0.9)
+
+    def lights(cc):
+        from engine.light import pool
+        pool(cc, 700, 560, 240, 220, '#9DB7FF', 0.45)
+    R.lights_extra = lights
     draw_room(c, T, R)
 
 
-cam_tear = CamPath([(0.0, (800, 640, 3.4)), (3.0, (804, 642, 3.65))], handheld=3, seed=46)
+cam_tear = CamPath([(0.0, (690, 612, 3.3)), (2.0, (694, 614, 3.5))], handheld=3, seed=46)
 
 
 # --- assemble -------------------------------------------------------------------------------------------------------------
@@ -969,9 +1162,10 @@ def shots():
         Shot(EV['avoid'], 63.0, avoid, cam_avoid, name='avoid'),
         Shot(63.0, EV['slump'], watch_insert, cam_watch, name='watch'),
         Shot(EV['slump'], 72.6, slump, cam_slump, name='slump'),
-        Shot(72.6, 75.6, silence, cam_silence, name='silence'),
-        Shot(75.6, 78.6, look_shot, cam_look, name='look'),
-        Shot(78.6, 81.0, speak_two, cam_speak_two, name='speak_two'),
-        Shot(81.0, 87.6, speak_close, cam_speak_close, name='speak_close'),
-        Shot(87.6, EV['black'], tear_shot, cam_tear, name='tear'),
+        Shot(72.6, EV['turn'], black_mirror, cam_black, name='black_glass'),
+        Shot(EV['turn'], 78.8, look_shot, cam_look, name='look'),
+        Shot(78.8, EV['poster_look'], speak_two, cam_speak_two, name='im_you'),
+        Shot(EV['poster_look'], 84.4, poster_shot, cam_poster, name='one_day'),
+        Shot(84.4, 89.6, speak_close, cam_speak_close, name='waited'),
+        Shot(89.6, EV['black'], tear_shot, cam_tear, name='tear'),
     ]

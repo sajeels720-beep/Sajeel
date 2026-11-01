@@ -31,13 +31,14 @@ def overlays(c, T):
     for label, t0, t1 in COUNTERS:
         counter(c, T, label, t0, t1)
     for s, t0, t1, who in SPEECH:
-        # spoken lines: warmer and larger than the narrator, so they read as a voice
-        narrator(c, T, s, t0, t1 + 0.5, size=76, color='#FFE9C2')
+        # lines the characters "say" (never aloud): warmer and larger than the narrator, in quotes, so they read as
+        # someone speaking
+        narrator(c, T, '“' + s + '”', t0, t1 + 0.5, size=76, color='#FFE9C2')
 
 
 def post(c, T):
     a = 1 - smooth(0.15, 0.7, T)                       # up from black
-    a = max(a, smooth(EV['black'] - 0.5, EV['black'], T) * (1 - smooth(EV['dawn'] - 0.1, EV['dawn'] + 1.2, T)))
+    a = max(a, smooth(EV['black'] - 0.5, EV['black'], T) * (1 - smooth(EV['dawn'] - 0.1, EV['dawn'] + 0.7, T)))
     a = max(a, smooth(211.0, 211.9, T))                # out
     fade(c, W, H, a)
 

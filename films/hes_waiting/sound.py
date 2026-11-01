@@ -29,6 +29,9 @@ from audio.mix import Mix  # noqa: E402
 from audio.score import Score, chord, n  # noqa: E402
 from cues import CHORUS, DURATION, EV, SPEECH, WHISPERS  # noqa: E402
 
+BOTTOM_SWIPES = [67.3, 68.9, 70.6, 71.65]          # the last swipes before the phone dies (act1)
+LOW_BATT = 71.0                                    # the 1% warning
+
 # stems and channels
 SOUNDTRACK, SWEEP, CBASS, SVOICE = 0, 1, 2, 3            # 'drone'
 SSTR2, SSTR1 = 0, 1                                      # 'strings'
@@ -119,7 +122,7 @@ def compose():
 
     # --- the hook: a low drone creeps in under the phone; the figure in the dark; his face; the drain; the shadow
     phone_clips(s, EV['swipes'], 0.3, 19.4)
-    pad(s, 'drone', CBASS, 1.0, 18.3, [n('D1'), n('D2')], 62, swell_in=4.0, fade_out=0.6)
+    pad(s, 'drone', CBASS, 0.3, 19.0, [n('D1'), n('D2')], 64, swell_in=2.0, fade_out=0.6)
     pad(s, 'drone', SOUNDTRACK, 3.0, 16.3, [n('D2'), n('A2'), n('F3')], 58, swell_in=3.0, fade_out=0.4)
     pad(s, 'drone', SVOICE, 4.0, 4.6, [n('D4'), n('Eb4')], 52, swell_in=2.5, fade_out=1.2)    # dread, unresolved
     pad(s, 'strings', SSTR2, 8.8, 3.6, [n('D3'), n('A3'), n('E4'), n('F4')], 66, swell_in=0.4, fade_out=0.8)
@@ -153,17 +156,25 @@ def compose():
     for k in range(2):
         shadow_bar(s, 57.0 + 3 * k, k + 2, vel=0.9)
     pad(s, 'drone', CBASS, 57.0, 10.0, [n('D1')], 60, swell_in=1.0)
-    # --- rock bottom
-    phone_clips(s, [67.3, 68.9, 70.6, 71.9], 67.0, 74.8, quiet=True)
-    pad(s, 'drone', SOUNDTRACK, 67.0, 5.2, [n('D2'), n('A2')], 56, fade_out=0.15)
-    # after the silence, under his words (captions only): low strings, then the theme alone on the English horn
-    pad(s, 'strings', SSTR2, 78.8, 3.2, [n('D2'), n('A2'), n('F3')], 54, swell_in=2.0)
-    for k, (name, q) in enumerate((('B', 'b'), ('G', 'm'), ('A', ''))):
-        root = {'B': 'Bb'}.get(name, name)
-        pad(s, 'strings', SSTR2, 82.0 + 2.2 * k, 2.2, chord(root, '' if root == 'Bb' else q, 3), 56 + 3 * k)
-    pad(s, 'drone', CBASS, 78.8, 10.8, [n('D1'), n('D2')], 56, swell_in=2.0, fade_out=0.4)
-    theme(s, 'lead', EHORN, 81.4, 0.62, 68, bars=(0, 2))
-    pad(s, 'strings', SSTR1, 88.6, 1.0, [n('D4'), n('F4'), n('A4')], 50, fade_out=0.8)
+    # --- rock bottom: the phone until it dies; then nothing but his breath and a slow heart
+    phone_clips(s, BOTTOM_SWIPES, 67.0, EV['phone_dies'], quiet=True)
+    pad(s, 'drone', SOUNDTRACK, 67.0, EV['watch_stops'] - 67.0, [n('D2'), n('A2')], 56, fade_out=0.15)
+    # the black glass: a cold drone as his face shows in it, a cluster as it turns old
+    pad(s, 'drone', SWEEP, 73.0, 3.0, [n('D2'), n('Ab2')], 50, swell_in=1.4, fade_out=0.3)
+    pad(s, 'drone', SVOICE, EV['reflection'], 2.2, [n('D4'), n('Eb4'), n('Ab4')], 58, swell_in=1.0, fade_out=0.4)
+    s.note('perc', REVCYM, 73.62, 2.0, n('C4'), 74)
+    # the phone comes down and he is there: one deep hit, then a low chord that holds while they look
+    s.note('perc', TOMS, 75.62, 2.0, n('D1'), 104)
+    pad(s, 'drone', CBASS, 75.62, 15.8, [n('D1'), n('D2')], 58, swell_in=0.8, fade_out=0.6)
+    pad(s, 'strings', SSTR2, 76.4, 2.6, [n('D3'), n('A3')], 46, swell_in=1.2)
+    # "I'm you."
+    pad(s, 'strings', SSTR2, 79.0, 2.6, [n('D2'), n('A2'), n('F3')], 56, swell_in=0.5)
+    # the poster: "One day never came." "I waited for you... my whole life." The theme alone on the English horn
+    theme(s, 'lead', EHORN, 81.7, 0.62, 68, bars=(0, 2))
+    for k, (root, q) in enumerate((('Bb', ''), ('G', 'm'), ('A', ''), ('D', 'm'))):
+        pad(s, 'strings', SSTR2, 81.7 + 2.2 * k, 2.2, chord(root, q, 3), 54 + 3 * k)
+    pad(s, 'strings', SSTR1, 87.0, 4.4, [n('D4'), n('F4'), n('A4')], 54, swell_in=0.8, fade_out=1.0)
+    pad(s, 'strings', SSTR2, 89.6, 1.8, [n('D3'), n('A3')], 50, fade_out=0.6)          # his tear
 
     # --- Day 1: the theme, slow, three beats a bar on the tick; from dark toward hope
     t0 = 93.0
@@ -172,7 +183,8 @@ def compose():
         tb = t0 + 3 * b
         pad(s, 'strings', SSTR2, tb, 3.0, chord(name, q, 3), 50 + 4 * b)
         s.note('drone', CBASS, tb, 2.9, low(name, 2 if name in ('D', 'A', 'G') else 1), 58)
-    theme(s, 'lead', EHORN, 96.0, 0.5, 72, bars=(0, 4), swell=10)
+    s.note('perc', TOMS, EV['strike'] + 0.15, 1.6, n('D1'), 96)                # the line through ONE DAY.
+    theme(s, 'lead', EHORN, EV['write'] + 1.4, 0.5, 72, bars=(0, 4), swell=10)  # DAY ONE.: the theme begins
     s.note('perc', REVCYM, EV['curtains'] - 1.9, 2.0, n('C4'), 80)
     s.notes('lead', BELLS, EV['curtains'] + 0.05, 3.0, [n('D4'), n('A4')], 74)
     pad(s, 'lead', OOH, EV['curtains'], 4.0, [n('D4'), n('F4'), n('A4')], 54, swell_in=1.2, fade_out=1.0)
@@ -243,9 +255,10 @@ def climb(s, t0, t1, full=False):
         tb = t0 + 2 * b
         name, q = MINOR_CHORDS[b % 8]
         root1 = low(name, 1) + (12 if name in ('G', 'A', 'Bb') else 0)
-        # the driving low ostinato: synth bass in eighths, contrabass on the dotted beats
+        # the driving low ostinato: a straight, relentless pulse of synth bass on the root (no bounce), heavier on
+        # the tick, contrabass on the dotted beats
         for k in range(6):
-            s.note('pulse', PULSE, tb + k * e, 0.25, root1 + (12 if k in (2, 5) else 0), 76 + (12 if k in (0, 3) else 0))
+            s.note('pulse', PULSE, tb + k * e, 0.18, root1, 66 + (18 if k in (0, 3) else 0))
         s.note('drone', CBASS, tb, 1.9, root1, 74)
         pad(s, 'strings', SSTR2, tb, 2.0, chord(name, q, 3), 52 + (10 if full else 0) + 8 * (tb >= EV['days'][4]))
         busy = full or tb >= t0 + 4
@@ -285,7 +298,7 @@ def ascent(s, t0, t1):
         rise = b / max(1, nb - 1)
         root1 = low(name, 1) + (12 if name in ('G', 'A', 'Bb', 'C') else 0)
         for k in range(6):
-            s.note('pulse', PULSE, tb + k * e, 0.25, root1 + (12 if k % 3 == 2 else 0), 78 + 30 * rise)
+            s.note('pulse', PULSE, tb + k * e, 0.18, root1, 70 + 24 * rise + (14 if k % 3 == 0 else 0))
         pad(s, 'strings', SSTR2, tb, 2.0, chord(name, q, 3), 54 + 30 * rise)
         pad(s, 'drone', SVOICE, tb, 2.0, chord(name, q, 4), 44 + 30 * rise)
         s.note('drone', CBASS, tb, 1.9, root1, 74)
@@ -461,6 +474,33 @@ def power_down(seed=0):
     return norm(x, 0.3)
 
 
+def low_battery():
+    """Two short falling chirps from the phone's little speaker."""
+    out = np.zeros(secs(0.32))
+    for k, f in enumerate((1320.0, 990.0)):
+        x = sine(f, 0.09) * env_exp(0.09, 0.05) * 0.5
+        a = secs(0.13 * k)
+        out[a:a + len(x)] += x
+    return norm(hp(out, 500), 0.35)
+
+
+def marker(dur, strokes=1, seed=0):
+    """A felt-tip on paper: a dry scratch with a little squeak in every stroke."""
+    t = t_axis(dur)
+    scratch = bp(white(dur, seed), 2200, 7000)
+    env = np.zeros_like(t)
+    for k in range(strokes):
+        c0 = (k + 0.5) / strokes * dur
+        w = 0.42 * dur / strokes
+        env += np.exp(-((t - c0) / w) ** 2)
+    env = np.minimum(env, 1.0)
+    r = rng(seed)
+    f = 1800 + 500 * r.random() + 160 * np.sin(2 * np.pi * 9 * t)
+    squeak = np.sin(np.cumsum(2 * np.pi * f / SR)) * 0.16
+    ramp = np.minimum(1.0, np.minimum(t / 0.01, (dur - t) / 0.03))
+    return norm((scratch * 0.6 + squeak) * env * np.clip(ramp, 0, 1), 0.5)
+
+
 def gravel(seed=0):
     dur = 0.16
     out = np.zeros(secs(dur), np.float32)
@@ -600,8 +640,7 @@ def place_sfx(mx):
     mx.add('amb', sfx.room_tone(DURATION, level=0.05), 0.0, -6)
     for t, g, pan in tick_times():
         mx.add('sfx', stereo(watch_tick(int(t * 3), 1), pan), t, g)
-    for k, t in enumerate(EV['swipes'] + [23.3, 24.4, 25.6, 26.9, 29.4, 30.5, 31.6, 33.8, 34.7, 35.6, 67.3, 68.9,
-                                         70.6, 71.9]):
+    for k, t in enumerate(EV['swipes'] + [23.3, 24.4, 25.6, 26.9, 29.4, 30.5, 31.6, 33.8, 34.7, 35.6] + BOTTOM_SWIPES):
         mx.add('sfx', stereo(swipe(k), -0.3), t - 0.03, -14)
     # the clips that are sound effects: a laugh track, a cheer, a cartoon boing
     for k, (a, b) in enumerate(zip([0.3] + EV['swipes'], EV['swipes'] + [19.4])):
@@ -650,9 +689,21 @@ def place_sfx(mx):
     mx.add('sfx', stereo(sfx.heartbeat(56, 6.0, seed=16)) * 0.6, 61.0, -16, fade_in=1.0)
     mx.add('sfx', stereo(sfx.heartbeat(44, 10.0, seed=17)), 70.0, -16, fade_out=3.0)
     mx.add('sfx', stereo(sfx.tinnitus(2.2, seed=18)), EV['watch_stops'] + 0.4, -30, fade_in=0.4, fade_out=1.4)
+    mx.add('phone', stereo(low_battery(), -0.2), LOW_BATT, -6)
     mx.add('sfx', stereo(power_down(1), -0.1), EV['phone_dies'], -12)
+    # the black glass: the button pressed for nothing; his face in it turning old; the phone coming down
+    mx.add('sfx', stereo(sfx.click(seed=31)), 72.62, -14)
+    mx.add('sfx', stereo(sfx.reverse_swell(1.0, seed=32)), EV['reflection'] + 0.15, -14)
+    mx.add('sfx', stereo(sfx.breath_in(33)), 74.35, -10)
+    mx.add('sfx', stereo(sfx.rustle(0.8, seed=34, level=0.25)[:, 0]), 74.95, -14)
+    mx.add('sfx', stereo(sfx.thoom(4)), 75.6, -8)
     for t in EV['heartbeats']:
         mx.add('sfx', stereo(sfx.heartbeat(60, 0.9, seed=19)), t, -8)
+    # Day 1: the cap off, a line through ONE DAY., DAY ONE. in eight quick strokes, the cap back on
+    mx.add('sfx', stereo(sfx.click(seed=35), -0.1), EV['strike'] - 0.15, -12)
+    mx.add('sfx', stereo(marker(0.45, 1, seed=36), -0.1), EV['strike'] + 0.15, -10)
+    mx.add('sfx', stereo(marker(1.3, 8, seed=37), -0.1), EV['write'] + 0.1, -11)
+    mx.add('sfx', stereo(sfx.click(seed=38), -0.1), EV['write'] + 1.7, -12)
     # Day 1
     mx.add('amb', sfx.birds(18.0, seed=20, level=0.16), EV['curtains'], -16, fade_in=0.6)
     mx.add('sfx', sfx.curtain(1.2, seed=21), EV['curtains'] - 0.05, -8)
@@ -829,10 +880,11 @@ def build(out_dir):
     windows = place_voices(mx, work)
     # levels by scene
     mx.automate('sfx', [(0.0, 5.0), (7.6, 5.0), (9.0, 0.0)])
-    mx.automate('phone', [(0.0, 10.0), (3.4, 8.0), (7.6, 0.0), (12.0, -2.0), (16.2, -10.0), (19.3, -12.0), (19.4, -40.0),
-                          (23.0, -14.0), (36.5, -14.0), (36.6, -40.0), (66.9, -40.0), (67.0, -12.0), (72.2, -14.0),
-                          (74.8, -40.0), (135.3, -40.0), (135.4, -6.0), (143.0, -6.0), (143.1, -40.0)])
-    mx.automate('music', [(0.0, 2.0), (3.0, 3.0), (19.4, 3.0), (23.0, 0.0), (78.8, 3.0), (89.6, 3.0), (92.6, 2.0),
+    # the clips on his phone stay small and tinny under the drone; the phone dies mid-clip
+    mx.automate('phone', [(0.0, 6.0), (1.5, 4.0), (3.4, 2.0), (7.6, -2.0), (12.0, -4.0), (16.2, -10.0), (19.3, -12.0), (19.4, -40.0),
+                          (23.0, -14.0), (36.5, -14.0), (36.6, -40.0), (66.9, -40.0), (67.0, -12.0), (72.15, -14.0),
+                          (72.22, -60.0), (135.3, -60.0), (135.4, -6.0), (143.0, -6.0), (143.1, -40.0)])
+    mx.automate('music', [(0.0, 2.0), (3.0, 3.0), (19.4, 3.0), (23.0, 0.0), (75.6, 3.0), (90.2, 3.0), (92.6, 2.0),
                           (111.0, 0.0), (134.95, 0.0), (135.0, -40.0), (142.9, -40.0), (143.0, -2.0), (145.0, 2.0),
                           (153.0, 0.0), (172.0, 0.0), (173.0, 3.0), (183.0, 1.0), (193.0, 1.0), (203.0, 2.0)])
     mx.automate('shadow', [(0.0, 0.0), (42.0, 0.0), (42.4, -60.0), (56.9, -60.0), (57.0, 0.0)])
@@ -841,9 +893,9 @@ def build(out_dir):
     mx.duck('phone', windows, -8.0, 0.2)
     mx.duck('sfx', windows, -3.0, 0.2)
     mx.duck('amb', windows, -6.0, 0.25)
-    # silence where the watch stops: nothing but breath until he lifts his head
-    mx.duck('music', [(EV['watch_stops'] + 0.02, 78.8)], -40.0, 0.05)
-    mx.duck('music', [(EV['phone_dies'] - 0.05, EV['dawn'] + 0.4)], -40.0, 0.15)
+    # silence where the watch stops, until his face shows in the dead glass; and in the black before dawn
+    mx.duck('music', [(EV['watch_stops'] + 0.02, 72.95)], -40.0, 0.05)
+    mx.duck('music', [(EV['black'] - 0.2, EV['dawn'] + 0.3)], -40.0, 0.4)
     master = mx.render({'music': 0.0, 'shadow': -3.0, 'phone': -6.0, 'sfx': -6.0, 'amb': -8.0, 'voice': 3.0},
                        level={'music': -21.0}, ceiling=0.6)
     return write_wav(work / 'mix.wav', master)

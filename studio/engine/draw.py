@@ -247,7 +247,9 @@ def text(c, s, x, y, size, name='PatrickHand', color='white', a=1.0, align='cent
             c.drawString(s, x0, y, f, p)
 
     if shadow:
-        draw_with(paint('#000000', a * shadow, stroke=size * 0.22, blur=size * 0.18))
+        # the backing comes in after the letters and leaves before them, so a fading caption never shows
+        # as dark ghost text
+        draw_with(paint('#000000', a * a * shadow, stroke=size * 0.22, blur=size * 0.18))
     if glow:
         draw_with(paint(glow, a * glow_a, blur=glow_r, blend='add'))
     if outline and outline_w:

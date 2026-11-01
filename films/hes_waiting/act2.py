@@ -7,13 +7,13 @@ from dataclasses import replace
 import skia
 
 from act1 import OLD_X, corner_eyes, hero_in_bed, old_on_bed, shade_emissive, sitting_hero, to_local_pose
-from common import (BED, DOOR, FLOOR, HERO, HERO_LOOK, LIE_HIP, MATT, NIGHTSTAND, SHADE, WINDOW, Character, Room,
-                    blanket, cane, draw_room, in_world, lying_blanket_contour, lying_pose, old_face, old_man,
-                    phone_side, pocket_watch, sit_edge_pose, to_world, vitality)
+from common import (BED, DOOR, FLOOR, HERO, HERO_LOOK, LIE_HIP, MATT, NIGHTSTAND, POSTER, SHADE, STRIKE_LINE, WINDOW,
+                    WRITE_AT, Character, Room, blanket, cane, draw_room, in_world, lying_blanket_contour, lying_pose,
+                    old_face, old_man, phone_side, pocket_watch, poster_marks, sit_edge_pose, to_world, vitality)
 from cues import EV, SPEECH, WHISPERS
 from engine.captions import whisper
 from engine.core import H, W, clamp, hrand, hrange, noise1, smooth
-from engine.draw import mixc, oval, paint, poly, rrect, text
+from engine.draw import mixc, oval, paint, poly, rrect, text, text_width
 from engine.fx import dissolve, falling_leaves, rainfall, snowfall
 from engine.light import pool
 from engine.motion import CamPath, Curve, Gait, blend, breath, settle, stand_feet
@@ -60,7 +60,7 @@ def watch_ticking_again(T):
     return tick_angle(T, [EV['tick_back'] + k for k in range(0, 120)]) + stopped / 60 * math.tau
 
 
-# --- 1. Day 1: dawn, he never slept (92.6-97) ------------------------------------------------------------------------
+# --- 1. Day 1: dawn; he never slept. ONE DAY. becomes DAY ONE. (92.6-97) -------------------------------------------
 
 def old_slumped_dawn(head=0.0):
     def draw(cc, TT, rim_pass=False):
@@ -82,16 +82,102 @@ def old_slumped_dawn(head=0.0):
     return draw
 
 
-def dawn_sit(c, t, T):
+def _dawn_face(TT):
+    """Red-eyed after the night; his eyes go from the old man up to the poster on the wall."""
+    up = smooth(93.0, 93.7, TT)
+    return dict(lx=0.9 - 0.5 * up, ly=0.3 - 1.1 * up, tilt=-10 * up, brow=-4 - 4 * up, eye=0.9 * blink(TT, 1, 3.4),
+                bags=1.0, reflect=None)
+
+
+def dawn_look(c, t, T):
     R = Room(light='dawn', sky='dawn', curtain=0.0, ambient='#4E587E',
-             hero=sitting_hero(lambda TT: 1.0, lambda TT: dict(lx=0.9, ly=0.3, brow=-4, eye=0.9 * blink(TT, 1, 3.4),
-                                                               bags=1.0), phone_dead=0.0),
+             hero=sitting_hero(lambda TT: 1.0, _dawn_face, phone_dead=0.0),
              old=old_slumped_dawn(0.0), old_rim=0.35)
-    R.lights_extra = lambda cc: pool(cc, 1285, 450, 300, 300, '#FFB27A', 0.35)
+
+    def lights(cc):
+        pool(cc, 1285, 450, 300, 300, '#FFB27A', 0.35)
+        x, y, w, h = POSTER
+        pool(cc, x + w / 2, y + h / 2, w * 1.8, h * 1.5, '#C9C3D8', 0.3)
+    R.lights_extra = lights
     draw_room(c, T, R)
 
 
-cam_dawn = CamPath([(0.0, (860, 690, 1.5)), (4.4, (880, 694, 1.62))], handheld=3, seed=51)
+cam_dawn_look = CamPath([(0.0, (860, 690, 1.5)), (0.5, (858, 684, 1.52)), (1.4, (836, 602, 1.7))], handheld=3,
+                        seed=51)
+
+
+def marker_path(T):
+    """(tip, pressing) for the marker over the poster: in from below, the line through ONE DAY., a lift across to
+    the sky, DAY ONE. written left to right, and away."""
+    x, y, w, h = POSTER
+    st, wr = poster_marks(T)
+    (ax, ay), _, (bx, by) = STRIKE_LINE
+    a = (x + w * ax, y + h * ay)
+    b = (x + w * bx, y + h * by)
+    cx, base, ang, sz = WRITE_AT
+    size = sz * w
+    tw = text_width('DAY ONE.', 'CaveatBrush', size)
+    tan = math.tan(math.radians(ang))
+
+    def on_text(u):
+        px = x + w * cx - tw / 2 + tw * u
+        py = y + h * base - size * (0.3 + 0.28 * math.sin(u * 44.0))
+        return (px, py + (px - (x + w * cx)) * tan)
+    w0, w1 = EV['write'] + 0.1, EV['write'] + 1.4
+    s0, s1 = EV['strike'] + 0.15, EV['strike'] + 0.6
+    below = (a[0] - 260, a[1] + 300)
+    if T < s0:
+        u = smooth(EV['strike'] - 0.25, s0, T)
+        return (below[0] + (a[0] - below[0]) * u, below[1] + (a[1] - below[1]) * u), False
+    if T <= s1:
+        return (a[0] + (b[0] - a[0]) * st, a[1] + (b[1] - a[1]) * st), True
+    if T < w0:
+        u = smooth(s1, w0, T)
+        e = on_text(0.0)
+        hop = 30 * math.sin(math.pi * u)
+        return (b[0] + (e[0] - b[0]) * u, b[1] + (e[1] - b[1]) * u - hop), False
+    if T <= w1:
+        return on_text(wr), True
+    u = smooth(w1 + 0.1, w1 + 0.7, T)
+    e = on_text(1.0)
+    away = (e[0] - 120, e[1] + 420)
+    return (e[0] + (away[0] - e[0]) * u, e[1] + (away[1] - e[1]) * u), False
+
+
+def marker_hand(c, T):
+    """His hand with a black marker; the blue sleeve runs out of the bottom of the frame."""
+    (tx, ty), pressing = marker_path(T)
+    ang = math.radians(-58)
+    d = (math.cos(ang), math.sin(ang))                 # from the hand toward the tip
+    hand = (tx - d[0] * 44, ty - d[1] * 44 + (0 if pressing else 4))
+    sleeve_end = (hand[0] - 150, hand[1] + 260)
+    c.drawLine(hand[0], hand[1], *sleeve_end, paint('outline', stroke=34))
+    c.drawLine(hand[0], hand[1], *sleeve_end, paint(HERO_LOOK.top, stroke=27))
+    # the marker
+    tail = (tx - d[0] * 64, ty - d[1] * 64)
+    nib = (tx - d[0] * 6, ty - d[1] * 6)
+    c.drawLine(*tail, *nib, paint('outline', stroke=13))
+    c.drawLine(*tail, *nib, paint('#2A2B31', stroke=9))
+    c.drawLine(*nib, tx, ty, paint('#141418', stroke=5))
+    c.drawLine(tail[0] + d[0] * 6, tail[1] + d[1] * 6, tail[0] + d[0] * 18, tail[1] + d[1] * 18,
+               paint('#E9E4DA', stroke=9))
+    # the fist around it
+    skin = HERO_LOOK.skin
+    c.drawCircle(hand[0], hand[1], 15, paint(skin))
+    c.drawCircle(hand[0], hand[1], 15, paint('outline', stroke=4))
+    c.drawCircle(hand[0] + d[0] * 10, hand[1] + d[1] * 10, 7, paint(skin))
+    c.drawCircle(hand[0] + d[0] * 10, hand[1] + d[1] * 10, 7, paint('outline', stroke=3))
+
+
+def day_one(c, t, T):
+    R = Room(light='dawn', sky='dawn', curtain=0.0, ambient='#5A6488', hero=None, old=None)
+    R.front = marker_hand
+    x, y, w, h = POSTER
+    R.lights_extra = lambda cc: pool(cc, x + w / 2 + 30, y + h / 2 - 20, w * 2.6, h * 2.1, '#E2D6DE', 0.6)
+    draw_room(c, T, R)
+
+
+cam_day_one = CamPath([(0.0, (826, 500, 3.45)), (3.0, (826, 494, 3.7))], handheld=2, seed=55)
 
 
 # --- 2. he opens the curtains (97-102) ------------------------------------------------------------------------------------
@@ -254,6 +340,36 @@ cam_out = CamPath([(0.0, (960, 640, 1.08)), (4.0, (1040, 640, 1.08))], handheld=
 
 # --- the montage ----------------------------------------------------------------------------------------------------------
 
+def gift_motes(c, T, src, dst, pulses, n=26, seed=9, dur=1.15):
+    """The drain run backwards: each time he pushes on, warm sparks leave his chest fast and settle into the old
+    man's, which glows as it takes them in. src and dst are fn(T) -> (x, y) (both of them move)."""
+    for t0 in pulses:
+        if T < t0 or T > t0 + dur + 1.0:
+            continue
+        s_, d_ = src(T), dst(T)
+        k = math.exp(-max(0.0, T - t0) / 0.3) * smooth(t0, t0 + 0.06, T)
+        c.drawCircle(s_[0], s_[1], 44, paint('#FFD27A', 0.35 * k, blur=18, blend='add'))
+        for i in range(n):
+            delay = hrand(i, seed, int(t0 * 10)) * 0.35
+            u = (T - t0 - delay) / dur
+            if u <= 0 or u >= 1:
+                continue
+            e = 1 - (1 - u) ** 2.2                      # fast out of him, settling into the old man
+            bend = -70 + hrange(-30, 30, i, seed, 2)
+            jx, jy = hrange(-24, 24, i, seed, 3) * (1 - e), hrange(-24, 24, i, seed, 4) * (1 - e)
+            x = s_[0] + (d_[0] - s_[0]) * e + jx
+            y = s_[1] + (d_[1] - s_[1]) * e + bend * math.sin(math.pi * e) + jy
+            a = min(1.0, u * 6) * (1 - smooth(0.85, 1.0, u))
+            colr = mixc('#FFF1C9', '#FFC24F', e)
+            r = hrange(3.0, 6.0, i, seed, 5)
+            c.drawCircle(x, y, r * 3.2, paint(colr, 0.35 * a, blur=8, blend='add'))
+            c.drawCircle(x, y, r, paint(colr, 0.95 * a, blend='add'))
+        f = smooth(t0 + 0.7, t0 + 1.0, T) * (1 - smooth(t0 + 1.2, t0 + 1.9, T))
+        if f > 0:
+            c.drawCircle(d_[0], d_[1], 84, paint('#FFC86B', 0.45 * f, blur=28, blend='add'))
+            c.drawCircle(d_[0], d_[1], 26, paint('#FFF1C9', 0.6 * f, blur=6, blend='add'))
+
+
 def track(cam_curve, y=600, z=1.15, seed=0, hh=3):
     def cam(t):
         return (cam_curve(t), y + noise1(t * 0.4, seed) * hh, z, 0.0)
@@ -301,6 +417,20 @@ def day3(c, t, T):
         p.update(mopen=0.0, smile=-0.2, sweat=0.8, brow=-8)
     p.update(turn=0.3, eye=blink(T, 1, 3.3))
     RUNNER.draw(c, p, t=T)
+    gift_motes(c, T, _d3_hero_chest, _d3_old_chest, [D3 + 3.25], n=22, dur=1.0)
+
+
+def _d3_hero_chest(T):
+    if T < D3 + 3.65:
+        return (1072.0, stand_feet(1060, PATH_Y)['y'] - 70)
+    q = D3_GAIT2.pose(T)
+    return to_world(q, (14, -66))
+
+
+def _d3_old_chest(T):
+    q = D3_OLD_GAIT.pose(min(T, D3 + 3.2))
+    q.update(lean=q.get('lean', 0) + 18)
+    return to_world(q, (14, -62))
 
 
 D3_CAM = Curve([(0.0, 620.0), (2.3, 980.0), (3.6, 1000.0), (4.0, 1080.0)])
@@ -347,7 +477,21 @@ def day12(c, t, T):
         return p
 
     R = Room(light='day', sky='day', curtain=1.0, ambient='#F1E8DC', hero=hero, old=old)
+    R.after = lambda cc, TT: gift_motes(cc, TT, _d12_hero_chest, _d12_old_chest, D12_PULSES)
     draw_room(c, T, R)
+
+
+D12_PULSES = [115.15, 116.25, 117.5, 118.4]
+
+
+def _d12_hero_chest(T):
+    p = pushup(T, 1470, FLOOR + 10, rate=0.8, shaky=1.0, facing=-1)
+    return to_world(p, (14, -70))
+
+
+def _d12_old_chest(T):
+    v = vitality(T)
+    return to_world(sit_edge_pose(OLD_X, T, v, head_up=0.7, look=0.8), (14, -62))
 
 
 cam_day12 = CamPath([(0.0, (1190, 720, 1.6)), (4.0, (1206, 716, 1.66))], handheld=4, seed=62)
@@ -484,7 +628,7 @@ def temptation(c, t, T):
         from common import sit_blanket_contour, sit_up_pose
         face = dict(eye=(0.35 + 0.5 * smooth(136.0, 136.6, TT) - 0.25 * smooth(139.0, 140.0, TT)
                          + 0.4 * look) * blink(TT, 1, 3.4),
-                    lx=0.3 + 0.7 * look, ly=-0.3 + 0.5 * look, brow=-12 * smooth(141.4, 141.8, TT), mopen=speak,
+                    lx=0.3 + 0.7 * look, ly=-0.3 + 0.5 * look, brow=-12 * smooth(EV['he_doesnt'] - 0.4, EV['he_doesnt'], TT), mopen=speak,
                     smile=0.0)
         from common import quilt_contour
         lie = lying_pose(TT, phone=False, face=face, swipes=[])
@@ -549,8 +693,9 @@ def temptation(c, t, T):
     whisper(c, T, w[0], w[1], w[2], 560, 520, 64, seed=70)
 
 
-cam_temptation = CamPath([(0.0, (640, 660, 2.0)), (5.3, (650, 664, 2.15)), (5.45, (650, 664, 2.15)),
-                          (5.8, (1500, 640, 2.0)), (6.6, (1520, 640, 2.05)), (6.95, (680, 666, 2.15)),
+# his eyes go to the door, the camera follows them to the old man waiting there with his shoes, and back
+cam_temptation = CamPath([(0.0, (640, 660, 2.0)), (5.3, (650, 664, 2.15)), (5.6, (652, 664, 2.15)),
+                          (6.1, (1500, 640, 2.0)), (6.75, (1520, 640, 2.05)), (7.2, (680, 666, 2.15)),
                           (8.2, (700, 668, 2.2)), (8.6, (820, 660, 1.6)), (10.0, (840, 660, 1.55))],
                          handheld=4, seed=71)
 
@@ -722,7 +867,8 @@ def shots():
     leaf_d, leaf_c = run_pair(q[1], 'autumn', 'leaves')
     snow_d, snow_c = run_pair(q[2], 'snow', 'snow')
     return [
-        Shot(EV['dawn'], 97.0, dawn_sit, cam_dawn, name='dawn_sit'),
+        Shot(EV['dawn'], EV['strike'] - 0.2, dawn_look, cam_dawn_look, name='dawn_look'),
+        Shot(EV['strike'] - 0.2, 97.0, day_one, cam_day_one, name='day_one'),
         Shot(97.0, 102.0, curtains_shot, cam_curtains, name='curtains'),
         Shot(102.0, EV['out'], stand_shot, cam_stand, name='stand'),
         Shot(EV['out'], d[0], out_shot, cam_out, name='out'),
