@@ -41,19 +41,16 @@ def build():
     PS.step((rest.x + 0.03, rest.y - 0.06, 0.0), top=m["step_top"])
     PS.underwater_materials([bpy.data.materials["Marble_Glass"], bpy.data.materials["Marble_Swirl"]])
     PS.water_haze()
-    # camera: low beside the step, looking at the marble as the hand comes down; then it rises
-    # with the hand and tilts up towards the bright surface
+    # camera: low beside the step, looking at the marble as the hand comes down (a slow push);
+    # once he has it, it rises with the hand and tilts up towards the bright surface: one smooth
+    # move that eases in from the pinch and is still rising at the cut (the hand rises out of frame)
     grab = TAKE.PINCH[1] - off
-    keys = []
-    for f in range(1, n + 1, 3):
-        bpy.context.scene.frame_set(f)
-        held = m["ob"].matrix_world.translation.copy()
-        w = min(max((f - grab) / (n - grab), 0.0), 1.0)
-        aim = rest.lerp(held, 0.6 * w) + Vector((0.0, 0.0, 0.025 + 0.03 * w))           # the hand rises out of frame
-        cam = rest + Vector((0.2, -0.22, 0.04)) + Vector((0.0, 0.02, 0.12)) * w
-        keys.append((f, cam, aim, LENS))
+    bpy.context.scene.frame_set(n)
+    held = m["ob"].matrix_world.translation.copy()
+    cam0, aim0 = rest + Vector((0.2, -0.22, 0.04)), rest + Vector((0.0, 0.0, 0.025))
+    cam1, aim1 = rest + Vector((0.2, -0.2, 0.16)), rest.lerp(held, 0.5) + Vector((0.0, 0.0, 0.055))
     r = V.camera_rig("Cam_Shot13", lens=LENS, fstop=4.0)
-    V.cam_keys(r, keys)
+    V.cam_glide(r, [(1, cam0, aim0, LENS), (grab, cam0.lerp(rest, 0.06), aim0, LENS), (n, cam1, aim1, LENS)])
     V.handheld(r, amount=0.0015, aim_amount=0.0012)
     V.compositor(glow=0.3, threshold=1.0, dispersion=0.006)
     if PREVIEW:

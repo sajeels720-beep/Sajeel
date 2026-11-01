@@ -27,7 +27,8 @@ import wrinkles as WR
 SHOTS = {"01": (1, 69), "02": (70, 108), "03": (109, 153)}
 TIMELAPSE = (1, 69)                       # shot 01 runs fast: the sun swings, the water races
 OPEN_EYES = 72                            # after the time-lapse he opens his eyes...
-LIFT = (74, 100)                          # ...and lifts his right hand out of the water
+LIFT = (70, 100)                          # ...and lifts his right hand out of the water (it starts
+                                          # rising on the cut, so the move is unhurried)
 SURFACE = 84                              # the hand breaks the surface
 WRINKLES = [(1, 0.08), (112, 0.1), (141, 1.0)]   # the pads crumple on "wrinkly raisins"
 
@@ -57,18 +58,20 @@ def raised_hand(hero, frame):
 
 
 def _lift_poses(hero, off):
-    """The right hand's path out of the water and up to his face (take frames)."""
-    bpy.context.scene.frame_set(OPEN_EYES - off)
+    """The right hand's path out of the water and up to his face (take frames). It turns from
+    fingers-down to fingers-up gradually all the way up (an in-between pose half way through
+    the turn), so the fingertips don't whip round as the hand comes out of the water."""
+    bpy.context.scene.frame_set(LIFT[0] - off)
     sR = PA.joint(hero, "upperarm01.R")
     rest = (Vector((sR.x - 0.1, sR.y - 0.16, sR.z - 0.52)), (-0.15, -0.35, -1.0), (1.0, 0.0, 0.0), (-0.35, 1.0, -0.2))
-    dip = (rest[0] + Vector((0.0, 0.015, -0.03)),) + rest[1:]
     out_of_water = (Vector((sR.x - 0.15, sR.y - 0.36, PS.WATER_Z + 0.07)), (-0.15, -0.55, 0.8), (0.55, 0.75, 0.35),
                     (-0.8, 0.6, -0.8))
+    rising = PA.between(rest, out_of_water, 0.5, loc=Vector(rest[0]).lerp(out_of_water[0], 0.4))
     top = raised_hand(hero, LIFT[1] - off)
     up = (top, (0.12, 0.05, 1.0), (0.1, 1.0, -0.05), (-1.0, 0.3, -1.0))
     settle = (top + Vector((0.0, 0.006, -0.01)), (0.1, 0.06, 1.0), (0.12, 1.0, -0.04), (-1.0, 0.3, -1.0))
     turn = (top + Vector((0.004, 0.0, -0.006)), (0.05, 0.1, 1.0), (0.22, 1.0, -0.02), (-1.0, 0.3, -1.0))
-    return [(f - off,) + p for f, p in ((OPEN_EYES, rest), (LIFT[0], dip), (SURFACE + 2, out_of_water),
+    return [(f - off,) + p for f, p in ((LIFT[0], rest), (78, rising), (SURFACE + 2, out_of_water),
                                         (LIFT[1], up), (LIFT[1] + 5, settle), (153, turn))]
 
 
@@ -88,7 +91,7 @@ def perform(shot, dense=False):
     PA.hand_shape(hero, "R", PA.RELAXED_HAND, frame=OPEN_EYES - off)
     PA.hand_shape(hero, "R", PA.LOOK_HAND, frame=LIFT[1] - 4 - off)
     if hi >= LIFT[0]:
-        PA.arm_path(hero, "R", _lift_poses(hero, off), range(OPEN_EYES - off, 153 - off + 1))
+        PA.arm_path(hero, "R", _lift_poses(hero, off), range(LIFT[0] - off, 153 - off + 1))
     WR.key(hero, [(f - off, a) for f, a in WRINKLES])
     if dense:                                              # after the bake: the dense mesh is slow to pose
         WR.dense(hero, levels=3)

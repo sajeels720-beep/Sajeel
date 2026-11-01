@@ -77,7 +77,8 @@ def build():
     c0 = a0 + K.look_dir(-12, 6) * 1.3
     c1 = a1 + K.look_dir(-6, 40) * 2.7
     r = V.camera_rig("Cam_Shot16", lens=LENS, fstop=4.0)
-    V.cam_keys(r, [(1, c0, a0, LENS), (14, c0.lerp(c1, 0.12), a0.lerp(a1, 0.2), LENS), (n, c1, a1, LENS)])
+    V.cam_glide(r, [(1, c0, a0, LENS), (14, c0.lerp(c1, 0.12), a0.lerp(a1, 0.2), LENS), (n, c1, a1, LENS)],
+                ease_out=True)                                     # moving from the cut; at rest on the last frame
     V.handheld(r, amount=0.0015, aim_amount=0.0012)
     PS.rim(head0, from_dir=(0.3, 1.0, 0.6), dist=2.0, power=110.0)
     V.compositor(glow=0.35, threshold=1.2, dispersion=0.006)

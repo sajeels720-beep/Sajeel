@@ -48,17 +48,17 @@ def build():
     HS.key_xray(mats + [bone_mat], [(SCAN[0], -0.45, 1.0), (SCAN[1], 1.15, 1.0)])
     HS.nerves(hs, GROW, PULSES)
     XB.preview_bounces()
-    # camera: shot 04's last framing, then a crash zoom onto the fingers and a slow push
+    # camera: shot 04's last framing (at rest), then a crash zoom onto the fingers that lands softly,
+    # and a slow push
     aim, _, c_end = S04.camera_path(hs)
     tips = sum((hs["tips"][k][0] for k in (2, 3, 4)), aim * 0) / 3
     a1 = aim.lerp(tips, 0.55)
     c1 = a1 + (c_end - aim).normalized() * 0.24
     c2 = a1 + (c_end - aim).normalized() * 0.22
     r = V.camera_rig("Cam_Shot05", lens=LENS, fstop=5.6)
-    V.cam_keys(r, [(1, c_end, aim, LENS), (ZOOM[0], c_end.lerp(c1, 0.08), aim.lerp(a1, 0.1), LENS),
-                   (ZOOM[1], c1, a1, LENS), (N, c2, a1, LENS)])
+    V.cam_glide(r, [(1, c_end, aim, LENS), (ZOOM[0], c_end.lerp(c1, 0.08), aim.lerp(a1, 0.1), LENS),
+                    (ZOOM[1], c1, a1, LENS), (N, c2, a1, LENS)], ease_in=True, bumps=[(ZOOM[1], 0.06)])
     V.handheld(r, amount=0.0005, aim_amount=0.0004)
-    V.shake(r, ZOOM[1] - 1, ZOOM[1] + 7, strength=0.0016, scale=1.3)
     SKY.studio(c_end, aim, LENS)
     SKY.lights(aim, c_end, SKY.view_dir(c_end, aim, LENS), scale=0.4)
     V.compositor(glow=0.45, threshold=0.9, dispersion=0.006)

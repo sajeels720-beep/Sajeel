@@ -1,7 +1,7 @@
 """SHOT 03 (3.6-5.1 s, 45 frames @30fps) - "wrinkly raisins."
 Extreme close-up of his fingertips, pads towards us, the pool and garden blurred behind: the
 smooth skin crumples into deep wrinkles in seconds. 100 mm, slow push-in, then a crash zoom
-and a short shake on "raisins". Only his arms are built at full detail (wrinkles.dense), so the
+landing softly on "raisins". Only his arms are built at full detail (wrinkles.dense), so the
 furrows are real geometry.
 
 Run in a NEW Blender file:  blender -b -P shot03_raisins.py -a
@@ -59,14 +59,13 @@ def build():
     # camera: square onto the pads, following the hand, pushing in; crash zoom on "raisins"
     hit = RAISINS - off
     keys = []
-    for f, dist in ((1, 0.22), (hit - 2, 0.16), (hit + 3, 0.085), (n, 0.078)):
+    for f, dist in ((1, 0.22), (hit - 3, 0.16), (hit + 3, 0.085), (n, 0.078)):
         p, z = pads(hero, f)
         up = Vector((0.0, 0.0, 1.0))
         keys.append((f, p + z * dist + up * dist * 0.3, p, LENS))     # a little above: garden and pool, not sky, behind
     r = V.camera_rig("Cam_Shot03", lens=LENS, fstop=9.0)
-    V.cam_keys(r, keys)
+    V.cam_glide(r, keys, bumps=[(hit + 3, 0.06)])                  # it lands softly (no rattle)
     V.handheld(r, amount=0.0004, aim_amount=0.0003)
-    V.shake(r, hit, hit + 7, strength=0.0012)
     # cheated for the close-up: the sun from behind his right shoulder rakes across the pads,
     # so the furrows cast shadows (from the front it left the pads flat in shade)
     PS.key_sun(parts["sun"], [(1, -125, 32, None)])

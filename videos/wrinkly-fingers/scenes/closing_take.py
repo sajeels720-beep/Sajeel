@@ -33,11 +33,11 @@ import wrinkles as WR
 SHOTS = {"12": (496, 528), "13": (529, 600), "15": (643, 687), "16": (688, 750)}
 START, END = 496, 750
 QUESTION = 505                     # the "?" on "why?"
-DOWN = (527, 557)                  # the hand goes down to the marble
+DOWN = (519, 557)                  # the hand goes down to the marble (it starts at the end of "why?")
 SURFACE_IN, SURFACE_OUT = 541, 611
 PINCH = (557, 562)                 # thumb and finger close on it
 LIFT = (566, 636)                  # up out of the water and up to the sun
-TOSS = (690, 697)                  # wind up ... let go
+TOSS = (683, 697)                  # wind up (from the end of shot 15) ... let go; the hand follows through
 LEAN = (700, 724)                  # he leans back and his arm goes back in the water
 STEP_TOP = -0.45                   # the tiled step the marble lies on (shot 13 builds it)
 MARBLE_R = 0.008
@@ -163,10 +163,15 @@ def _arm_poses(hero, off):
     up2 = (up[0] + Vector((0.01, 0.0, 0.012)), (0.18, -0.12, 1.0), (0.05, 1.0, 0.12), (-1.0, 0.0, -1.0))
     wind = (up[0] + Vector((0.02, 0.08, -0.04)), (0.1, 0.2, 1.0), (0.1, 1.0, -0.1), (-1.0, 0.0, -1.0))
     throw = (up[0] + Vector((-0.13, -0.12, -0.1)), (-0.4, -0.7, 0.4), (0.0, -0.5, -1.0), (-1.0, 0.0, -1.0))   # off to his right
+    follow = (throw[0] + Vector((-0.05, -0.06, -0.06)), (-0.35, -0.85, 0.1), (0.0, -0.3, -1.0), (-1.0, 0.0, -1.0))
     rest = (Vector((sR.x - 0.1, sR.y - 0.16, sR.z - 0.52)), (-0.15, -0.35, -1.0), (1.0, 0.0, 0.0), (-0.35, 1.0, -0.2))
-    keys = [(START, face), (DOWN[0], face2), (SURFACE_IN - 4, lower), (DOWN[1] - 5, above), (DOWN[1], at), (PINCH[1] + 2, at),
-            (LIFT[0] + 14, lift1), (SURFACE_OUT - 2, surface), (LIFT[1], up), (668, up2), (TOSS[0], up2), (TOSS[0] + 4, wind),
-            (TOSS[1], throw), (LEAN[1], rest), (END, rest)]
+    # on the way down the hand turns from fingers-up (at his face) to fingers-down gradually: an
+    # in-between pose half way through the turn, so the fingertips don't whip round
+    turning = PA.between(face2, lower, 0.5, loc=Vector(face2[0]).lerp(lower[0], 0.45))
+    keys = [(START, face), (DOWN[0], face2), (DOWN[0] + 9, turning), (SURFACE_IN - 4, lower), (DOWN[1] - 5, above),
+            (DOWN[1], at), (PINCH[1] + 2, at), (LIFT[0] + 14, lift1), (SURFACE_OUT - 2, surface), (LIFT[1], up),
+            (668, up2), (TOSS[0], up2), (TOSS[1] - 7, wind), (TOSS[1], throw), (TOSS[1] + 5, follow), (LEAN[1], rest),
+            (END, rest)]
     return [(f - off,) + p for f, p in keys]
 
 
@@ -237,7 +242,9 @@ def marble(take, col=None):
     splash, splash_at = None, None
     if max(frames) > release:
         p0 = hold[release]
-        v = (hold[release + 1] - hold[release - 1]) * fps / 2 + Vector((-1.1, -0.7, 2.3))   # tossed up and off to his right, across the frame
+        # tossed up and off to his right, across the frame: his hand's speed plus the flick of his
+        # fingers (launched at (-0.75, -2.47, 1.61) m/s, so it splashes down on its sound cue)
+        v = (hold[release + 1] - hold[release - 1]) * fps / 2 + Vector((-0.684, -1.456, 1.865))
     close = PINCH[0] - off
     for f in frames:
         if f < close:

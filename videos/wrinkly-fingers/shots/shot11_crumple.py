@@ -1,7 +1,7 @@
 """SHOT 11 (14.4-16.5 s, 63 frames @30fps) - "and the skin crumples into wrinkles."
 Outside again, on the studio blue: close on the pad of his fingertip, the smooth skin crumples
 into deep wrinkles in a couple of seconds, like a time-lapse. 100 mm, a slow push, then a
-crash zoom and a short shake on "wrinkles".
+crash zoom on "wrinkles" that lands softly.
 
 Run in a NEW Blender file:  blender -b -P shot11_crumple.py -a
 Env: SHOT_PREVIEW=1 for half-res Cycles previews; default is the final EEVEE setup.
@@ -45,9 +45,9 @@ def build():
     aim = pad - n * 0.002
     c0, c1, c2, c3 = (aim + view * d for d in (0.15, 0.13, 0.085, 0.08))
     r = V.camera_rig("Cam_Shot11", lens=LENS, fstop=11.0)
-    V.cam_keys(r, [(1, c0, aim, LENS), (ZOOM[0], c1, aim, LENS), (ZOOM[1], c2, aim, LENS), (N, c3, aim, LENS)])
+    V.cam_glide(r, [(1, c0, aim, LENS), (ZOOM[0], c1, aim, LENS), (ZOOM[1], c2, aim, LENS), (N, c3, aim, LENS)],
+                bumps=[(ZOOM[1], 0.06)])                                # the zoom lands softly (no rattle)
     V.handheld(r, amount=0.00025, aim_amount=0.0002)
-    V.shake(r, ZOOM[1] - 1, ZOOM[1] + 6, strength=0.0009, scale=1.3)
     SKY.studio(c0, aim, LENS)
     SKY.lights(aim, c0, SKY.view_dir(c0, aim, LENS), scale=0.3)
     HS.catch_light(pad, n, c0, dist=0.4, size=0.08, power=4.0)     # a wet sheen on the pad

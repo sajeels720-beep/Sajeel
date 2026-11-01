@@ -40,7 +40,8 @@ def build():
                  scale=50 if PREVIEW else 100)
     parts, take = TAKE.pool_scene("12")
     hero = take["hero"]
-    # camera: in front of him at face height, a little to his left; a quick push in
+    # camera: in front of him at face height, a little to his left; a quick push in that eases
+    # into a slow drift (it keeps moving into the cut)
     bpy.context.scene.frame_set(1)
     head = PA.joint(hero, "head")
     hand = (PA.joint(hero, "wrist.R") + PA.joint(hero, "finger3-3.R", "tail")) / 2
@@ -48,7 +49,7 @@ def build():
     c0 = focus + K.look_dir(24, 4) * 1.05                          # on his left: the hand doesn't hide his face
     c1 = focus + K.look_dir(20, 3) * 0.74
     r = V.camera_rig("Cam_Shot12", lens=LENS, fstop=2.8)
-    V.cam_keys(r, [(1, c0, focus, LENS), (8, c0.lerp(c1, 0.9), focus, LENS), (n, c1, focus, LENS)])
+    V.cam_glide(r, [(1, c0, focus, LENS), (10, c0.lerp(c1, 0.85), focus, LENS), (n, c1, focus, LENS)])
     V.handheld(r, amount=0.0012, aim_amount=0.001)
     # his red "?" over his head on "why?"
     top = head + Vector((0.02, 0.0, 0.2))

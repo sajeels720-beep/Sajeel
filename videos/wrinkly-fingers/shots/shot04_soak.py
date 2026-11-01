@@ -31,7 +31,7 @@ N = 42
 LENS = 50
 DROPS = [(3, 1), (2, 5), (4, 9), (5, 13)]                # (finger, frame the drop starts falling)
 POP = 25                                                  # the "?" on "water"
-PULL = (21, 34)                                           # the camera pulls back from the fingertips
+PULL = (18, 38)                                           # the camera pulls back from the fingertips
 
 
 def camera_path(hs):
@@ -62,8 +62,8 @@ def build():
     aim, c0, c1 = camera_path(hs)
     pads, close = close_view(hs)
     r = V.camera_rig("Cam_Shot04", lens=LENS, fstop=5.6)
-    V.cam_keys(r, [(1, close, pads, LENS), (PULL[0], close.lerp(pads, 0.08), pads, LENS), (PULL[1], c1.lerp(c0, 0.1), aim, LENS),
-                   (N, c1, aim, LENS)])
+    V.cam_glide(r, [(1, close, pads, LENS), (PULL[0], close.lerp(pads, 0.08), pads, LENS), (PULL[1], c1.lerp(c0, 0.1), aim, LENS),
+                    (N, c1, aim, LENS)], ease_out=True)               # at rest on the cut: shot 05 starts here
     V.handheld(r, amount=0.0006, aim_amount=0.0005)
     col = V.collection("FX")
     for k, f in DROPS:

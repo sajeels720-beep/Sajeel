@@ -59,12 +59,15 @@ def build():
     bpy.context.scene.frame_set(n)
     head = PA.joint(hero, "head")
     top = hand_centre(hero, n)
-    mid = hand_centre(hero, TAKE.SURFACE + 6 - off)
     aim0 = Vector((exit_pt.x, exit_pt.y, PS.WATER_Z + 0.03))
     c0 = head0 + Vector((-0.25, 0.31, 0.15))
     c1 = head + Vector((-0.22, 0.27, 0.12))
     r = V.camera_rig("Cam_Shot02", lens=LENS, fstop=4.0)
-    V.cam_keys(r, [(1, c0, aim0, LENS), (TAKE.SURFACE + 6 - off, c0.lerp(c1, 0.45), mid, LENS), (n, c1, top, LENS)])
+    # one steady move from the first frame: it tilts up from where the hand will break the
+    # surface to where it ends up (the hand rises through the frame and the camera arrives with
+    # it; chasing the hand made the camera swing), pushing in, still moving into the cut
+    V.cam_glide(r, [(1, c0, aim0, LENS), (TAKE.SURFACE - off, c0.lerp(c1, 0.3), aim0.lerp(top, 0.3), LENS),
+                    (n, c1, top, LENS)])
     V.handheld(r, amount=0.0012, aim_amount=0.001)
     PS.rim(top, from_dir=(-0.3, -1.0, 0.6), dist=2.0, power=120.0)
     V.compositor(glow=0.2, threshold=1.4, dispersion=0.005)

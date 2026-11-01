@@ -57,12 +57,11 @@ def build():
     r = V.camera_rig("Cam_Shot07", lens=LENS, fstop=2.0)
     keys = []
     for f in range(0, N + 2):
-        w = FI.smooth((f - TOUCH) / 9)
+        w = FI.smooth((f - TOUCH + 1) / 15)
         aim = tips.lerp(Vector(FI.point_at(P, L, u(f) + 0.04)), w)
         keys.append((f, aim + off * (1.05 - 0.15 * w) - d * 0.22 * w, aim, LENS))
-    V.cam_keys(r, keys, "LINEAR")
+    V.cam_glide(r, keys, bumps=[(TOUCH, 0.035)])
     V.handheld(r, amount=0.003, aim_amount=0.002)
-    V.shake(r, TOUCH, TOUCH + 5, strength=0.012, scale=1.2)
     FI.background(tips, (-off.x, -off.y, -off.z))
     SKY.tissue_lights(tips, keys[0][1], scale=1.5)
     V.compositor(glow=0.6, threshold=0.9, dispersion=0.006)

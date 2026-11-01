@@ -614,6 +614,102 @@ def shake(r, start, end, strength=0.01, scale=1.6):
     noise_on(r["aim"], "location", strength * 0.6, scale=scale, start=start, end=end, blend=2, seed=9)
 
 
+def _glide_slopes(t, y, ease_in, ease_out):
+    """Slopes for a monotone cubic through (t, y) (Fritsch-Carlson, as scipy's PCHIP): it never
+    overshoots a key, is flat where an axis turns back, and otherwise carries its speed through
+    each key. At the ends it is still moving (no acceleration there: the natural end of a
+    spline), so a camera carries on into the cut, unless eased."""
+    h = np.diff(t)
+    delta = np.diff(y) / h
+    d = np.zeros_like(y)
+    for k in range(1, len(t) - 1):
+        a, b = delta[k - 1], delta[k]
+        if a * b > 0:
+            w1, w2 = 2 * h[k] + h[k - 1], h[k] + 2 * h[k - 1]
+            d[k] = (w1 + w2) / (w1 / a + w2 / b)
+    if len(t) == 2:
+        d[:] = delta[0]
+    else:
+        for i, j, dl in ((0, 1, delta[0]), (-1, -2, delta[-1])):
+            e = (3 * dl - d[j]) / 2
+            d[i] = e if e * dl > 0 else 0.0
+    if ease_in:
+        d[0] = 0.0
+    if ease_out:
+        d[-1] = 0.0
+    return d
+
+
+def glide(keys, frames, ease_in=False, ease_out=False):
+    """Values on `frames` through keys [(frame, number or vector), ...] along monotone cubics
+    (per axis): smooth speed through every key and no overshoot. Outside the keys it carries
+    on at its end speed (or holds, if eased). Returns an array (len(frames), axes)."""
+    keys = sorted(keys, key=lambda k: k[0])
+    t = np.array([float(k[0]) for k in keys])
+    Y = np.array([np.atleast_1d(np.asarray(k[1], float)) for k in keys])
+    F = np.asarray(frames, float)
+    out = np.zeros((len(F), Y.shape[1]))
+    if len(t) == 1:
+        out[:] = Y[0]
+        return out
+    for ax in range(Y.shape[1]):
+        y = Y[:, ax]
+        d = _glide_slopes(t, y, ease_in, ease_out)
+        i = np.clip(np.searchsorted(t, F, side="right") - 1, 0, len(t) - 2)
+        h = t[i + 1] - t[i]
+        s = (F - t[i]) / h
+        h00, h10 = 2 * s ** 3 - 3 * s ** 2 + 1, s ** 3 - 2 * s ** 2 + s
+        h01, h11 = -2 * s ** 3 + 3 * s ** 2, s ** 3 - s ** 2
+        v = h00 * y[i] + h10 * h * d[i] + h01 * y[i + 1] + h11 * h * d[i + 1]
+        before, after = F < t[0], F > t[-1]
+        v[before] = y[0] + d[0] * (F[before] - t[0])
+        v[after] = y[-1] + d[-1] * (F[after] - t[-1])
+        out[:, ax] = v
+    return out
+
+
+def settle_bump(t, length=10.0, decay=5.0):
+    """A soft impact for crash zooms, t frames after the hit: one push and a smaller swing back,
+    smooth at both ends (no speed jump), gone after `length` frames. Peaks at about 0.7."""
+    if t <= 0 or t >= length:
+        return 0.0
+    w = 2 * math.pi * t / length
+    return math.sin(w) * math.sin(w / 2) * math.exp(-t / decay) * 1.6
+
+
+def cam_glide(r, keys, ease_in=False, ease_out=False, bumps=(), frames=None):
+    """Like cam_keys, but the moves flow: keyed on every frame along `glide` curves through the
+    keys [(frame, cam_location, aim_location, lens or None), ...], so the camera carries its speed
+    smoothly through each key and keeps moving into and out of the cuts (unless ease_in /
+    ease_out). bumps = [(frame, strength), ...]: the soft impact of a crash zoom, instead of a
+    shake: from that frame the camera pushes on along its view by up to about 0.7 x strength x
+    its distance to the aim, and settles back (settle_bump). Keys one frame either side of the
+    shot too, so motion blur is right at the cuts."""
+    sc = bpy.context.scene
+    frames = list(frames or range(sc.frame_start - 1, sc.frame_end + 2))
+    C = glide([(f, tuple(c)) for f, c, _, _ in keys], frames, ease_in, ease_out)
+    A = glide([(f, tuple(a)) for f, _, a, _ in keys], frames, ease_in, ease_out)
+    lenses = [(f, ln) for f, _, _, ln in keys if ln]
+    L = glide(lenses, frames, ease_in, ease_out)[:, 0] if lenses else None
+    for i, f in enumerate(frames):
+        c, a = Vector(C[i]), Vector(A[i])
+        for hit, strength in bumps:
+            b = settle_bump(f - hit)
+            if b:
+                c = c + (a - c) * (strength * b)
+        r["rig"].location = c
+        r["rig"].keyframe_insert("location", frame=f)
+        r["aim"].location = a
+        r["aim"].keyframe_insert("location", frame=f)
+        if L is not None:
+            r["cam"].data.lens = float(L[i])
+            r["cam"].data.keyframe_insert("lens", frame=f)
+    for idd in (r["rig"], r["aim"], r["cam"].data):
+        ease_id(idd, "LINEAR")
+        for fc in fcurves(idd):
+            fc.extrapolation = "CONSTANT" if (ease_in or ease_out) else "LINEAR"
+
+
 # --------------------------------------------------------------------------
 # Effects
 # --------------------------------------------------------------------------

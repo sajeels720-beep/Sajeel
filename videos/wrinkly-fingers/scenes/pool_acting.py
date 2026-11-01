@@ -14,7 +14,7 @@ import math
 
 import bpy
 import numpy as np
-from mathutils import Matrix, Vector
+from mathutils import Matrix, Quaternion, Vector
 
 import acting as A
 import character as C
@@ -57,6 +57,24 @@ def wrist_matrix(rig, side, loc, fingers, palm):
     B1 = Matrix((f1, p1, f1.cross(p1))).transposed()
     W0 = rig.matrix_world @ rig.data.bones[f"wrist.{side}"].matrix_local
     return Matrix.Translation(Vector(loc)) @ ((B1 @ B0.transposed()) @ W0.to_3x3()).to_4x4()
+
+
+def between(a, b, s, loc=None):
+    """A hand pose (loc, fingers, palm, pole) part way (s, 0-1) from pose a to pose b: the hand
+    turned by that share of the turn (slerp), the wrist and the elbow's pole blended. Put in
+    between two very different poses, it spreads the turn over the whole move, so the
+    fingertips don't whip round at the end."""
+    def turn(p):
+        f = Vector(p[1]).normalized()
+        q = Vector(p[2])
+        q = (q - f * q.dot(f)).normalized()
+        return Matrix((f, q, f.cross(q))).transposed().to_quaternion()
+    qa, qb = turn(a), turn(b)
+    if qa.dot(qb) < 0:
+        qb = -qb
+    R = qa.slerp(qb, s).to_matrix()
+    loc = Vector(a[0]).lerp(Vector(b[0]), s) if loc is None else Vector(loc)
+    return (loc, tuple(R.col[0]), tuple(R.col[1]), tuple(Vector(a[3]).lerp(Vector(b[3]), s)))
 
 
 def pose_arm(hero, side, loc, fingers, palm, pole, curl=None, frame=None, twist_share=0.5, together=0.95):
@@ -116,28 +134,36 @@ def hand_shape(hero, side, curl, together=0.95, thumb_in=0.5, frame=None):
 
 def arm_path(hero, side, poses, frames, twist_share=0.5):
     """Move a hand along a smooth path: poses = [(frame, loc, fingers, palm, pole), ...].
-    The wrist and the elbow's pole are keyed on helper empties (eased Bezier curves through
-    the poses, so the hand flows through the middle ones instead of stopping), then the arm
-    is solved and keyed on every frame in `frames` (sneeze/scenes/acting.bake_arm)."""
+    The wrist and the elbow's pole follow vfx_kit.glide curves through the poses (the hand
+    flows through the middle ones with its speed changing smoothly, never overshoots a pose,
+    and starts and ends at rest), keyed on helper empties on every frame; then the arm is
+    solved and keyed on every frame in `frames` (sneeze/scenes/acting.bake_arm). Blender's
+    auto-clamped Bezier keys made hitches where poses were unevenly spaced."""
     rig = hero["rig"]
     col = V.collection("RIG_HELPERS")
     hand = V.link(bpy.data.objects.new(f"Wrist_Path.{side}", None), col)
     pole = V.link(bpy.data.objects.new(f"Pole_Path.{side}", None), col)
     hand.rotation_mode = "QUATERNION"
-    prev = None
+    prev, locs, quats, poles = None, [], [], []
     for f, loc, fingers, palm, pole_dir in poses:
         M = wrist_matrix(rig, side, loc, fingers, palm)
         q = M.to_quaternion()
         if prev is not None and q.dot(prev) < 0:
             q = -q
         prev = q
-        hand.location, hand.rotation_quaternion = M.translation, q
+        locs.append((f, tuple(M.translation)))
+        quats.append((f, tuple(q)))
+        poles.append((f, tuple(pole_dir)))
+    span = list(range(min(p[0] for p in poses), max(p[0] for p in poses) + 1))
+    L, Q, P = (V.glide(k, span, ease_in=True, ease_out=True) for k in (locs, quats, poles))
+    for i, f in enumerate(span):
+        hand.location, hand.rotation_quaternion = Vector(L[i]), Quaternion(Q[i]).normalized()
         hand.keyframe_insert("location", frame=f)
         hand.keyframe_insert("rotation_quaternion", frame=f)
-        pole.location = Vector(pole_dir)
+        pole.location = Vector(P[i])
         pole.keyframe_insert("location", frame=f)
     for ob in (hand, pole):
-        V.ease_id(ob)
+        V.ease_id(ob, "LINEAR")
 
     def wrist(f):
         rot = hand.rotation_quaternion.normalized().to_matrix().to_4x4()
