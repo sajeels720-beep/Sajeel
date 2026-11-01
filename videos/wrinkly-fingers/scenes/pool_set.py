@@ -22,7 +22,6 @@ import os
 import sys
 
 import bpy
-import numpy as np
 from mathutils import Vector
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -321,25 +320,6 @@ def pool(col=None):
                  [(x0, deck_y0), (x1, deck_y0), (x1, DECK_Y), (x0, DECK_Y)], col)
     deck.data.materials.append(bpy.data.materials["Pool_Stone"])
     return {"floor": floor, "wall": wall, "edge": edge, "deck": deck}
-
-
-def stone_clearance(P):
-    """How far points (an N x 3 array, world) stay outside the stone: the smallest distance from
-    them to the stone edge (with its rounded front), the wall under it or the deck behind it;
-    negative if any point is inside. 1.0 if there are no points."""
-    if len(P) == 0:
-        return 1.0
-    yz = P[:, 1:3]
-    front = WALL_Y - COPING_OVERHANG
-    lip = COPING_TOP - COPING_THICK
-    centre = np.array([front + COPING_DEPTH / 2, lip + COPING_THICK / 2])
-    q = np.abs(yz - centre) - np.array([COPING_DEPTH / 2, COPING_THICK / 2]) + COPING_ROUND
-    edge = np.linalg.norm(np.maximum(q, 0.0), axis=1) + np.minimum(q.max(axis=1), 0.0) - COPING_ROUND
-    deck_y = front + COPING_DEPTH
-    deck = np.where(yz[:, 0] >= deck_y, yz[:, 1] - DECK_TOP,
-                    np.hypot(deck_y - yz[:, 0], np.maximum(yz[:, 1] - DECK_TOP, 0.0)))
-    wall = np.maximum(WALL_Y - yz[:, 0], yz[:, 1] - lip)
-    return float(np.minimum(np.minimum(edge, deck), wall).min())
 
 
 def _box_uvs(ob, size=1.0):

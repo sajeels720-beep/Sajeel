@@ -178,13 +178,11 @@ def perform(shot, dense=False):
     WR.setup(hero)
     WR.set_amount(hero, 1.0)                                    # his fingers are wrinkly by now
     PA.place(hero)
-    PA.lounge(hero, frame=START - off)                          # the left arm stays on the stone edge
+    PA.lounge(hero, frame=START - off)                          # his left arm stays down in the water
     PS.underwater_hero(hero)
     SW.set_waterline(hero, PS.WATER_Z)
     PA.key_bones(hero, BODY, off)
     PA.key_face(hero, FACE, off)
-    # the left hand stays where it lies on the stone while he leans and turns (solved on every frame)
-    PA.plant(hero, "L", hero["left_rest"], range(START - off, END - off + 1))
     # right hand: looking, reaching (the other fingers tucked out of the way), the pinch, relaxing
     # open once out of the water, open after the toss
     PA.hand_shape(hero, "R", PA.LOOK_HAND, frame=START - off)
