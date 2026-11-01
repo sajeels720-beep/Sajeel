@@ -42,6 +42,7 @@ COPING_TOP = 0.11              # top of the stone edge above the water
 COPING_DEPTH = 0.36            # front to back
 COPING_OVERHANG = 0.035        # how far it overhangs the wall
 COPING_THICK = 0.055
+COPING_ROUND = 0.024           # its rounded (bullnose) edges
 DECK_TOP = COPING_TOP - 0.004  # the deck behind it
 EXTENT_X = (-14.0, 14.0)
 EXTENT_Y = -28.0               # the pool runs this far in front of him
@@ -309,7 +310,7 @@ def pool(col=None):
     edge.location = (0.0, WALL_Y - COPING_OVERHANG + COPING_DEPTH / 2, COPING_TOP - COPING_THICK / 2)
     bpy.ops.object.transform_apply(scale=True)
     bev = edge.modifiers.new("Round", "BEVEL")
-    bev.width, bev.segments, bev.limit_method = 0.024, 6, "ANGLE"
+    bev.width, bev.segments, bev.limit_method = COPING_ROUND, 6, "ANGLE"
     edge.data.materials.append(stone_material())
     _box_uvs(edge)
     for p in edge.data.polygons:
@@ -323,21 +324,22 @@ def pool(col=None):
 
 
 def stone_clearance(P):
-    """How far points (an N x 3 array, world) stay above the stone edge and the deck: the lowest
-    height of the points over them, negative if any are in the stone. Points under the edge's
-    overhang are in the water and don't count; a point in the wall counts as minus its depth.
-    1.0 if no point is over the stone."""
+    """How far points (an N x 3 array, world) stay outside the stone: the smallest distance from
+    them to the stone edge (with its rounded front), the wall under it or the deck behind it;
+    negative if any point is inside. 1.0 if there are no points."""
+    if len(P) == 0:
+        return 1.0
+    yz = P[:, 1:3]
     front = WALL_Y - COPING_OVERHANG
     lip = COPING_TOP - COPING_THICK
-    top = np.where(P[:, 1] > front + COPING_DEPTH, DECK_TOP, COPING_TOP)
-    over = (P[:, 1] > front) & (P[:, 2] > lip)
-    wall = (P[:, 1] > WALL_Y) & (P[:, 2] <= lip)
-    c = 1.0
-    if over.any():
-        c = min(c, float((P[over, 2] - top[over]).min()))
-    if wall.any():
-        c = min(c, -float((P[wall, 1] - WALL_Y).max()))
-    return c
+    centre = np.array([front + COPING_DEPTH / 2, lip + COPING_THICK / 2])
+    q = np.abs(yz - centre) - np.array([COPING_DEPTH / 2, COPING_THICK / 2]) + COPING_ROUND
+    edge = np.linalg.norm(np.maximum(q, 0.0), axis=1) + np.minimum(q.max(axis=1), 0.0) - COPING_ROUND
+    deck_y = front + COPING_DEPTH
+    deck = np.where(yz[:, 0] >= deck_y, yz[:, 1] - DECK_TOP,
+                    np.hypot(deck_y - yz[:, 0], np.maximum(yz[:, 1] - DECK_TOP, 0.0)))
+    wall = np.maximum(WALL_Y - yz[:, 0], yz[:, 1] - lip)
+    return float(np.minimum(np.minimum(edge, deck), wall).min())
 
 
 def _box_uvs(ob, size=1.0):

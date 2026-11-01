@@ -190,37 +190,18 @@ LOUNGE_TORSO = {"neck01": (-8, 0, 0), "neck02": (-7, 0, 0), "head": (-12, 0, 4),
 LOUNGE_CURL = RELAXED_HAND
 
 
-# His left arm resting along the stone edge. The edge is only 2.5 cm below his shoulder joint, so
-# from a resting shoulder the arm either went into the stone or had to hook over it. The shoulder
-# comes up a little (as it does when you prop an arm on a ledge), the upper arm goes out to his
-# side and a little back over the edge, the elbow bends a little, and the forearm and hand lie
-# along the stone, the hand flat and in line with the forearm. (In a curl, the fingertips went
-# into the stone.)
-SHRUG = 8.0                        # degrees the left shoulder comes up (about 2.3 cm)
-UPPER_ON_STONE = (20.0, 0.0)       # the upper arm's heading (degrees from straight out to his left
-FORE_ON_STONE = (45.0, 0.0)        # towards the back) and pitch; the forearm's
-STONE_GAP = 0.002                  # the hand lies this far above the stone: it touches
-# the hand lying on the stone: how far each finger bends at its joints, from the bone before
-# (MPFB's rest pose is already curled 8-25 degrees at the knuckles, so the curl is solved)
-STONE_HAND = {"index": (4, 6, 3), "middle": (5, 7, 4), "ring": (6, 8, 5), "little": (7, 10, 6)}
-STONE_THUMB = (2, 6, 4)
-
-
-def _rest_flex(rig, name):
-    """How far a bone bends from its parent in the rest pose (degrees, + towards the palm)."""
-    b = rig.data.bones[name]
-    M, P = b.matrix_local.to_3x3(), b.parent.matrix_local.to_3x3()
-    y = M.col[1].normalized()
-    return math.degrees(math.atan2(y.dot(P.col[2].normalized()), y.dot(P.col[1].normalized())))
-
-
-def flat_hand(hero, side, bends=STONE_HAND, thumb=STONE_THUMB, together=0.85, frame=None):
-    """A hand lying flat on something, its fingers bending `bends` at each joint."""
-    rig = hero["rig"]
-    curl = {"thumb": thumb}
-    for finger, angles in bends.items():
-        curl[finger] = tuple(a - _rest_flex(rig, f"{b}.{side}") for b, a in zip(A.FINGERS[finger], angles))
-    hand_shape(hero, side, curl, together=together, frame=frame)
+# His left arm resting on the stone edge the way people rest an arm on a pool edge (the user's
+# reference photos): the elbow on the stone beside him and a little behind, the forearm along the
+# stone and over the rounded front of the edge, the hand hanging over it, relaxed, the fingers
+# loosely curled. The edge is only 2.5 cm below his shoulder joint, so the shoulder comes up a
+# little, as it does when you prop an arm on a ledge. (Curled on the stone, the fingertips went
+# into it; then the hand lay flat on it, stretched out, which the user found wrong.)
+SHRUG = 10.0                       # degrees the left shoulder comes up (about 3 cm)
+UPPER_ON_STONE = 50.0              # the upper arm's heading: degrees from straight out to his left towards the back
+FORE_ON_STONE = -35.0              # the forearm's (negative: forwards, to the front of the edge)
+HAND_DROOP = 60.0                  # how far the hand hangs down from the line of the forearm
+REST_GAP = 0.0015                  # the elbow and the forearm rest this far above the stone: they touch
+DRAPED_HAND = RELAXED_HAND
 
 
 def shrug(hero, side, degrees, frame=None):
@@ -280,53 +261,62 @@ def _heading(yaw, pitch):
     return Vector((math.cos(y) * math.cos(p), math.sin(y) * math.cos(p), math.sin(p)))
 
 
+def _droop(forearm, degrees):
+    """The hand hanging `degrees` down from the line of the forearm: its (fingers, palm) directions."""
+    lift = (Vector((0.0, 0.0, 1.0)) - forearm * forearm.z).normalized()
+    t = math.radians(degrees)
+    return forearm * math.cos(t) - lift * math.sin(t), -lift * math.cos(t) - forearm * math.sin(t)
+
+
 def left_on_stone(hero, frame=None):
-    """Rest his left arm along the stone edge (see SHRUG) and key it on `frame`. The hand's pitch
-    is solved so it lies STONE_GAP above the stone; if the forearm, the upper arm or the sleeve
-    would touch the stone, the arm is raised a degree at a time. Returns the wrist's pose
-    {loc, fingers, palm, pole} for plant()."""
+    """Rest his left arm on the stone edge (see SHRUG) and key it on `frame`. The elbow and the
+    forearm are lowered (or raised) until they touch the stone, REST_GAP above it as measured on the
+    posed mesh; the hand hangs over the front of the edge. Returns the arm's pose {loc, fingers,
+    palm, pole, elbow} for plant()."""
     rig = hero["rig"]
     upper = sum(rig.data.bones[f"{n}.L"].length for n in ("upperarm01", "upperarm02"))
     fore = sum(rig.data.bones[f"{n}.L"].length for n in ("lowerarm01", "lowerarm02"))
     shrug(hero, "L", SHRUG, frame)
     S = joint(hero, "upperarm01.L")
-    palm = Vector((0.0, 0.0, -1.0))
-
-    def lie(W, pole, pitch):                                        # how far the hand is above where it should lie
-        pose_arm(hero, "L", W, _heading(FORE_ON_STONE[0], pitch), palm, pole)
-        flat_hand(hero, "L")
-        return arm_clearance(hero, "L", ("hand",))["hand"] - STONE_GAP
-
-    for lift in range(8):
-        E = S + _heading(UPPER_ON_STONE[0], UPPER_ON_STONE[1] + lift) * upper
-        W = E + _heading(*FORE_ON_STONE) * fore
-        pole = E - S
-        p0, p1 = FORE_ON_STONE[1], FORE_ON_STONE[1] - 12.0
-        h0, h1 = lie(W, pole, p0), lie(W, pole, p1)
-        for _ in range(6):                                          # secant on the hand's pitch
-            if abs(h1) < 0.0004 or abs(h1 - h0) < 1e-7:
-                break
-            p2 = max(-45.0, min(25.0, p1 - h1 * (p1 - p0) / (h1 - h0)))
-            p0, h0, p1, h1 = p1, h1, p2, lie(W, pole, p2)
-        c = arm_clearance(hero, "L")
-        if min(c["forearm"], c["upperarm"], c.get("sleeve", 1.0)) >= 0.001:
+    idx = arm_parts(hero, "L")
+    whole = np.union1d(np.union1d(idx["upperarm"], idx["forearm"]), idx["hand"])
+    pitch_upper = pitch_fore = 0.0
+    for _ in range(8):
+        E = S + _heading(UPPER_ON_STONE, pitch_upper) * upper
+        forearm = _heading(FORE_ON_STONE, pitch_fore)
+        W = E + forearm * fore
+        fingers, palm = _droop(forearm, HAND_DROOP)
+        pose_arm(hero, "L", W, fingers, palm, E - S)
+        hand_shape(hero, "L", DRAPED_HAND, together=0.9)
+        P = C.evaluated_points(hero["body"])
+        arm, F = P[whole], P[idx["forearm"]]
+        at_elbow = PS.stone_clearance(arm[np.linalg.norm(arm - np.array(E), axis=1) < 0.07]) - REST_GAP
+        along = PS.stone_clearance(F[np.linalg.norm(F - np.array(E), axis=1) >= 0.07]) - REST_GAP
+        if abs(at_elbow) < 0.0004 and abs(along) < 0.0004:
             break
-    hero["left_clearance"] = dict(c, lift=lift, pitch=p1)
-    rest = {"loc": W, "fingers": _heading(FORE_ON_STONE[0], p1), "palm": palm, "pole": pole}
-    pose_arm(hero, "L", rest["loc"], rest["fingers"], palm, pole, frame=frame)
-    flat_hand(hero, "L", frame=frame)
+        Ez = E.z - at_elbow                                         # move the elbow and the wrist by what's off
+        Wz = W.z - along - at_elbow
+        pitch_upper = math.degrees(math.asin(max(-1.0, min(1.0, (Ez - S.z) / upper))))
+        pitch_fore = math.degrees(math.asin(max(-1.0, min(1.0, (Wz - Ez) / fore))))
+    hero["left_clearance"] = arm_clearance(hero, "L")
+    rest = {"loc": W, "fingers": fingers, "palm": palm, "pole": E - S, "elbow": E}
+    pose_arm(hero, "L", W, fingers, palm, E - S, frame=frame)
+    hand_shape(hero, "L", DRAPED_HAND, together=0.9, frame=frame)
     return rest
 
 
 def plant(hero, side, rest, frames, slack=0.004, twist_share=0.5):
-    """Keep a resting hand where it lies while he moves: the arm is solved and keyed on every frame
-    with the wrist at rest["loc"], turned the same way (rest from left_on_stone()). When he leans
-    too far for the arm to reach, the hand slides along the stone towards him instead of lifting."""
+    """Keep a resting arm where it lies while he moves (rest from left_on_stone()): the arm is solved
+    and keyed on every frame with the wrist at rest["loc"], turned the same way, and the elbow at its
+    resting height (on the stone), on the same side. When he leans too far for the arm to reach,
+    the hand slides towards him instead of lifting."""
     rig = hero["rig"]
-    reach = sum(rig.data.bones[f"{n}.{side}"].length
-                for n in ("upperarm01", "upperarm02", "lowerarm01", "lowerarm02")) - slack
+    upper = sum(rig.data.bones[f"{n}.{side}"].length for n in ("upperarm01", "upperarm02"))
+    fore = sum(rig.data.bones[f"{n}.{side}"].length for n in ("lowerarm01", "lowerarm02"))
+    reach = upper + fore - slack
     turn = wrist_matrix(rig, side, rest["loc"], rest["fingers"], rest["palm"]).to_3x3().to_4x4()
-    home = Vector(rest["loc"])
+    home, elbow = Vector(rest["loc"]), Vector(rest["elbow"])
+    where = {}
 
     def wrist(f):
         S = joint(hero, f"upperarm01.{side}")
@@ -335,8 +325,29 @@ def plant(hero, side, rest, frames, slack=0.004, twist_share=0.5):
         if d.length > reach:
             flat = Vector((d.x, d.y, 0.0)).normalized()
             W = S + flat * math.sqrt(max(reach * reach - d.z * d.z, 0.0)) + Vector((0.0, 0.0, d.z))
+        where[f] = (S, W)
         return Matrix.Translation(W) @ turn
-    A.bake_arm(rig, side, frames, wrist, lambda f: Vector(rest["pole"]), twist_share)
+
+    def pole(f):                         # the elbow can sit anywhere on a circle round the shoulder-wrist line:
+        S, W = where[f]                  # take the point at its resting height nearest where it rested
+        axis = W - S
+        dist = min(axis.length, upper + fore - 1e-4)
+        axis.normalize()
+        a = (upper * upper - fore * fore + dist * dist) / (2 * dist)
+        h = math.sqrt(max(upper * upper - a * a, 0.0))
+        centre = S + axis * a
+        u = elbow - centre
+        u = (u - axis * u.dot(axis)).normalized()
+        v = axis.cross(u)
+        cu, cv = h * u.z, h * v.z
+        span = math.hypot(cu, cv)
+        if span < 1e-6:
+            return u
+        base = math.atan2(cv, cu)
+        off = math.acos(max(-1.0, min(1.0, (elbow.z - centre.z) / span)))
+        phi = min((base + off, base - off), key=lambda p: abs(math.atan2(math.sin(p), math.cos(p))))
+        return u * math.cos(phi) + v * math.sin(phi)
+    A.bake_arm(rig, side, frames, wrist, pole, twist_share)
     _update()
 
 
