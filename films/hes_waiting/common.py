@@ -434,6 +434,30 @@ def bed_back(c):
     c.drawRRect(pil, paint('outline', stroke=4))
 
 
+def blanket_path(x_from, contour=None):
+    """The quilt's outline (see blanket())."""
+    x1 = BED[1]
+    path = skia.Path()
+    pts = list(contour or [(x_from, MATT - 4)])
+    path.moveTo(pts[0][0], MATT + 34)
+    path.lineTo(*pts[0])
+    for k in range(1, len(pts)):
+        p0, p1 = pts[k - 1], pts[k]
+        mx = (p0[0] + p1[0]) / 2
+        path.cubicTo(mx, p0[1], mx, p1[1], *p1)
+    last = pts[-1]
+    path.cubicTo(last[0] + 40, last[1], x1 - 40, MATT - 6, x1 + 4, MATT - 2)
+    path.cubicTo(x1 + 14, MATT + 10, x1 + 12, MATT + 40, x1 + 6, MATT + 52)
+    path.lineTo(pts[0][0], MATT + 56)
+    path.close()
+    return path
+
+
+def under_quilt(c, x_from, contour):
+    """Clip away what the quilt covers (so a rim light never outlines a body under the covers)."""
+    c.clipPath(blanket_path(x_from, contour), skia.ClipOp.kDifference, True)
+
+
 def blanket(c, x_from, contour=None, color='#3F5E86', over_feet=True, tent=0.0, T=0.0):
     """The quilt from x_from to the foot of the bed; contour [(x, y)] is its top edge over a sleeper."""
     x1 = BED[1]

@@ -504,7 +504,14 @@ def temptation(c, t, T):
             p = blend(lie, sit, min(1.0, up * 1.6))
         p['back_arm_late'] = True
         quilt = in_world(cc, lambda c2: blanket(c2, p['x'] - 130 + 70 * up, quilt_contour(p, up)))
-        HERO.draw(cc, p, layers={} if rim_pass else {'mid': quilt}, t=TT)
+        if rim_pass:
+            from common import under_quilt
+            cc.save()
+            under_quilt(cc, p['x'] - 130 + 70 * up, quilt_contour(p, up))
+            HERO.draw(cc, p, t=TT)
+            cc.restore()
+        else:
+            HERO.draw(cc, p, layers={'mid': quilt}, t=TT)
         return p
 
     def old(cc, TT, rim_pass=False):

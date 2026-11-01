@@ -59,6 +59,10 @@ def rim(c, draw_fn, dx, dy, color, a=0.8, blur=2.0, add=True):
     """A rim of light on one edge of whatever draw_fn draws: the shape shifted toward the light, minus the shape."""
     if a <= 0:
         return
+    # keep the rim the same few pixels wide on screen however far the camera is zoomed in
+    m = c.getTotalMatrix()
+    zoom = max(1.0, (m.getScaleX() ** 2 + m.getSkewY() ** 2) ** 0.5)
+    dx, dy = dx / zoom * 1.2, dy / zoom * 1.2
     vis = _visible(c)
     lp = skia.Paint()
     if add:

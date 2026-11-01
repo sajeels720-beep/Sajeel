@@ -30,7 +30,14 @@ def hero_in_bed(*, laugh_at=(), sleepy=0.0, phone=True, face_fn=None, swipes=Non
         p = lying_pose(T, phone=phone, face=face, swipes=swipes, laugh=min(1.0, laugh), sleepy=sleepy)
         p['back_arm_late'] = True
         quilt = in_world(c, lambda cc: blanket(cc, p['x'] - 130, lying_blanket_contour(p)))
-        HERO.draw(c, p, layers={} if rim_pass else {'mid': quilt}, t=T)
+        if rim_pass:
+            c.save()
+            from common import under_quilt
+            under_quilt(c, p['x'] - 130, lying_blanket_contour(p))
+            HERO.draw(c, p, t=T)
+            c.restore()
+        else:
+            HERO.draw(c, p, layers={'mid': quilt}, t=T)
         if phone:
             px, py = phone_spot(T)
             phone_side(c, px, py, 18, T, 1.0, swipes=swipes)
@@ -786,7 +793,14 @@ def silence(c, t, T):
         p['back_arm_late'] = True
         p['tilt'] = -8 + 14 * u
         quilt = in_world(cc, lambda c2: blanket(c2, p['x'] - 130, lying_blanket_contour(p)))
-        HERO.draw(cc, p, layers={} if rim_pass else {'mid': quilt}, t=TT)
+        if rim_pass:
+            from common import under_quilt
+            cc.save()
+            under_quilt(cc, p['x'] - 130, lying_blanket_contour(p))
+            HERO.draw(cc, p, t=TT)
+            cc.restore()
+            return p
+        HERO.draw(cc, p, layers={'mid': quilt}, t=TT)
         phone_side(cc, px, py, 18 + 40 * u, TT, 1.0, swipes=BOTTOM_SWIPES)
         return p
 
@@ -810,9 +824,15 @@ def sitting_hero(up_fn, face_fn=None, phone_dead=None):
         p['back_arm_late'] = True
         p['hand_b'] = (44, -20)
         p['hand_f'] = (52, -26)
-        from common import quilt_contour
+        from common import quilt_contour, under_quilt
         quilt = in_world(cc, lambda c2: blanket(c2, p['x'] - 60, quilt_contour(p, up)))
-        HERO.draw(cc, p, layers={} if rim_pass else {'mid': quilt}, t=TT)
+        if rim_pass:
+            cc.save()
+            under_quilt(cc, p['x'] - 60, quilt_contour(p, up))
+            HERO.draw(cc, p, t=TT)
+            cc.restore()
+        else:
+            HERO.draw(cc, p, layers={'mid': quilt}, t=TT)
         hand = to_world(p, p['hand_f'])
         phone_side(cc, hand[0] + 6, hand[1] - 6, 70, TT, 0.9, on=phone_dead is None or TT < phone_dead,
                    swipes=BOTTOM_SWIPES)
@@ -842,7 +862,7 @@ def speak_mouth(T):
     for text_, t0, t1, who in SPEECH[:2]:
         if t0 <= T <= t1:
             env = smooth(t0, t0 + 0.1, T) * (1 - smooth(t1 - 0.25, t1, T))
-            m = max(m, env * (0.2 + 0.25 * abs(math.sin((T - t0) * 9.5)) * (0.6 + 0.4 * noise1(T * 4, 7))))
+            m = max(m, env * (0.08 + 0.2 * abs(math.sin((T - t0) * 9.5)) * (0.6 + 0.4 * noise1(T * 4, 7))))
     return m
 
 

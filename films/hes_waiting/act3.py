@@ -422,8 +422,8 @@ def epilogue(c, t, T):
         p = lying_pose(TT, phone=False, face=dict(eyes='closed', smile=0.25, brow=2, bags=0.0), swipes=[])
         p['rot'] = -78
         p['back_arm_late'] = True
-        p['hand_f'] = to_local(p, (720, 772))
-        p['ik_f'] = -1.0
+        p['hand_f'] = to_local(p, (760, 800))
+        p['ik_f'] = 1.0
         p['breathe'] = breath(TT, 0.18, 1.0, 1)
         quilt = in_world(cc, lambda c2: blanket(c2, p['x'] - 140, [(p['x'] - 140, p['y'] - 44), (p['x'] - 40, p['y'] - 46),
                                                                     (p['x'] + 60, p['y'] - 36), (p['x'] + 160, MATT - 30),

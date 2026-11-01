@@ -434,6 +434,15 @@ def glass_palm(seed=0):
     return norm(thump + ring * 0.25, 0.6)
 
 
+def creak(seed=0, dur=0.55):
+    """An old bedspring giving a little under someone's weight."""
+    t = t_axis(dur)
+    f = 520 + 140 * np.sin(2 * np.pi * 3.0 * t) * np.exp(-t * 3) + 60 * rng(seed).standard_normal(len(t)).cumsum() / len(t)
+    tone = np.sin(2 * np.pi * np.cumsum(f) / SR) * (np.sin(2 * np.pi * 37 * t) * 0.5 + 0.5)
+    x = bp(tone.astype(np.float32) + 0.3 * white(dur, seed), 380, 2400) * env_ad(dur, 0.06, 0.4)
+    return norm(x, 0.35)
+
+
 def power_down(seed=0):
     dur = 0.4
     x = sine(glide(1400, 300, dur), dur) * env_exp(dur, 0.12) * 0.4
@@ -598,6 +607,9 @@ def place_sfx(mx):
         mx.add('sfx', stereo(sfx.shimmer(1.2, seed=70 + k), 0.1)[::-1].copy(), t0, -20)
     mx.add('sfx', stereo(cough(3), 0.45), EV['cough'], -10)
     mx.add('sfx', stereo(sfx.thoom(1), -0.6), EV['eyes_open'] - 0.1, -6)
+    mx.add('sfx', stereo(creak(1), 0.4), EV['head_up'] - 0.1, -16)
+    mx.add('sfx', stereo(creak(2, 0.8), -0.2), EV['sit_up'], -14)
+    mx.add('sfx', stereo(creak(3), 0.3), EV['old_lifts'], -18)
     # the loop
     for k, t in enumerate(EV['coughs']):
         mx.add('sfx', stereo(cough(10 + k, n_=2 + k % 2), 0.4), t, -12)
