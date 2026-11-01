@@ -24,10 +24,11 @@ from engine.rig import SHADOW, Character, Look, blink  # noqa: E402
 
 # --- cast ---------------------------------------------------------------------------------------------------
 
-MUSTARD = '#D6A23D'
-SKIN = '#E3BE98'
-HAIR = '#2E2420'
-HERO_LOOK = Look(skin=SKIN, top=MUSTARD, pants='#2B3140', hair='swoop', hair_color=HAIR)
+# The channel's hero, exactly as in film 1: a round, hairless, off-white head and the blue hoodie.
+SKIN = '#EDE6D9'
+TOP = '#36586C'
+GOLD_ACCENT = '#D6A23D'      # the pocket watch's gold, used for the title underline
+HERO_LOOK = Look()
 HERO = Character(HERO_LOOK, seed=1)
 SHADE = Character(SHADOW, seed=5)
 
@@ -40,10 +41,10 @@ def hx(rgb):
 def _old_look(vq, run=False):
     v = vq / 100.0
     u = 1 - v
-    look = replace(HERO_LOOK, skin=hx(mixc(SKIN, '#B8ADA3', 0.55 * u)), top=hx(mixc(MUSTARD, '#8C8574', 0.85 * u)),
-                   pants=hx(mixc('#2B3140', '#3A3B40', 0.5 * u)), hair='swoop_thin', hair_color='#E8E5DF',
-                   brow_color='#D8D3CB', stubble='#DCD7CF', wrinkles=1.0, arm_w=13.5 + 1.5 * v,
-                   leg_w=16.5 + 1.0 * v, shoulder_w=70 + 6 * v)
+    # the same blue hoodie, washed out and greyed when he is weak; the same bald head, aged
+    look = replace(HERO_LOOK, skin=hx(mixc(SKIN, '#C4BCB2', 0.5 * u)), top=hx(mixc(TOP, '#6C727B', 0.8 * u)),
+                   pants=hx(mixc('#2B2E36', '#3A3B40', 0.5 * u)), brow_color='#D8D3CB', stubble='#DCD7CF',
+                   wrinkles=1.0, spots=1.0, arm_w=13.5 + 1.5 * v, leg_w=16.5 + 1.0 * v, shoulder_w=70 + 6 * v)
     if run:
         look = replace(look, headband='#E8E2D4')
     return look
@@ -906,12 +907,14 @@ def back_view(c, x, y, s, look, hood=True, tremble=0.0, T=0.0):
         c.drawPath(hd, paint('outline', stroke=5))
     c.drawCircle(0, 0, 66, paint(look.skin))
     c.drawCircle(0, 0, 66, paint('#000000', 0.12))
-    hair = skia.Path()
-    hair.addArc(oval(0, -2, 70, 70), 160, 220)
-    hair.cubicTo(50, 20, -50, 20, -64, 26)
-    hair.close()
-    c.drawPath(hair, paint(look.hair_color))
-    c.drawPath(hair, paint('outline', stroke=5))
+    c.drawCircle(-14, -18, 40, paint('#FFFFFF', 0.08, blur=14))
+    if look.hair:
+        hair = skia.Path()
+        hair.addArc(oval(0, -2, 70, 70), 160, 220)
+        hair.cubicTo(50, 20, -50, 20, -64, 26)
+        hair.close()
+        c.drawPath(hair, paint(look.hair_color))
+        c.drawPath(hair, paint('outline', stroke=5))
     for side in (-1, 1):
         c.drawOval(oval(side * 64, 8, 10, 16), paint(look.skin))
         c.drawOval(oval(side * 64, 8, 10, 16), paint('outline', stroke=4))

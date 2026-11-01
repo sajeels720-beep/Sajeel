@@ -45,11 +45,10 @@ animated short film, future self, your future self, doomscrolling, procrastinati
 
 ## Settings
 - Category: Film & Animation
-- Altered or synthetic content: No. It's a drawn 2-D cartoon and nothing realistic is depicted; the shadow's
-  whispers and the two spoken lines use AI text-to-speech for fictional characters, which YouTube's disclosure
-  rule doesn't cover.
+- Altered or synthetic content: No. It's a drawn 2-D cartoon and nothing realistic is depicted; only the
+  shadow's whispers use AI text-to-speech, for a fictional character, which YouTube's disclosure rule doesn't cover.
 - Made for kids: No
-- Language: English
+- Language: English (on-screen text and the shadow's whispers; the characters never speak aloud)
 
 ## When to post
 Any Tuesday, Wednesday or Thursday at 3 PM New York time. US clocks went back today (1 November), so that is

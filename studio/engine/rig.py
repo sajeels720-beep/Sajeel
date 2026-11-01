@@ -49,6 +49,7 @@ class Look:
     print_text: str | None = None     # a slogan printed on the chest
     stubble: str | None = None        # colour of a short beard that follows the jaw
     wrinkles: float = 0.0             # 0..1: forehead lines, crow's feet and smile lines
+    spots: float = 0.0                # 0..1: age spots on a bald head
     print_color: str = '#2B2416'
     head_r: float = 62.0
     torso: float = 100.0
@@ -384,6 +385,9 @@ class Character:
         if L.hair in ('long',):
             hair_back(c, R, L.hair_color)
         circle(c, 0, 0, R, L.skin, L.outline, OUTLINE_W)
+        if L.spots > 0 and not L.hair:
+            for sx, sy, sr in ((-0.42, -0.62, 0.075), (-0.22, -0.78, 0.055), (-0.56, -0.38, 0.05)):
+                c.drawCircle(sx * R, sy * R, sr * R, paint('#B08C6A', 0.45 * L.spots))
         if L.hair:
             hair_front(c, R, L.hair, L.hair_color, L.outline)
         if L.headband:

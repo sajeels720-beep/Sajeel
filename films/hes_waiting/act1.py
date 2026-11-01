@@ -67,7 +67,7 @@ def old_on_bed(*, head_up=None, look=None, x=OLD_X, watch=True, flinch_at=(), co
                 k = math.exp(-(T - t0) / 0.5) * abs(math.sin((T - t0) * 16))
                 p['lean'] += 9 * k
                 p['tilt'] += 6 * k
-                p['mopen'] = max(p.get('mopen', 0.0), 0.4 * k)
+                p['smile'] = min(p.get('smile', 0.0), -0.35 * min(1.0, k * 3))
                 p['eye'] *= 1 - 0.7 * min(1.0, k * 2)
         if extra:
             p.update(extra(T, v) or {})
@@ -552,7 +552,7 @@ def mirror_scene(c, t, T):
     else:
         scared = smooth(EV['normal'], EV['normal'] + 0.2, T)
         face = dict(eye=(0.6 + 0.4 * scared) * blink(T, 4, 3.3), eyes='wide' if scared > 0.5 else 'dot',
-                    mopen=0.3 * scared, brow=-14 * scared, bags=0.8, ly=0.2 * (1 - scared))
+                    mouth='wavy' if scared > 0.5 else 'curve', brow=-14 * scared, bags=0.8, ly=0.2 * (1 - scared))
         pose = brush_pose(T, False, face=face, frozen=EV['normal'] if T > EV['normal'] else None)
         pose['lean'] = 26 * spit
         pose['tilt'] = 18 * smooth(EV['spit'] + 0.05, EV['spit'] + 0.4, T) * (1 - smooth(EV['old_in_mirror'] - 0.35, EV['old_in_mirror'] - 0.05, T))
@@ -911,7 +911,7 @@ def speak_close(c, t, T):
     def old(cc, TT, rim_pass=False):
         v = vitality(TT)
         pp = sit_edge_pose(OLD_X, TT, v, head_up=lift, look=1.0)
-        pp.update(wet=smooth(81.0, 83.0, TT), mopen=speak_mouth(TT), brow=-16, eye=0.8 * blink(TT, 2, 5.0),
+        pp.update(wet=smooth(81.0, 83.0, TT), mopen=0.0, brow=-16, eye=0.8 * blink(TT, 2, 5.0),
                   smile=-0.15 + 0.25 * smooth(86.6, 87.6, TT), lx=0.9, ly=-0.3, turn=0.42,
                   tears=0.6 * smooth(85.6, 87.4, TT))
         if TT >= EV['watch_stops']:

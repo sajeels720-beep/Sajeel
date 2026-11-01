@@ -1,11 +1,14 @@
-"""Soundtrack for 'He's Waiting.': score, effects, voices and the mix.
+"""Soundtrack for 'He's Waiting.': score, effects, whispers and the mix.
 
-Its own sound, not the orchestral 120 BPM of the earlier films:
-- the old man's pocket watch ticks once a second all film long; from Day 1 it is the music's pulse;
-- the shadow's music is a cosy lo-fi loop (electric piano, jazz brushes, a soft synth bass) that wears out a
-  little more every night and speeds up like tape in the time-lapse;
-- the old man's theme is a clarinet waltz in E flat. On the climb it becomes a running 6/8 (marimba clockwork,
-  hand-claps, voices), and at the sunrise a church organ with bells, a whole step higher.
+Dark and cinematic, and its own sound (none of films 1-3's piano, orchestral strings, horns, timpani or taiko):
+- the old man's pocket watch ticks once a second all film long; from Day 1 it is the score's pulse;
+- low drones under everything (the "soundtrack" and sweep pads, contrabass, a synth choir), heavy synth-brass
+  braams with sub booms on the big moments, deep melodic toms and reverse cymbals for the builds;
+- the shadow's music is a hypnotic echoing arpeggio over a sub pulse that wears out night after night and
+  speeds up like tape in the time-lapse;
+- the old man's theme, in D minor on an English horn, carries the weight: alone under his words at rock bottom,
+  over the climb on synth strings and voices, and in D major, full, only when the sun breaks.
+The characters never speak aloud; their lines are captions. Only the shadow whispers.
 """
 from __future__ import annotations
 
@@ -27,29 +30,33 @@ from audio.score import Score, chord, n  # noqa: E402
 from cues import CHORUS, DURATION, EV, SPEECH, WHISPERS  # noqa: E402
 
 # stems and channels
-EP, SUB, LDR = 0, 1, 9                            # 'lofi': Rhodes, synth bass, jazz kit
-CLAR, VIB, OOH, BELLS, KAL, PADN = 0, 1, 2, 3, 4, 5   # 'theme'
-ORGAN, DRONE = 0, 1                               # 'organ'
-MAR, ABASS = 0, 1                                 # 'pulse'
-KIT = 9                                           # 'perc'
-PH_LEAD, PH_BASS, PH_KEYS, PH_KIT = 0, 1, 2, 9    # 'phone': the clips on his screen
+SOUNDTRACK, SWEEP, CBASS, SVOICE = 0, 1, 2, 3            # 'drone'
+SSTR2, SSTR1 = 0, 1                                      # 'strings'
+EHORN, OOH, BELLS = 0, 1, 2                              # 'lead'
+SBRASS, SBRASS2 = 0, 1                                   # 'brass'
+TOMS, REVCYM, KIT = 0, 1, 9                              # 'perc' (orchestra kit on 10)
+PULSE = 0                                                # 'pulse'
+ECHO, SHBASS, SHPAD = 0, 1, 2                            # 'shadow': its hypnotic loop
+PH_LEAD, PH_BASS, PH_KEYS, PH_KIT = 0, 1, 2, 9           # 'phone': the clips on his screen
 
-# The old man's theme in eighth notes (six to a bar): (start, length, pitch)
-THEME = [(0, 2, 'G4'), (2, 1, 'Bb4'), (3, 3, 'Eb5'),
-         (6, 2, 'D5'), (8, 1, 'C5'), (9, 3, 'G4'),
-         (12, 2, 'Ab4'), (14, 1, 'C5'), (15, 3, 'F5'),
-         (18, 2, 'Eb5'), (20, 1, 'D5'), (21, 3, 'Bb4'),
-         (24, 2, 'G4'), (26, 1, 'Bb4'), (27, 3, 'Eb5'),
-         (30, 2, 'G5'), (32, 1, 'F5'), (33, 3, 'Eb5'),
-         (36, 2, 'C5'), (38, 1, 'Eb5'), (39, 2, 'D5'), (41, 1, 'Bb4'),
-         (42, 6, 'Eb5')]
-THEME_CHORDS = [('Eb', ''), ('C', 'm'), ('Ab', ''), ('Bb', ''), ('Eb', ''), ('C', 'm'), ('Ab', ''), ('Eb', '')]
-LOFI_CHORDS = [('Ab', 'maj7'), ('G', 'm7'), ('F', 'm7'), ('Bb', '7')]
+# The old man's theme in eighth notes (six to a bar): (start, length, pitch). D minor; the major form at sunrise.
+THEME_MINOR = [(0, 2, 'A4'), (2, 1, 'D5'), (3, 3, 'F5'),
+               (6, 2, 'E5'), (8, 1, 'D5'), (9, 3, 'A4'),
+               (12, 2, 'Bb4'), (14, 1, 'D5'), (15, 3, 'G5'),
+               (18, 2, 'F5'), (20, 1, 'E5'), (21, 3, 'C#5'),
+               (24, 2, 'A4'), (26, 1, 'D5'), (27, 3, 'F5'),
+               (30, 2, 'A5'), (32, 1, 'G5'), (33, 3, 'F5'),
+               (36, 2, 'D5'), (38, 1, 'F5'), (39, 2, 'E5'), (41, 1, 'C#5'),
+               (42, 6, 'D5')]
+THEME_MAJOR = [(st, ln, p.replace('F5', 'F#5').replace('Bb4', 'B4')) for st, ln, p in THEME_MINOR]
+MINOR_CHORDS = [('D', 'm'), ('Bb', ''), ('G', 'm'), ('A', ''), ('D', 'm'), ('Bb', ''), ('G', 'm'), ('D', 'm')]
+MAJOR_CHORDS = [('D', ''), ('G', ''), ('E', 'm'), ('A', ''), ('D', ''), ('G', ''), ('E', 'm'), ('D', '')]
+SHADOW_CHORDS = [('D', 'm'), ('Bb', ''), ('G', 'm'), ('A', '')]
 
 
-def theme(s, stem, ch, t0, eighth, vel=80, transpose=0, bars=None, legato=0.95, swell=0.0):
+def theme(s, stem, ch, t0, eighth, vel=80, transpose=0, bars=None, legato=0.95, swell=0.0, major=False):
     b0, b1 = bars or (0, 8)
-    for st, ln, p in THEME:
+    for st, ln, p in (THEME_MAJOR if major else THEME_MINOR):
         if not (b0 * 6 <= st < b1 * 6):
             continue
         t = t0 + (st - b0 * 6) * eighth
@@ -57,155 +64,175 @@ def theme(s, stem, ch, t0, eighth, vel=80, transpose=0, bars=None, legato=0.95, 
         s.note(stem, ch, t, ln * eighth * legato, n(p) + transpose, v)
 
 
-def triad(name, q, octave):
-    return chord(name, q, octave)
+def low(name, octave=1):
+    return n(f'{name}{octave}')
+
+
+def pad(s, stem, ch, t, dur, notes_, vel, swell_in=0.0, fade_out=0.0):
+    s.notes(stem, ch, t, dur, notes_, vel)
+    if swell_in:
+        s.ramp(stem, ch, t, t + swell_in, 0, 127, steps=24)
+    if fade_out:
+        s.ramp(stem, ch, t + dur - fade_out, t + dur, 127, 0, steps=24)
+        s.cc(stem, ch, t + dur + 0.02, 11, 127)
 
 
 # --- the score -----------------------------------------------------------------------------------------------------
 
-def lofi_bar(s, tb, k, vel=1.0, drums=True, bass=True, keys=True):
-    """One 3-second bar of the shadow's groove (80 BPM, swung)."""
-    root, q = LOFI_CHORDS[k % 4]
-    beat = 0.75
-    sw = 0.09                                 # swing on the off-beats
-    if keys:
-        voic = chord(root, q, 3)
-        s.notes('lofi', EP, tb + 0.02, 1.45, voic, 58 * vel, strum=0.03)
-        s.notes('lofi', EP, tb + 2 * beat + sw, 0.7, voic[1:], 46 * vel, strum=0.02)
-        top = voic[-1] + 12
-        s.note('lofi', EP, tb + 3 * beat + 0.5 * beat + sw, 0.5, top - 2 if k % 2 else top, 40 * vel)
-    if bass:
-        r = n(f'{root}1') + (12 if root in ('F', 'G') else 0)
-        s.note('lofi', SUB, tb, 1.2, r, 86 * vel)
-        s.note('lofi', SUB, tb + 2.5 * beat, 0.5, r + 7, 70 * vel)
-    if drums:
-        for b in range(4):
-            t = tb + b * beat
-            if b in (0, 2):
-                s.note('lofi', LDR, t, 0.1, 36, 78 * vel)
-            if b == 2:
-                s.note('lofi', LDR, t + 0.5 * beat + sw, 0.1, 36, 52 * vel)
-            if b in (1, 3):
-                s.note('lofi', LDR, t, 0.1, 38, 58 * vel)
-            s.note('lofi', LDR, t, 0.05, 42, 40 * vel)
-            s.note('lofi', LDR, t + 0.5 * beat + sw, 0.05, 42, 28 * vel)
+def shadow_bar(s, tb, k, vel=1.0):
+    """One 3-second bar of the shadow's loop: an echoing arpeggio over a sub pulse (80 BPM)."""
+    name, q = SHADOW_CHORDS[k % 4]
+    tones = chord(name, q, 4)
+    pattern = [tones[0] + 12, tones[2], tones[1], tones[2]]
+    e = 0.375                                   # eighth notes at 80 BPM
+    for j in range(8):
+        s.note('shadow', ECHO, tb + j * e, 0.3, pattern[j % 4] - (12 if j >= 4 else 0) + 12, 62 * vel)
+    for j in range(4):
+        s.note('shadow', SHBASS, tb + j * 0.75, 0.5, low(name, 1) + (12 if name in ('A', 'G') else 0), 84 * vel)
+    s.notes('shadow', SHPAD, tb, 3.0, [low(name, 2), low(name, 2) + 7], 50 * vel)
 
 
 def compose():
-    s = Score(humanize={'theme': (0.012, 6), 'pulse': (0.006, 5), 'lofi': (0.01, 6)})
-    s.program('lofi', EP, 4, 96, 58, 50)
-    s.program('lofi', SUB, 39, 92, 64, 20)
-    s.program('lofi', LDR, 32, 84, 64, 30)
-    s.program('theme', CLAR, 71, 104, 62, 70)
-    s.program('theme', VIB, 11, 96, 70, 80)
-    s.program('theme', OOH, 53, 92, 64, 95)
-    s.program('theme', BELLS, 14, 86, 72, 90)
-    s.program('theme', KAL, 108, 90, 50, 70)
-    s.program('theme', PADN, 88, 80, 64, 100)
-    s.program('organ', ORGAN, 19, 92, 64, 110)
-    s.program('organ', DRONE, 92, 84, 64, 100)
-    s.program('pulse', MAR, 12, 98, 56, 60)
-    s.program('pulse', ABASS, 32, 100, 64, 40)
-    s.program('perc', KIT, 16, 100, 64, 60)
+    s = Score(humanize={'lead': (0.012, 6), 'strings': (0.006, 4)})
+    s.program('drone', SOUNDTRACK, 97, 92, 64, 110)
+    s.program('drone', SWEEP, 95, 84, 64, 110)
+    s.program('drone', CBASS, 43, 100, 64, 70)
+    s.program('drone', SVOICE, 54, 84, 64, 110)
+    s.program('strings', SSTR2, 51, 96, 58, 100)
+    s.program('strings', SSTR1, 50, 86, 70, 100)
+    s.program('lead', EHORN, 69, 104, 62, 80)
+    s.program('lead', OOH, 53, 92, 64, 110)
+    s.program('lead', BELLS, 14, 90, 70, 100)
+    s.program('brass', SBRASS, 62, 100, 64, 90)
+    s.program('brass', SBRASS2, 63, 92, 64, 90)
+    s.program('perc', TOMS, 117, 104, 64, 70)
+    s.program('perc', REVCYM, 119, 96, 64, 60)
+    s.program('perc', KIT, 48, 100, 64, 70)
+    s.program('pulse', PULSE, 39, 100, 64, 40)
+    s.program('shadow', ECHO, 102, 92, 50, 90)
+    s.program('shadow', SHBASS, 39, 100, 64, 30)
+    s.program('shadow', SHPAD, 97, 76, 64, 100)
     s.program('phone', PH_LEAD, 80, 90, 64, 10)
     s.program('phone', PH_BASS, 38, 90, 64, 10)
     s.program('phone', PH_KEYS, 0, 90, 64, 10)
     s.program('phone', PH_KIT, 0, 90, 64, 10)
 
-    # --- the hook: the phone's clips; a low organ under the reveal; the theme's first notes at his face
+    # --- the hook: a low drone creeps in under the phone; the figure in the dark; his face; the drain; the shadow
     phone_clips(s, EV['swipes'], 0.3, 19.4)
-    s.notes('organ', DRONE, 3.0, 9.0, [n('Eb2'), n('Bb2')], 46)
-    s.ramp('organ', DRONE, 3.0, 6.0, 0, 110)
-    s.notes('organ', ORGAN, 8.8, 3.6, [n('Eb3'), n('G3'), n('Bb3')], 40)
-    s.ramp('organ', ORGAN, 8.8, 10.0, 30, 100)
-    s.ramp('organ', ORGAN, 11.0, 12.6, 100, 0)
-    s.cc('organ', ORGAN, 12.7, 11, 127)
-    theme(s, 'theme', CLAR, 9.4, 0.5, 62, bars=(0, 1))          # three notes, as his face appears
-    s.notes('theme', PADN, 12.0, 4.4, triad('C', 'm', 3), 44)
-    for k in range(2):                                             # the groove, first from the phone, then close
-        lofi_bar(s, 14.0 + 3 * k, k, vel=0.8 + 0.2 * k)
-    s.note('lofi', EP, 19.4 - 0.02, 0.05, n('C3'), 1)           # the groove stops dead at the title
-    # --- the title: an organ chord
-    s.notes('organ', ORGAN, 19.42, 3.4, [n('Eb2'), n('Bb2'), n('Eb3'), n('G3'), n('Bb3'), n('Eb4')], 76)
-    s.ramp('organ', ORGAN, 21.6, 22.95, 127, 0)
-    s.cc('organ', ORGAN, 23.0, 11, 127)
+    pad(s, 'drone', CBASS, 1.0, 18.3, [n('D1'), n('D2')], 62, swell_in=4.0, fade_out=0.6)
+    pad(s, 'drone', SOUNDTRACK, 3.0, 16.3, [n('D2'), n('A2'), n('F3')], 58, swell_in=3.0, fade_out=0.4)
+    pad(s, 'drone', SVOICE, 4.0, 4.6, [n('D4'), n('Eb4')], 52, swell_in=2.5, fade_out=1.2)    # dread, unresolved
+    pad(s, 'strings', SSTR2, 8.8, 3.6, [n('D3'), n('A3'), n('E4'), n('F4')], 66, swell_in=0.4, fade_out=0.8)
+    theme(s, 'lead', EHORN, 9.4, 0.5, 66, bars=(0, 1))                   # three notes as his face ages
+    for k in range(int((16.2 - 12.0) / 0.5)):                            # the drain: a pulse like a pulled heart
+        s.note('pulse', PULSE, 12.0 + 0.5 * k, 0.3, n('D1') if k % 2 == 0 else n('D2'), 70 + 3 * k)
+    pad(s, 'strings', SSTR2, 12.0, 4.2, [n('D3'), n('F3'), n('Bb3')], 60, swell_in=3.5)
+    for k in range(2):                                                    # the shadow's loop creeps in
+        shadow_bar(s, 14.0 + 3 * k, k, vel=0.7 + 0.2 * k)
+    s.note('perc', REVCYM, 17.4, 2.0, n('C4'), 90)                       # into the title
+    # --- the title: a braam, a low bell
+    title_hit(s, 19.42)
+    s.note('lead', BELLS, 19.45, 3.0, n('D3'), 80)
 
-    # --- the loop: the groove, every night a little more worn (the wear is added in the mix)
-    for k in range(6):
-        lofi_bar(s, 23.0 + 3 * k, k)
-    lofi_bar(s, 41.0, 6, vel=1.1)
+    # --- the loop: the shadow's music, night after night (it wears out in the mix)
+    for k in range(7):
+        shadow_bar(s, 23.0 + 3 * k, k, vel=1.0 if k < 6 else 1.1)
+    pad(s, 'drone', CBASS, 23.0, 19.0, [n('D1')], 54, swell_in=2.0, fade_out=0.2)
     phone_clips(s, [23.3, 24.4, 25.6, 26.9, 29.4, 30.5, 31.6, 33.8, 34.7, 35.6], 23.0, 36.5, quiet=True)
+    s.note('perc', REVCYM, 40.0, 2.0, n('C4'), 96)                       # the time-lapse slams shut
 
-    # --- the mirror: a sting when the old man appears, a cluster that holds while he looks
-    s.notes('organ', ORGAN, 46.0, 6.0, [n('C2'), n('Db3'), n('G3'), n('Ab3')], 58)
-    s.ramp('organ', ORGAN, 46.0, 46.4, 60, 115)
-    s.ramp('organ', ORGAN, 50.0, 51.9, 115, 40)
-    s.cc('organ', ORGAN, 52.0, 11, 0)
-    s.cc('organ', ORGAN, 52.5, 11, 127)
-    s.note('theme', CLAR, 46.05, 2.2, n('D6'), 70)
-    s.note('theme', CLAR, 49.0, 2.6, n('Db6'), 58)
-    s.notes('organ', DRONE, 53.6, 3.0, [n('C2'), n('Gb2')], 64)
-    # --- turning his back: the groove leaks from his headphones
+    # --- the mirror: dread, a stinger when the old man appears, a held cluster while he looks
+    pad(s, 'drone', SWEEP, 43.0, 13.4, [n('D2'), n('Ab2')], 52, swell_in=3.0, fade_out=0.3)
+    pad(s, 'drone', CBASS, 43.0, 13.4, [n('D1')], 58, swell_in=2.0, fade_out=0.3)
+    stinger(s, 46.0)
+    pad(s, 'strings', SSTR2, 46.2, 5.6, [n('C#4'), n('D4'), n('G#4')], 56, swell_in=0.6, fade_out=0.6)
+    pad(s, 'drone', SVOICE, 49.0, 3.0, [n('A4'), n('Bb4')], 58, swell_in=1.0, fade_out=0.6)
+    s.note('perc', TOMS, 50.62, 1.5, n('D2'), 110)                       # the palm hits the glass
+    pad(s, 'drone', SWEEP, 53.6, 2.8, [n('D2'), n('Eb2'), n('A2')], 66, swell_in=0.8, fade_out=0.2)
+    # --- turning his back: the shadow's loop leaks from under the blanket; a slow heart in the drone
     for k in range(2):
-        lofi_bar(s, 57.0 + 3 * k, k + 2, vel=0.9)
-    # --- rock bottom: the groove from the phone, then nothing
+        shadow_bar(s, 57.0 + 3 * k, k + 2, vel=0.9)
+    pad(s, 'drone', CBASS, 57.0, 10.0, [n('D1')], 60, swell_in=1.0)
+    # --- rock bottom
     phone_clips(s, [67.3, 68.9, 70.6, 71.9], 67.0, 74.8, quiet=True)
-    s.notes('organ', DRONE, 79.0, 8.5, [n('Eb2'), n('Bb2')], 40)
-    s.ramp('organ', DRONE, 79.0, 81.0, 0, 90)
-    s.ramp('organ', DRONE, 86.0, 89.0, 90, 0)
-    s.cc('organ', DRONE, 89.2, 11, 127)
-    theme(s, 'theme', CLAR, 87.0, 0.6, 52, bars=(0, 1))          # after his words: the first bar, alone
+    pad(s, 'drone', SOUNDTRACK, 67.0, 5.2, [n('D2'), n('A2')], 56, fade_out=0.15)
+    # after the silence, under his words (captions only): low strings, then the theme alone on the English horn
+    pad(s, 'strings', SSTR2, 78.8, 3.2, [n('D2'), n('A2'), n('F3')], 54, swell_in=2.0)
+    for k, (name, q) in enumerate((('B', 'b'), ('G', 'm'), ('A', ''))):
+        root = {'B': 'Bb'}.get(name, name)
+        pad(s, 'strings', SSTR2, 82.0 + 2.2 * k, 2.2, chord(root, '' if root == 'Bb' else q, 3), 56 + 3 * k)
+    pad(s, 'drone', CBASS, 78.8, 10.8, [n('D1'), n('D2')], 56, swell_in=2.0, fade_out=0.4)
+    theme(s, 'lead', EHORN, 81.4, 0.62, 68, bars=(0, 2))
+    pad(s, 'strings', SSTR1, 88.6, 1.0, [n('D4'), n('F4'), n('A4')], 50, fade_out=0.8)
 
-    # --- Day 1: the theme, slow, three beats a bar on the tick
+    # --- Day 1: the theme, slow, three beats a bar on the tick; from dark toward hope
     t0 = 93.0
     for b in range(6):
-        name, q = THEME_CHORDS[b % 8]
+        name, q = MINOR_CHORDS[b % 8]
         tb = t0 + 3 * b
-        voic = chord(name, q, 3)
-        for k in range(6):
-            s.note('theme', VIB, tb + 0.5 * k, 0.9, voic[k % 3] + (12 if k >= 3 else 0), 50 + (10 if k == 0 else 0))
-        s.notes('theme', PADN, tb, 3.0, chord(name, q, 3), 38)
-        s.note('pulse', ABASS, tb, 1.4, n(f'{name}2'), 66)
-    theme(s, 'theme', CLAR, 96.0, 0.5, 70, bars=(0, 4), swell=10)
-    s.notes('theme', BELLS, EV['curtains'] + 0.1, 3.0, [n('Eb5'), n('Bb5')], 70)
-    for k in range(10):                                            # a vibraphone shimmer as the light floods in
-        s.note('theme', VIB, EV['curtains'] + 0.06 * k, 0.8, chord('Eb', '', 5)[k % 3] + 12 * (k // 3 % 2), 52)
-    theme(s, 'theme', OOH, 108.0, 0.5, 60, bars=(4, 5))
-    # the pulse quickens: from twos to threes on the same tick, as he starts to run
+        pad(s, 'strings', SSTR2, tb, 3.0, chord(name, q, 3), 50 + 4 * b)
+        s.note('drone', CBASS, tb, 2.9, low(name, 2 if name in ('D', 'A', 'G') else 1), 58)
+    theme(s, 'lead', EHORN, 96.0, 0.5, 72, bars=(0, 4), swell=10)
+    s.note('perc', REVCYM, EV['curtains'] - 1.9, 2.0, n('C4'), 80)
+    s.notes('lead', BELLS, EV['curtains'] + 0.05, 3.0, [n('D4'), n('A4')], 74)
+    pad(s, 'lead', OOH, EV['curtains'], 4.0, [n('D4'), n('F4'), n('A4')], 54, swell_in=1.2, fade_out=1.0)
+    for k in range(12):                                                  # the pulse quickens as he sets off
+        s.note('pulse', PULSE, 105.0 + 0.5 * k, 0.3, n('D1') if k % 2 == 0 else n('D2'), 60 + 3 * k)
     for k in range(6):
-        s.note('pulse', MAR, 109.0 + k / 3, 0.25, chord('Bb', '', 4)[k % 3], 54 + 4 * k)
+        s.note('pulse', PULSE, 109.0 + k / 3, 0.22, n('D2'), 80)
 
-    # --- the climb: 6/8 on the tick (a bar = 2 s), marimba clockwork, claps, bass, the theme
+    # --- the climb: 6/8 on the tick (a bar = 2 s): a driving low ostinato, toms, the theme
     climb(s, 111.0, 135.0)
-    # --- the last temptation: the music stops; the groove tries to come back, warped
+    # --- the last temptation: the music stops for the rain; the shadow's loop tries to come back, warped
     for k in range(2):
-        lofi_bar(s, 137.0 + 3 * k, k, vel=0.85)
-    s.note('lofi', EP, 141.6, 0.05, n('C3'), 1)
+        shadow_bar(s, 137.0 + 3 * k, k, vel=0.85)
     alarm(s, 135.4, 143.0)
     alarm(s, 27.5, 28.1)
-    # --- the rise: the drop, everything in
+    s.note('perc', REVCYM, 143.0, 2.0, n('C4'), 110)                     # he sits up through it: into the drop
+    # --- the rise
     climb(s, 145.0, 153.0, full=True)
-    # the trailhead: just the pad and the tick, then the pulse comes back as they set off
-    s.notes('theme', PADN, 153.0, 4.0, chord('Ab', '', 3), 44)
-    s.notes('organ', DRONE, 153.0, 4.2, [n('Ab1'), n('Eb2')], 52)
+    # the trailhead: only a dark pad and the tick, then the pulse as they set off
+    pad(s, 'drone', SOUNDTRACK, 153.0, 4.2, [n('D2'), n('A2'), n('E3')], 54, swell_in=0.5, fade_out=0.5)
+    pad(s, 'drone', CBASS, 153.0, 4.0, [n('D1')], 58)
     for k in range(6):
-        s.note('pulse', MAR, 156.0 + k / 3, 0.25, chord('Bb', '', 4)[k % 3], 50 + 3 * k)
-    # --- the ascent: organ arpeggios climbing, toms building
+        s.note('pulse', PULSE, 156.0 + k / 3, 0.22, n('D2'), 66 + 3 * k)
+    # --- the ascent: a relentless build
     ascent(s, 157.0, 171.0)
-    # --- the sunrise: up a whole step to F; full organ, voices, bells
+    # --- the sunrise: D major at last
     sunrise(s, 171.0)
-    # --- the epilogue: the theme on vibraphone, slow, at night
-    theme(s, 'theme', VIB, 195.0, 0.5, 58, bars=(0, 4), legato=1.3)
-    for b in range(4):
-        name, q = THEME_CHORDS[b]
-        s.notes('theme', PADN, 195.0 + 3 * b, 3.0, chord(name, q, 3), 34)
-    theme(s, 'theme', CLAR, 201.0, 0.55, 54, bars=(7, 8))
+    # --- the epilogue: night again, heavy and quiet; his words on a held chord, then hope
+    pad(s, 'drone', SOUNDTRACK, 193.0, 10.0, [n('D2'), n('A2')], 50, swell_in=2.0, fade_out=0.3)
+    pad(s, 'strings', SSTR2, 195.6, 3.8, [n('D3'), n('F3'), n('A3'), n('E4')], 54, swell_in=1.5)
+    theme(s, 'lead', EHORN, 195.8, 0.55, 60, bars=(0, 1))
+    pad(s, 'strings', SSTR2, 199.4, 3.6, [n('D3'), n('F#3'), n('A3'), n('D4')], 58, swell_in=0.8)   # ...proud.
+    pad(s, 'lead', OOH, 199.6, 3.4, [n('D4'), n('F#4'), n('A4')], 50, swell_in=1.0, fade_out=1.0)
     # --- the title card
-    s.notes('organ', ORGAN, 203.2, 7.6, [n('Eb2'), n('Bb2'), n('Eb3'), n('G3'), n('Bb3'), n('D4'), n('G4')], 70)
-    s.ramp('organ', ORGAN, 203.2, 204.4, 20, 110)
-    s.ramp('organ', ORGAN, 208.0, 211.0, 110, 0)
-    s.notes('theme', BELLS, 203.6, 4.0, [n('Eb5')], 60)
+    title_hit(s, 203.2, major=True)
+    s.note('lead', BELLS, 203.3, 4.0, n('D3'), 76)
+    pad(s, 'strings', SSTR2, 203.3, 7.5, [n('D2'), n('A2'), n('D3'), n('F#3'), n('A3')], 60, fade_out=3.0)
     return s
+
+
+def title_hit(s, t, major=False):
+    """A braam: low synth brass and a deep tom, with a bass drum and cymbal from the orchestra kit."""
+    third = n('F#2') if major else n('F2')
+    s.notes('brass', SBRASS, t, 3.2, [n('D1'), n('A1'), n('D2'), third, n('A2')], 118)
+    s.notes('brass', SBRASS2, t, 3.0, [n('D2'), n('A2')], 104)
+    s.ramp('brass', SBRASS, t + 1.6, t + 3.1, 127, 0, steps=24)
+    s.cc('brass', SBRASS, t + 3.3, 11, 127)
+    s.note('perc', TOMS, t, 2.0, n('D1'), 120)
+    s.note('perc', KIT, t, 1.5, 36, 120)
+    s.note('perc', KIT, t, 2.5, 49, 90)
+
+
+def stinger(s, t):
+    """A sudden shock: a braam with a dissonant synth choir on top."""
+    s.notes('brass', SBRASS, t, 2.4, [n('D1'), n('Ab1'), n('D2')], 116)
+    s.ramp('brass', SBRASS, t + 1.0, t + 2.3, 127, 0, steps=20)
+    s.cc('brass', SBRASS, t + 2.5, 11, 127)
+    s.notes('drone', SVOICE, t, 2.2, [n('D5'), n('Eb5'), n('Ab5')], 76)
+    s.note('perc', TOMS, t, 1.6, n('D1'), 118)
+    s.note('perc', KIT, t, 2.0, 49, 84)
 
 
 def climb(s, t0, t1, full=False):
@@ -214,104 +241,89 @@ def climb(s, t0, t1, full=False):
     nb = int(round((t1 - t0) / 2))
     for b in range(nb):
         tb = t0 + 2 * b
-        name, q = THEME_CHORDS[b % 8]
-        voic = chord(name, q, 4)
-        arp = [voic[0], voic[1], voic[2], voic[1] + 12, voic[2], voic[1]]
+        name, q = MINOR_CHORDS[b % 8]
+        root1 = low(name, 1) + (12 if name in ('G', 'A', 'Bb') else 0)
+        # the driving low ostinato: synth bass in eighths, contrabass on the dotted beats
         for k in range(6):
-            s.note('pulse', MAR, tb + k * e, 0.28, arp[k], 62 + (10 if k in (0, 3) else 0))
-        s.note('pulse', ABASS, tb, 0.9, n(f'{name}2'), 82)
-        s.note('pulse', ABASS, tb + 1.0, 0.6, n(f'{name}2') + 7, 70)
-        if b % 2 == 1:
-            s.note('theme', KAL, tb + 5 * e, 0.4, voic[2] + 12, 50)
-        # percussion: claps on the second dotted beat; drums from Day 77 and in the rise
-        busy = full or tb >= EV['days'][4]
-        if tb >= t0 + 4 or full:
-            s.note('perc', KIT, tb + 1.0, 0.1, 39, 70 if not full else 84)
+            s.note('pulse', PULSE, tb + k * e, 0.25, root1 + (12 if k in (2, 5) else 0), 76 + (12 if k in (0, 3) else 0))
+        s.note('drone', CBASS, tb, 1.9, root1, 74)
+        pad(s, 'strings', SSTR2, tb, 2.0, chord(name, q, 3), 52 + (10 if full else 0) + 8 * (tb >= EV['days'][4]))
+        busy = full or tb >= t0 + 4
         if busy:
-            s.note('perc', KIT, tb, 0.1, 36, 96 if full else 80)
-            s.note('perc', KIT, tb + 4 * e, 0.1, 36, 60)
-            for k in range(6):
-                s.note('perc', KIT, tb + k * e, 0.05, 70, 40 + (14 if k % 3 == 0 else 0))
-        if full:
-            s.note('perc', KIT, tb + 1.0, 0.1, 38, 80)
-            s.notes('organ', ORGAN, tb, 2.0, chord(name, q, 3), 58)
-            if b % 4 == 0:
-                s.note('perc', KIT, tb, 0.5, 49, 70)
+            s.note('perc', TOMS, tb, 0.6, n('D2'), 92 if full else 76)
+            s.note('perc', TOMS, tb + 1.0, 0.6, n('A1'), 84 if full else 66)
+        if full or tb >= EV['days'][4]:
+            s.note('perc', KIT, tb, 0.4, 36, 104 if full else 86)
             if b % 2 == 1:
-                for k, tom in enumerate((50, 48, 45)):
-                    s.note('perc', KIT, tb + 1.0 + k * e, 0.1, tom, 66 + 8 * k)
-        s.notes('theme', PADN, tb, 2.0, chord(name, q, 3), 32 if not full else 40)
-    # the melody: clarinet first, then voices, then the organ joins (each 8 bars = 16 s)
+                for k in range(3):
+                    s.note('perc', TOMS, tb + 1.0 + k * e, 0.3, n('D2') + 5 - 2 * k, 70 + 8 * k)
+        if full:
+            s.notes('brass', SBRASS, tb, 1.9, chord(name, q, 2), 88)
+            if b % 4 == 0:
+                s.note('perc', KIT, tb, 2.0, 49, 84)
+        if b % 4 == 3 and not full:
+            s.note('perc', REVCYM, tb, 2.0, n('C4'), 70)
     if not full:
-        theme(s, 'theme', CLAR, t0, e, 72, bars=(0, 8))
+        theme(s, 'lead', EHORN, t0, e, 76, bars=(0, 8))
         if t1 - t0 > 16:
-            theme(s, 'theme', OOH, t0 + 16, e, 66, bars=(0, 4))
-            theme(s, 'theme', CLAR, t0 + 16, e, 60, bars=(0, 4), transpose=-12)
+            theme(s, 'lead', OOH, t0 + 16, e, 72, bars=(0, 4))
+            theme(s, 'strings', SSTR1, t0 + 16, e, 64, bars=(0, 4))
     else:
-        theme(s, 'theme', OOH, t0, e, 80, bars=(0, 4))
-        theme(s, 'organ', ORGAN, t0, e, 70, bars=(0, 4), transpose=12)
-        theme(s, 'theme', CLAR, t0, e, 74, bars=(0, 4))
+        title_hit(s, t0)
+        theme(s, 'lead', OOH, t0, e, 86, bars=(0, 4))
+        theme(s, 'brass', SBRASS2, t0, e, 92, bars=(0, 4))
+        theme(s, 'strings', SSTR1, t0, e, 76, bars=(0, 4), transpose=12)
 
 
 def ascent(s, t0, t1):
     e = 1 / 3
     nb = int(round((t1 - t0) / 2))
-    prog = [('Ab', ''), ('Bb', ''), ('C', 'm'), ('Bb', ''), ('Ab', ''), ('Bb', ''), ('C', 'sus4'), ('C', '')]
+    prog = [('D', 'm'), ('Bb', ''), ('G', 'm'), ('A', ''), ('D', 'm'), ('Bb', ''), ('C', ''), ('A', 'sus4')]
     for b in range(nb):
         tb = t0 + 2 * b
         name, q = prog[b % len(prog)]
-        voic = chord(name, q, 3)
         rise = b / max(1, nb - 1)
+        root1 = low(name, 1) + (12 if name in ('G', 'A', 'Bb', 'C') else 0)
         for k in range(6):
-            s.note('organ', ORGAN, tb + k * e, 0.3, (voic + [voic[0] + 12, voic[1] + 12, voic[2] + 12])[k], 54 + 20 * rise)
-        s.notes('organ', DRONE, tb, 2.0, [n(f'{name}1'), n(f'{name}2')], 50 + 20 * rise)
-        s.note('pulse', ABASS, tb, 1.0, n(f'{name}2'), 80)
-        s.note('perc', KIT, tb, 0.2, 41, 70 + 30 * rise)
-        s.note('perc', KIT, tb + 1.0, 0.2, 43, 60 + 30 * rise)
-        if rise > 0.4:
-            for k in range(6):
-                s.note('perc', KIT, tb + k * e, 0.05, 70, 40 + 30 * rise)
+            s.note('pulse', PULSE, tb + k * e, 0.25, root1 + (12 if k % 3 == 2 else 0), 78 + 30 * rise)
+        pad(s, 'strings', SSTR2, tb, 2.0, chord(name, q, 3), 54 + 30 * rise)
+        pad(s, 'drone', SVOICE, tb, 2.0, chord(name, q, 4), 44 + 30 * rise)
+        s.note('drone', CBASS, tb, 1.9, root1, 74)
+        s.note('perc', TOMS, tb, 0.6, n('D2'), 80 + 30 * rise)
+        s.note('perc', TOMS, tb + 1.0, 0.6, n('A1'), 72 + 30 * rise)
+        if rise > 0.35:
+            s.note('perc', KIT, tb, 0.4, 36, 90 + 20 * rise)
+            s.notes('brass', SBRASS, tb, 1.9, chord(name, q, 2), 70 + 30 * rise)
         if b >= nb - 2:
             for k in range(6):
-                s.note('perc', KIT, tb + k * e, 0.1, 45 if k < 3 else 47, 70 + 6 * k)
-        s.notes('theme', OOH, tb, 2.0, chord(name, q, 4), 40 + 30 * rise)
-    # a breath at the top: everything holds before the sun
-    s.cc('organ', ORGAN, t1 - 0.02, 11, 30)
+                s.note('perc', TOMS, tb + k * e, 0.3, n('D2') + (k % 3) * 2, 86 + 5 * k)
+    s.note('perc', REVCYM, t1 - 2.0, 2.0, n('C4'), 100)
 
 
 def sunrise(s, t0):
-    """171-189: the hush, the sun at 173, the theme in F, the gift, the fading."""
-    s.cc('organ', ORGAN, t0, 11, 127)
-    s.notes('theme', PADN, t0, 2.0, chord('C', 'sus4', 3), 40)
+    """171-193: the hush at the top, the sun at 173 in D major, the gift, the fading, alone."""
+    pad(s, 'drone', SWEEP, t0, 2.0, [n('A3'), n('E4')], 44)               # a breath before the sun
     t = EV['sun_breaks']
-    e = 1 / 3
-    up = 2                                               # E flat -> F
-    s.notes('organ', ORGAN, t, 8.0, [n('F2'), n('C3'), n('F3'), n('A3'), n('C4'), n('F4')], 92)
-    s.notes('organ', DRONE, t, 10.0, [n('F1'), n('C2')], 80)
-    s.notes('theme', BELLS, t, 4.0, [n('F5'), n('C6')], 92)
-    s.note('perc', KIT, t, 1.5, 49, 104)
-    s.note('perc', KIT, t, 0.3, 36, 112)
-    s.note('perc', KIT, t, 0.3, 41, 100)
-    theme(s, 'theme', OOH, t, e * 1.5, 88, transpose=up, bars=(0, 2))
-    theme(s, 'organ', ORGAN, t, e * 1.5, 76, transpose=up + 12, bars=(0, 2))
+    title_hit(s, t, major=True)
+    s.notes('lead', BELLS, t, 4.0, [n('D4'), n('A4')], 96)
+    e = 0.5
+    theme(s, 'lead', OOH, t, e, 92, bars=(0, 2), major=True)
+    theme(s, 'strings', SSTR1, t, e, 84, bars=(0, 2), major=True, transpose=12)
+    theme(s, 'brass', SBRASS2, t, e, 80, bars=(0, 2), major=True, transpose=-12)
     for b in range(4):
         tb = t + 3 * b
-        name, q = THEME_CHORDS[(b if b < 2 else b + 4) % 8]
-        root = n(f'{name}2') + up
-        s.note('pulse', ABASS, tb, 2.8, root, 74)
+        name, q = MAJOR_CHORDS[(b if b < 2 else b + 4) % 8]
+        pad(s, 'strings', SSTR2, tb, 3.0, chord(name, q, 3), 72)
+        s.note('drone', CBASS, tb, 2.9, low(name, 1) + (12 if name in ('G', 'A', 'E') else 0), 74)
         for k in range(9):
-            s.note('pulse', MAR, tb + k * e, 0.3, chord(name, q, 4)[k % 3] + up, 46)
-    # the gift and the shoulder: the clarinet takes the last phrase
-    theme(s, 'theme', CLAR, 179.0, 0.5, 70, transpose=up, bars=(6, 8))
-    s.notes('theme', PADN, 179.0, 6.0, [n('F3'), n('A3'), n('C4')], 40)
-    # fading into the light: a high bell and the vibraphone, then the last chord holds
-    s.notes('theme', BELLS, EV['fade'][0] + 0.8, 4.0, [n('C6')], 66)
-    for k in range(12):
-        s.note('theme', VIB, EV['fade'][0] + 0.8 + k * 0.33, 1.2, chord('F', 'add9', 5)[k % 4], 50 - 2 * k)
-    s.notes('theme', PADN, 183.0, 10.0, [n('F3'), n('C4'), n('G4'), n('A4')], 46)
-    s.notes('organ', DRONE, 189.0, 4.0, [n('F2'), n('C3')], 50)
-    s.ramp('organ', DRONE, 191.0, 192.9, 127, 0)
-    s.cc('organ', DRONE, 193.0, 11, 127)
+            s.note('pulse', PULSE, tb + k / 3, 0.25, low(name, 2), 56)
+    # the gift and his hand on the shoulder: the English horn sings the last phrase, in major
+    theme(s, 'lead', EHORN, 179.0, 0.5, 74, bars=(6, 8), major=True)
+    pad(s, 'strings', SSTR2, 179.0, 6.0, [n('D3'), n('F#3'), n('A3'), n('D4')], 58, fade_out=1.5)
+    # fading into the light: high voices and a bell, then the last chord holds while he stands alone
+    pad(s, 'lead', OOH, EV['fade'][0] + 0.8, 5.2, [n('A4'), n('D5'), n('F#5')], 62, swell_in=1.5, fade_out=1.5)
+    s.notes('lead', BELLS, EV['fade'][0] + 0.8, 4.0, [n('D5')], 70)
+    pad(s, 'strings', SSTR2, 186.0, 7.0, [n('D2'), n('A2'), n('D3'), n('F#3'), n('A3')], 56, fade_out=2.5)
 
 
 def alarm(s, t0, t1):
@@ -736,25 +748,40 @@ def place_voices(mx, work):
             y = hp(y, 200, order=3)
             mx.add('voice', y, t0, -7 + 0.5 * i, fade_out=0.2)
         windows.append((CHORUS[0], CHORUS[-1] + 0.8))
-    # the old man, once; and the boy's answer
-    speak = {'old': ('Algenib', 'old', 0.25), 'hero': ('Orus', 'firm', -0.1)}
-    for text, t0, t1, who in SPEECH:
-        voice, style, pan = speak[who]
-        x = voices.line(text.replace('…', '...'), style, voice, cache, tmp, pan=pan, seed=90, max_dur=t1 - t0 + 0.6)
-        mx.add('voice', x, t0, 4.0 if who == 'old' else 1.0, fade_out=0.3)
-        windows.append((t0, t1))
+    # (the old man and the boy never speak aloud: their lines are captions, carried by the music)
     return windows
 
 
 # --- the build ----------------------------------------------------------------------------------------------------------
 
-def lofi_versions(x):
-    """The groove four ways: warm (the shadow close by), worn (night after night), phone and headphone leaks."""
-    warm = lp(x, 6500) * 1.0
-    worn = tape(lp(x, 2600), wobble=0.012, rate=0.45)
+def shadow_versions(x):
+    """The shadow's loop four ways: close (it leans in), worn (night after night), from the phone, leaking out
+    from under the blanket."""
+    near = reverb(lp(x, 7000), wet=0.18, length=2.4, decay=0.6)
+    worn = tape(lp(x, 2400), wobble=0.012, rate=0.45)
     phone = stereo(phone_eq(x.mean(axis=1)), 0.35)
-    leak = stereo(phone_eq(lp(x.mean(axis=1), 2400)) * 0.7, 0.0)
-    return warm, worn, phone, leak
+    leak = stereo(phone_eq(lp(x.mean(axis=1), 2000)) * 0.7, 0.0)
+    return near, worn, phone, leak
+
+
+def braam(seed=0, dur=3.6, major=False):
+    """The weight under a big hit: detuned low saws closing down through a filter, and a sub that drops."""
+    t = t_axis(dur)
+    out = np.zeros(len(t), np.float32)
+    r = rng(seed)
+    for f in (36.71, 55.0, 73.42, 110.0, 92.5 if major else 87.31):
+        for det in (-0.6, 0.0, 0.7):
+            ph = 2 * np.pi * (f + det + r.uniform(-0.1, 0.1)) * t
+            out += ((ph / (2 * np.pi)) % 1.0 * 2 - 1).astype(np.float32) * 0.12
+    cut = 2400 * np.exp(-t / 0.5) + 220
+    y = np.zeros_like(out)
+    block = 2048
+    for i in range(0, len(out), block):
+        y[i:i + block] = lp(out[i:i + block + 256], float(cut[min(i, len(cut) - 1)]))[: len(out[i:i + block])]
+    y = soft_clip(y * 1.6, 1.4) * env_ad(dur, 0.04, dur - 0.1, 1.6)
+    sub = sine(glide(62, 34, 1.8), 1.8) * env_exp(1.8, 0.9, 0.01)
+    y[: len(sub)] += sub * 0.9
+    return norm(y, 0.9)
 
 
 def build(out_dir):
@@ -763,58 +790,62 @@ def build(out_dir):
     work.mkdir(parents=True, exist_ok=True)
     stems = compose().render(work / 'stems')
     mx = Mix(DURATION)
-    stem_gain = {'theme': 1.0, 'organ': -2.0, 'pulse': 0.0, 'perc': -3.0}
+    stem_gain = {'drone': 0.0, 'strings': 1.0, 'lead': 2.0, 'brass': 2.0, 'perc': 0.0, 'pulse': -1.0}
     for name, path in stems.items():
-        if name in ('lofi', 'phone'):
+        if name in ('shadow', 'phone'):
             continue
         mx.add('music', read_wav(path), 0.0, stem_gain.get(name, 0.0))
-    # the lo-fi groove, routed by scene
-    lofi = read_wav(stems['lofi'])
-    if lofi.ndim == 1:
-        lofi = stereo(lofi)
-    warm, worn, phone, leak = lofi_versions(lofi)
-    n_ = len(lofi)
-    crack = crackle(DURATION + 2, seed=3, level=0.05)[:n_]
+    # the shadow's loop, routed by scene
+    sh = read_wav(stems['shadow'])
+    if sh.ndim == 1:
+        sh = stereo(sh)
+    near, worn, phone, leak = shadow_versions(sh)
+    n_ = len(sh)
+    crack = crackle(DURATION + 2, seed=3, level=0.04)[:n_]
 
     def seg(src, t0, t1, g, fi=0.05, fo=0.05):
         a, b = secs(t0), min(n_, secs(t1))
-        mx.add('lofi', src[a:b], t0, g, fade_in=fi, fade_out=fo)
+        mx.add('shadow', src[a:b], t0, g, fade_in=fi, fade_out=fo)
 
-    seg(phone, 14.0, 16.4, -6, fi=0.6)                   # from his phone...
-    seg(warm, 16.0, 19.4, -2, fi=0.5, fo=0.02)           # ...then close, as the shadow leans in
-    seg(warm, 23.0, 29.0, -2)
-    seg(worn, 29.0, 36.5, -3, fi=0.3)
+    seg(phone, 14.0, 16.4, -8, fi=0.6)                   # it starts on his phone...
+    seg(near, 16.0, 19.4, -3, fi=0.5, fo=0.02)           # ...then it is in the room, as the shadow leans in
+    seg(near, 23.0, 29.0, -3)
+    seg(worn, 29.0, 36.5, -4, fi=0.3)
     tl = speed_ramp(worn, 36.5, 42.0, 1.0, 2.6, stop=0.45)
-    mx.add('lofi', tl, 36.5, -2, fade_out=0.02)
+    mx.add('shadow', tl, 36.5, -3, fade_out=0.02)
     seg(leak, 57.0, 63.0, -10, fi=0.4, fo=0.6)
-    seg(warm, 137.0, 141.6, -7, fi=1.2, fo=0.05)
-    mx.add('lofi', tape(warm[secs(137.0):secs(141.6)], wobble=0.05, rate=0.9), 137.0, -12, fade_in=1.0, fade_out=0.05)
-    mx.add('lofi', crack[secs(23.0):secs(42.0)], 23.0, -6, fade_out=0.05)
+    seg(near, 137.0, 141.6, -8, fi=1.2, fo=0.05)
+    mx.add('shadow', tape(near[secs(137.0):secs(141.6)], wobble=0.05, rate=0.9), 137.0, -13, fade_in=1.0, fade_out=0.05)
+    mx.add('shadow', crack[secs(23.0):secs(42.0)], 23.0, -8, fade_out=0.05)
     # the phone's clips
     ph = read_wav(stems['phone'])
     ph = stereo(phone_eq(ph.mean(axis=1) if ph.ndim == 2 else ph), 0.3)
     mx.add('phone', ph, 0.0, 0.0)
     place_sfx(mx)
+    # the weight under the big hits
+    for k, (t, g, major) in enumerate(((9.0, -10, False), (19.42, -4, False), (EV['old_in_mirror'], -6, False),
+                                       (EV['drop'], -5, False), (EV['sun_breaks'], -4, True), (203.2, -6, True))):
+        mx.add('sfx', stereo(braam(k, major=major)), t, g)
     windows = place_voices(mx, work)
     # levels by scene
     mx.automate('sfx', [(0.0, 5.0), (7.6, 5.0), (9.0, 0.0)])
     mx.automate('phone', [(0.0, 10.0), (3.4, 8.0), (7.6, 0.0), (12.0, -2.0), (16.2, -10.0), (19.3, -12.0), (19.4, -40.0),
                           (23.0, -14.0), (36.5, -14.0), (36.6, -40.0), (66.9, -40.0), (67.0, -12.0), (72.2, -14.0),
                           (74.8, -40.0), (135.3, -40.0), (135.4, -6.0), (143.0, -6.0), (143.1, -40.0)])
-    mx.automate('music', [(0.0, 2.0), (3.0, 4.0), (19.4, 3.0), (23.0, 0.0), (92.6, 2.0), (111.0, 0.0),
-                          (134.95, 0.0), (135.0, -40.0), (135.1, -40.0), (144.9, -40.0), (145.0, 2.0), (153.0, 0.0), (172.0, 0.0),
-                          (173.0, 3.0), (183.0, 1.0), (193.0, 0.0), (203.0, 2.0)])
-    mx.automate('lofi', [(0.0, 0.0), (42.0, 0.0), (42.4, -60.0), (56.9, -60.0), (57.0, 0.0)])
-    mx.duck('music', windows, -8.0, 0.25)
-    mx.duck('lofi', windows, -7.0, 0.25)
+    mx.automate('music', [(0.0, 2.0), (3.0, 3.0), (19.4, 3.0), (23.0, 0.0), (78.8, 3.0), (89.6, 3.0), (92.6, 2.0),
+                          (111.0, 0.0), (134.95, 0.0), (135.0, -40.0), (142.9, -40.0), (143.0, -2.0), (145.0, 2.0),
+                          (153.0, 0.0), (172.0, 0.0), (173.0, 3.0), (183.0, 1.0), (193.0, 1.0), (203.0, 2.0)])
+    mx.automate('shadow', [(0.0, 0.0), (42.0, 0.0), (42.4, -60.0), (56.9, -60.0), (57.0, 0.0)])
+    mx.duck('music', windows, -6.0, 0.25)
+    mx.duck('shadow', windows, -7.0, 0.25)
     mx.duck('phone', windows, -8.0, 0.2)
     mx.duck('sfx', windows, -3.0, 0.2)
     mx.duck('amb', windows, -6.0, 0.25)
-    # silence where the watch stops: nothing but breath until he speaks
+    # silence where the watch stops: nothing but breath until he lifts his head
     mx.duck('music', [(EV['watch_stops'] + 0.02, 78.8)], -40.0, 0.05)
-    mx.duck('music', [(EV['black'] - 0.2, EV['dawn'] + 0.4)], -40.0, 0.2)
-    master = mx.render({'music': 0.0, 'lofi': -3.0, 'phone': -6.0, 'sfx': -6.0, 'amb': -8.0, 'voice': 3.0},
-                       level={'music': -22.0}, ceiling=0.6)
+    mx.duck('music', [(EV['phone_dies'] - 0.05, EV['dawn'] + 0.4)], -40.0, 0.15)
+    master = mx.render({'music': 0.0, 'shadow': -3.0, 'phone': -6.0, 'sfx': -6.0, 'amb': -8.0, 'voice': 3.0},
+                       level={'music': -21.0}, ceiling=0.6)
     return write_wav(work / 'mix.wav', master)
 
 

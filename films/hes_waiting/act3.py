@@ -49,7 +49,7 @@ def ascent(c, t, T):
     jo = old_man(v).draw(c, po, layers={'behind': strap_layer('#4A3A2E'), 'over_head': headband_lamp}, t=T)
     stick(c, po, jo, slope_y(to_world(po, jo['hand_f'])[0] + 24))
     ph = G_ASC_H.pose(T)
-    ph.update(turn=0.3, eye=blink(T, 1, 3.4), lean=ph['lean'] + 6, mopen=0.15, breathe=breath(T, 0.5, 1.0, 1),
+    ph.update(turn=0.3, eye=blink(T, 1, 3.4), lean=ph['lean'] + 6, mopen=0.0, breathe=breath(T, 0.5, 1.0, 1),
               brow=-4)
     jh = HIKER.draw(c, ph, layers={'behind': strap_layer(), 'over_head': headband_lamp}, t=T)
     headlamp(c, po, jo, T, reach=460)
@@ -189,9 +189,9 @@ def last_step(c, t, T):
               ly=-0.4, lx=0.6)
     if EV['hand_offer'] - 0.2 <= T < EV['on_top']:
         # he is pulled up past the boy, so he is the nearer of the two: draw him in front, his effort in view
-        po.update(mopen=0.25 * smooth(EV['pull_up'], EV['pull_up'] + 0.3, T), brow=-12, eye=0.8)
+        po.update(mopen=0.0, smile=-0.3, brow=-12, eye=0.8)
     ph = hero_last(T)
-    ph.update(turn=0.3, eye=blink(T, 1, 3.4), mopen=0.15, smile=0.2 + 0.4 * smooth(EV['on_top'], EV['on_top'] + 0.6, T),
+    ph.update(turn=0.3, eye=blink(T, 1, 3.4), mopen=0.0, smile=0.2 + 0.4 * smooth(EV['on_top'], EV['on_top'] + 0.6, T),
               ly=0.4 * smooth(EV['hand_offer'] - 0.3, EV['hand_offer'], T))
     old_gear = {'behind': strap_layer('#4A3A2E'), 'over_head': headband_lamp}
     hero_gear = {'behind': strap_layer(), 'over_head': headband_lamp}
@@ -375,10 +375,10 @@ def hands_insert(c, t, T):
     lower = smooth(t0 + 0.1, t0 + 1.2, T)
     let_go = smooth(t0 + 1.2, t0 + 1.5, T)
     close = smooth(t0 + 1.5, t1 + 0.2, T)
-    young = '#E3BE98'
+    young = '#EDE6D9'
     old = old_man(vitality(T)).look.skin
     # the boy's hand, palm up, from the right
-    c.drawPath(poly([(W + 300, 980), (1440, 760), (1400, 900), (W + 300, 1200)], True), paint('#D6A23D'))
+    c.drawPath(poly([(W + 300, 980), (1440, 760), (1400, 900), (W + 300, 1200)], True), paint('#36586C'))
     c.drawPath(poly([(W + 300, 980), (1440, 760), (1400, 900), (W + 300, 1200)], True), paint('outline', stroke=8))
     finger(c, 1260, 700, 200 - 40 * close, 120, 56, young)                # thumb
     c.drawOval(oval(1180, 800, 240, 130), paint(young))
@@ -400,7 +400,7 @@ def hands_insert(c, t, T):
     # the old hand from the left: a fist holding the chain, then open over the boy's fingers
     ox = hold[0] - 90 + 140 * close
     oy = hold[1] - 40 + 200 * close
-    c.drawPath(poly([(ox - 60, oy - 40), (-300, oy - 300), (-300, oy + 80), (ox - 40, oy + 90)], True), paint('#C9A456'))
+    c.drawPath(poly([(ox - 60, oy - 40), (-300, oy - 300), (-300, oy + 80), (ox - 40, oy + 90)], True), paint('#4E6170'))
     c.drawPath(poly([(ox - 60, oy - 40), (-300, oy - 300), (-300, oy + 80), (ox - 40, oy + 90)], True),
                paint('outline', stroke=8))
     c.drawOval(oval(ox, oy + 20, 120, 100), paint(old))

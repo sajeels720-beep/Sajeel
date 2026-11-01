@@ -16,7 +16,7 @@ sys.path.insert(0, str(HERE.parents[1] / 'studio'))
 
 import skia  # noqa: E402
 
-from common import HERO, MUSTARD, old_man, pocket_watch, scroll_screen  # noqa: E402
+from common import HERO, old_man, pocket_watch, scroll_screen  # noqa: E402
 from engine.core import H, W  # noqa: E402
 from engine.draw import col, light_pool, oval, paint, rrect, vignette  # noqa: E402
 from engine.rig import BASE_POSE, solve  # noqa: E402

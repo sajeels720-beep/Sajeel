@@ -238,7 +238,7 @@ def out_shot(c, t, T):
             p = GAIT_OUT.pose(T)
         else:
             p = RUN_OUT.pose(T)
-        p.update(turn=0.3, eye=blink(T, 1, 3.3), mopen=0.15 if T > 108.9 else 0.0)
+        p.update(turn=0.3, eye=blink(T, 1, 3.3), mopen=0.0)
         RUNNER.draw(c, p, t=T)
         # breath in the cold air
         for k in range(4):
@@ -287,18 +287,18 @@ def day3(c, t, T):
     # the boy
     if T < D3 + 2.3:
         p = D3_GAIT1.pose(T)
-        p.update(mopen=0.3, sweat=0.8, brow=-6)
+        p.update(mopen=0.0, smile=-0.3, sweat=0.8, brow=-6)
     elif T < D3 + 3.65:
         bent = smooth(D3 + 2.3, D3 + 2.6, T) * (1 - smooth(D3 + 3.45, D3 + 3.65, T))
         p = D3_GAIT1._stand(1060.0)            # the same stance the run stops in and starts from
         pant = math.sin((T - D3) * 14)
-        p.update(lean=48 * bent, tilt=10 * bent - 14 * smooth(D3 + 3.3, D3 + 3.5, T), mopen=0.35 + 0.15 * pant,
+        p.update(lean=48 * bent, tilt=10 * bent - 14 * smooth(D3 + 3.3, D3 + 3.5, T), mopen=0.0, smile=-0.35,
                  sweat=1.2, brow=-10, hand_f=(40 * bent + 4, 30 * bent), hand_b=(30 * bent, 36 * bent),
                  ik_f=-1.0, ik_b=-1.0, y=stand_feet(1060, PATH_Y)['y'] + 10 * bent + 2 * pant * bent,
                  lx=-0.6 * smooth(D3 + 3.2, D3 + 3.4, T))
     else:
         p = D3_GAIT2.pose(T)
-        p.update(mopen=0.2, sweat=0.8, brow=-8)
+        p.update(mopen=0.0, smile=-0.2, sweat=0.8, brow=-8)
     p.update(turn=0.3, eye=blink(T, 1, 3.3))
     RUNNER.draw(c, p, t=T)
 
@@ -333,7 +333,7 @@ def pushup(T, x, floor, rate=0.75, phase=0.0, depth=1.0, shaky=0.0, facing=1, sc
 def day12(c, t, T):
     def hero(cc, TT, rim_pass=False):
         p = pushup(TT, 1470, FLOOR + 10, rate=0.8, shaky=1.0, facing=-1)
-        p.update(sweat=0.9, mopen=0.2 + 0.2 * p['_cyc'], brow=-8, eye=blink(TT, 1, 3.3))
+        p.update(sweat=0.9, mopen=0.0, smile=-0.25, brow=-8, eye=blink(TT, 1, 3.3))
         RUNNER.draw(cc, p, t=TT)
         return p
 
@@ -449,14 +449,14 @@ def day77(c, t, T):
     p = G77_O.pose(T)
     p.update(old_face(v, T))
     wave = smooth(EV['wave'], EV['wave'] + 0.3, T) * (1 - smooth(EV['wave'] + 1.0, EV['wave'] + 1.4, T))
-    p.update(turn=0.3, smile=0.45 + 0.2 * wave, eye=0.9 * blink(T, 2, 3.8), mopen=0.12)
+    p.update(turn=0.3, smile=0.45 + 0.2 * wave, eye=0.9 * blink(T, 2, 3.8), mopen=0.0)
     if wave > 0:
         p['sf'] = 150 * wave + p['sf'] * (1 - wave)
         p['ef'] = 20 + 20 * math.sin(T * 14) * wave
     old_man(v, run=True).draw(c, p, t=T)
     p = G77_H.pose(T)
     p.update(turn=0.3 - 0.35 * look, lx=-1.0 * look, tilt=-6 * look, eye=blink(T, 1, 3.3),
-             smile=0.2 + 0.5 * smile * look, mopen=0.1)
+             smile=0.2 + 0.5 * smile * look, mopen=0.0)
     RUNNER.draw(c, p, t=T)
 
 
@@ -477,10 +477,7 @@ def cam_day77(t):
 
 def temptation(c, t, T):
     up = smooth(EV['up_through'], EV['up_through'] + 0.75, T)
-    speak = 0.0
-    for text_, t0, t1, who in SPEECH:
-        if who == 'hero' and t0 <= T <= t1:
-            speak = 0.2 + 0.25 * abs(math.sin((T - t0) * 10))
+    speak = 0.0                      # he doesn't say it out loud: the caption carries it
     look = smooth(EV['look_door'], EV['look_door'] + 0.4, T)
 
     def hero(cc, TT, rim_pass=False):
@@ -592,10 +589,10 @@ def run_pair(t0, mood, weather=None, dur=2.0):
         v = vitality(T)
         p = go.pose(T)
         p.update(old_face(v, T))
-        p.update(turn=0.3, smile=0.5, mopen=0.15, eye=0.95 * blink(T, 2, 3.6))
+        p.update(turn=0.3, smile=0.5, mopen=0.0, eye=0.95 * blink(T, 2, 3.6))
         old_man(v, run=True).draw(c, p, t=T)
         p2 = gh.pose(T)
-        p2.update(turn=0.3, smile=0.3, mopen=0.15, eye=blink(T, 1, 3.3))
+        p2.update(turn=0.3, smile=0.3, mopen=0.0, eye=blink(T, 1, 3.3))
         RUNNER.draw(c, p2, t=T)
         if weather == 'rain':
             rainfall(c, cx - 1100, -200, cx + 1100, 1200, T, n=160, a=0.45)
