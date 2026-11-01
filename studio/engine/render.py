@@ -159,6 +159,31 @@ def render(film: Film, out_path, workers=4, t0=0.0, t1=None, workdir=None, chunk
     return out_path
 
 
+def rerender(film: Film, out_path, t0, t1, workers=4):
+    """Re-render only the chunks of an earlier render() that overlap [t0, t1), then splice the film back
+    together (the chunk bounds are read back from the earlier render's parts list)."""
+    global _FILM
+    out_path = Path(out_path)
+    workdir = out_path.parent / (out_path.stem + '_parts')
+    parts = sorted(workdir.glob('part*.mp4'))
+    n = len(parts)
+    f_all = int(round(film.duration * film.fps))
+    bounds = [f_all * k // n for k in range(n + 1)]
+    a, b = int(t0 * film.fps), int(t1 * film.fps)
+    jobs = [(bounds[k], bounds[k + 1], parts[k], workdir / f'progress{k:02d}.txt')
+            for k in range(n) if bounds[k + 1] > a and bounds[k] < b]
+    _FILM = film
+    ctx = mp.get_context('fork')
+    with ctx.Pool(min(workers, len(jobs))) as pool:
+        for _ in pool.imap_unordered(_render_chunk, jobs):
+            pass
+    listing = workdir / 'parts.txt'
+    listing.write_text(''.join(f"file '{p.resolve()}'\n" for p in parts))
+    subprocess.run(['ffmpeg', '-hide_banner', '-loglevel', 'error', '-y', '-f', 'concat', '-safe', '0',
+                    '-i', str(listing), '-c', 'copy', str(out_path)], check=True)
+    return [j[2].name for j in jobs]
+
+
 def mux(video, audio, out_path, loudness=-14.0, true_peak=-1.5):
     """Combine picture and soundtrack; two-pass loudness normalisation to YouTube's -14 LUFS."""
     import json
