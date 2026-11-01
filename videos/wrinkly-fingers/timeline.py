@@ -30,13 +30,27 @@ VOICEOVER = {  # voiceover_N: (cue s, phrase) for each phrase, in the order spok
         (14.40, "and the skin | crumples | into wrinkles.")],               # "wrinkles" on the crash zoom (15.7)
     3: [(16.50, "But why?"),                                                # the red "?" pops (16.8)
         (17.60, "Scientists think | wrinkles grip | wet things better..."),  # the pinch under water (18.6)
-        (20.10, "like | tyre treads.")],                                    # the tyre
+        (20.10, "like tyre treads.")],                                      # the tyre
     4: [(21.40, "So those | raisin fingers?"),                              # the marble to the sun
         (22.90, "Built-in | rain tyres.")],                                 # the toss (23.2)
 }
-CAPTION_STARTS = {}  # (part, phrase): (its length s, where its 2nd, 3rd ... caption starts, s into it), measured on
-# the recordings once they exist (word timings, snapped to pauses); until then the captions are spread over each
-# phrase's sound by their letters.
+CAPTION_STARTS = {  # (part, phrase): (its length s, where its 2nd, 3rd ... caption starts, s into it), measured on
+    # the recordings (word timings, snapped to pauses); a phrase whose length no longer matches (a new recording)
+    # falls back to spreading its captions by their letters
+    (1, 0): (1.68, [0.44, 0.88]),   # You stay | in the pool | too long,
+    (1, 1): (2.19, [0.59, 1.13]),   # and your fingers | turn into | wrinkly raisins.
+    (1, 2): (1.19, [0.55]),         # It's not just | the water...
+    (1, 3): (0.88, []),             # It's your nerves.
+    (2, 0): (2.39, [0.86, 1.54]),   # You see, | water sets off | your nerves,
+    (2, 1): (2.13, [0.49, 1.29]),   # which squeeze | the blood vessels | under your skin.
+    (2, 2): (1.29, [0.60]),         # Your fingertips | shrink,
+    (2, 3): (1.85, [0.50, 1.06]),   # and the skin | crumples | into wrinkles.
+    (3, 0): (0.71, []),             # But why?
+    (3, 1): (2.62, [0.83, 1.59]),   # Scientists think | wrinkles grip | wet things better...
+    (3, 2): (0.98, []),             # like tyre treads.
+    (4, 0): (1.45, [0.50]),         # So those | raisin fingers?
+    (4, 1): (1.28, [0.47]),         # Built-in | rain tyres.
+}
 MIN_GAP = 0.15                   # a phrase never starts sooner than this after the one before
 SILENCE_DB = -38                 # quieter than this counts as a pause
 PAD = (0.04, 0.08)               # kept before and after each phrase, so no consonant is clipped
@@ -49,7 +63,7 @@ SFX = {  # sfx_name: [(time s, level dB against the voice[, until s[, fade s]]),
     "sfx_whoosh_fast": [(4.50, -8), (7.12, -8), (10.57, -8), (15.68, -8), (23.20, -12)],  # crash zooms; the toss
     "sfx_boom": [(7.22, -6), (10.68, -6)],                    # under "nerves" and "squeeze"
     "sfx_alert_pop": [(5.90, -6), (16.80, -6)],               # his red "?"
-    "sfx_sigh": [(24.25, -6)],                                # he leans back at sunset
+    "sfx_sigh": [(24.50, -6)],                                # he leans back at sunset (after "tyres")
     "sfx_crinkle": [(3.73, -10, 4.75), (13.20, -12, 14.10), (14.43, -10, 15.70)],   # the skin puckers
     "sfx_drop_plink": [(5.30, -8), (5.43, -10), (5.57, -8), (5.70, -10)],          # drops land on his fingertips
     "sfx_seep": [(8.07, -12, 9.00)],                          # drops drain into the pores
@@ -179,6 +193,13 @@ def button_time(path):
     return max(range(first, len(db)), key=lambda i: db[i]) * 0.1
 
 
+def _bare(words):
+    """A caption's words without punctuation, but an apostrophe or hyphen inside a word stays: it is
+    part of the spelling ("It's", "Built-in"; without them they read "Its", "Builtin")."""
+    words = re.sub(r"[^\w\s'’-]", "", words)
+    return re.sub(r"(?<!\w)['’-]+|['’-]+(?!\w)", "", words).strip()
+
+
 def captions(vo_files):
     """When each caption shows: [(start s, end s, words without punctuation)]. Each group comes up
     as it is spoken (at CAPTION_STARTS, or else its phrase's sound, pauses left out, shared by the
@@ -213,5 +234,5 @@ def captions(vo_files):
             starts = [when(total * sum(sizes[:i]) / sum(sizes)) for i in range(len(groups))]
         after = placed[k + 1][4] if k + 1 < len(placed) else LENGTH
         ends = starts[1:] + [min(t + e - s + 0.3, after)]
-        out += zip(starts, ends, (re.sub(r"[^\w\s]", "", g).strip() for g in groups))   # no punctuation
+        out += zip(starts, ends, (_bare(g) for g in groups))
     return out

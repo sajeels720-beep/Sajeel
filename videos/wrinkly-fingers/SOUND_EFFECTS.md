@@ -21,7 +21,7 @@ Tips for ElevenLabs Sound Effects:
 | ★ `sfx_whoosh_fast` | 0.5 | crash zooms: "raisins" 4.5 (shot 3), "nerves" 7.2 (shot 5), "squeeze" 10.6 (shot 8), "wrinkles" 15.7 (shot 11); the toss 23.2 (shot 16) | A fast, sharp whoosh swish for a quick camera zoom, short, clean, ending abruptly |
 | ★ `sfx_boom` | 2 | under the crash zooms on "nerves" 7.25 and "squeeze" 10.7 | A deep cinematic boom hit with a short sub-bass tail, dramatic and punchy |
 | ★ `sfx_alert_pop` | 0.5 | his red "?" pops up: 5.9 (shot 4), 16.8 (shot 12) | A bright cartoon pop with a quick curious "boing" ding, short, clean |
-| `sfx_sigh` | 1.5 | he leans back at sunset: 24.1 (shot 16) | A young man's long, happy, relaxed sigh, "ahh", as he leans back in a warm pool, close up, dry |
+| `sfx_sigh` | 1.5 | he leans back at sunset: 24.5 (shot 16) | A young man's long, happy, relaxed sigh, "ahh", as he leans back in a warm pool, close up, dry |
 
 ## The skin and the wrinkles
 
