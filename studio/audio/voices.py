@@ -164,7 +164,8 @@ def process(x, style, tmpdir, pan=0.0, max_dur=None):
         breath = whisperize(v)
         n_ = min(len(v), len(breath))
         y = 0.85 * v[:n_] + 0.3 * breath[:n_]
-        y = lp(hp(y, 110), 7600)
+        y = lp(hp(y, 150, order=3), 7600)
+        y = y + 0.45 * bp(y, 1800, 4200)        # presence, so the words come through quietly spoken
         y = reverb(stereo(y, pan, 0.2), wet=0.13, length=1.1, decay=0.35)
     elif style == 'firm':
         # quiet, certain, close to the mic

@@ -7,6 +7,7 @@ import math
 import skia
 
 from common import (BED, FLOOR, HERO, LIE_HIP, MATT, NIGHTSTAND, SHADE, WINDOW, Room, blanket, cane, draw_room,
+                    phone_angle,
                     in_world, lying_blanket_contour, lying_pose, old_man, phone_light, phone_side, phone_spot,
                     pocket_watch, sit_edge_pose, to_world, vitality)
 from cues import CHORUS, EV, WHISPERS
@@ -40,7 +41,7 @@ def hero_in_bed(*, laugh_at=(), sleepy=0.0, phone=True, face_fn=None, swipes=Non
             HERO.draw(c, p, layers={'mid': quilt}, t=T)
         if phone:
             px, py = phone_spot(T)
-            phone_side(c, px, py, 18, T, 1.0, swipes=swipes)
+            phone_side(c, px, py, phone_angle(T), T, 1.0, swipes=swipes)
             hand = to_world(p, p['hand_f'])
             c.drawCircle(hand[0] + 4, hand[1] - 14, 7, paint(HERO.look.skin))
             c.drawCircle(hand[0] + 4, hand[1] - 14, 7, paint('outline', stroke=3.5))
@@ -48,7 +49,7 @@ def hero_in_bed(*, laugh_at=(), sleepy=0.0, phone=True, face_fn=None, swipes=Non
     return draw
 
 
-def old_on_bed(*, head_up=None, look=None, x=OLD_X, watch=True, flinch_at=(), cough_at=(), extra=None):
+def old_on_bed(*, head_up=None, look=None, x=OLD_X, watch=True, flinch_at=(), cough_at=(), extra=None, young=None):
     """Draw fn for the Room: the old man on the end of the bed with his watch."""
     def draw(c, T, rim_pass=False):
         v = vitality(T)
@@ -80,7 +81,22 @@ def old_on_bed(*, head_up=None, look=None, x=OLD_X, watch=True, flinch_at=(), co
                 pocket_watch(cc, wx, wy, 11, T, detail=False, open_lid=False, chain=to_world(p, (16, -30)))
                 cc.restore()
         m = c.getTotalMatrix()
-        who.draw(c, p, layers={'mid': mid}, t=T)
+        j = who.draw(c, p, layers={'mid': mid}, t=T)
+        ya = young(T) if young else 0.0
+        if ya > 0 and not rim_pass:
+            # his young face, in exactly the same place, dissolving into the old one
+            from engine.rig import BASE_POSE
+            face = dict(BASE_POSE)
+            face.update(p)
+            face.update(wet=0.0, bags=0.3, shiver=0.0)
+            c.save()
+            c.translate(p['x'], p['y'])
+            s_ = p.get('scale', 1.0)
+            c.scale(s_ * p['facing'], s_)
+            c.saveLayerAlpha(None, int(255 * min(1.0, ya)))
+            HERO._head(c, face, j)
+            c.restore()
+            c.restore()
         return p
     return draw
 
@@ -110,7 +126,7 @@ def reveal(c, t, T):
     R = Room(light='night', sky='night', curtain=0.86,
              hero=hero_in_bed(), old=old_on_bed(head_up=head_up_hook, look=lambda T: 0.8 * head_up_hook(T)),
              phone_at=phone_spot(T), old_rim=0.75, hero_rim=0.6)
-    R.after = lambda cc, TT: phone_side(cc, *phone_spot(TT), 18, TT, 1.0)
+    R.after = lambda cc, TT: phone_side(cc, *phone_spot(TT), phone_angle(TT), TT, 1.0)
     draw_room(c, T, R)
 
 
@@ -140,10 +156,11 @@ def eyes_old(c, t, T):
     def extra(TT, v):
         return dict(wet=wet, brow=-12 - 8 * wet, lx=0.85, ly=-0.25, turn=0.42)
     R = Room(light='night', sky='night', curtain=0.86, hero=hero_in_bed(),
-             old=old_on_bed(head_up=lambda TT: up, look=lambda TT: 1.0, extra=extra),
+             old=old_on_bed(head_up=lambda TT: up, look=lambda TT: 1.0, extra=extra,
+                            young=lambda TT: 1 - smooth(9.05, 10.25, TT)),
              phone_at=phone_spot(T), phone_amt=1.0 + 1.4 * flare(T), old_rim=0.85, hero_rim=0.6)
     R.lights_extra = lambda cc: _face_light(cc, T)
-    R.after = lambda cc, TT: phone_side(cc, *phone_spot(TT), 18, TT, 1.0)
+    R.after = lambda cc, TT: phone_side(cc, *phone_spot(TT), phone_angle(TT), TT, 1.0)
     draw_room(c, T, R)
 
 
@@ -161,33 +178,42 @@ def cam_eyes_old(t):
 # --- 3. every wasted day (12-16.2) -------------------------------------------------------------------------------------
 
 def drain_motes(c, T, src, dst, pulses, n=44, seed=4):
-    """Little warm sparks pulled out of the old man and into the phone, a burst at each pulse."""
+    """Warm sparks torn out of the old man's chest and sucked into the phone, a burst at each pulse:
+    they leave slowly and speed up as they near the screen (ease-in), go cold on the way, and the screen
+    flares as it swallows them."""
     for t0 in pulses:
-        if T < t0 or T > t0 + 2.2:
+        if T < t0 or T > t0 + 2.4:
             continue
+        # the light tearing out of his chest
+        k = math.exp(-max(0.0, T - t0) / 0.45) * smooth(t0, t0 + 0.08, T)
+        c.drawCircle(src[0], src[1], 70, paint('#FFC86B', 0.5 * k, blur=26, blend='add'))
+        c.drawCircle(src[0], src[1], 22, paint('#FFF1C9', 0.7 * k, blur=6, blend='add'))
         for i in range(n):
-            delay = hrand(i, seed, int(t0 * 10)) * 0.6
-            u = (T - t0 - delay) / 1.2
+            delay = hrand(i, seed, int(t0 * 10)) * 0.45
+            u = (T - t0 - delay) / 1.05
             if u <= 0 or u >= 1:
                 continue
-            e = u * u * (3 - 2 * u)
+            e = u ** 2.2                                    # slow to leave him, fast into the phone
             bend = -55 + hrange(-35, 35, i, seed, 2)
-            x = src[0] + (dst[0] - src[0]) * e + hrange(-30, 30, i, seed, 3) * (1 - e)
-            y = src[1] + (dst[1] - src[1]) * e + bend * math.sin(math.pi * e) + hrange(-30, 30, i, seed, 4) * (1 - e)
-            a = math.sin(math.pi * u) * 0.95
+            jx, jy = hrange(-30, 30, i, seed, 3) * (1 - e), hrange(-30, 30, i, seed, 4) * (1 - e)
+            x = src[0] + (dst[0] - src[0]) * e + jx
+            y = src[1] + (dst[1] - src[1]) * e + bend * math.sin(math.pi * e) + jy
+            a = min(1.0, u * 6) * (1 - smooth(0.88, 1.0, u)) * 0.95
             colr = mixc('#FFC86B', '#9CD8FF', e)
-            r = hrange(3.5, 7.0, i, seed, 5) * (1 - 0.45 * e)
-            c.drawCircle(x, y, r * 3.6, paint(colr, 0.4 * a, blur=8, blend='add'))
-            c.drawCircle(x, y, r, paint(colr, a, blend='add'))
-            # a short trail behind each spark
-            u2 = max(0.0, u - 0.06)
-            e2 = u2 * u2 * (3 - 2 * u2)
+            r = hrange(3.5, 7.0, i, seed, 5) * (1 - 0.5 * e)
+            # a trail back toward where it came from
+            u2 = max(0.0, u - 0.09)
+            e2 = u2 ** 2.2
             x2 = src[0] + (dst[0] - src[0]) * e2 + hrange(-30, 30, i, seed, 3) * (1 - e2)
             y2 = src[1] + (dst[1] - src[1]) * e2 + bend * math.sin(math.pi * e2) + hrange(-30, 30, i, seed, 4) * (1 - e2)
-            c.drawLine(x2, y2, x, y, paint(colr, 0.45 * a, stroke=r * 0.9, blend='add'))
-        # the glow leaving his chest
-        k = math.exp(-max(0.0, T - t0) / 0.5)
-        c.drawCircle(src[0], src[1], 46, paint('#FFC86B', 0.35 * k, blur=18, blend='add'))
+            c.drawLine(x2, y2, x, y, paint(colr, 0.5 * a, stroke=r * 0.9, blend='add'))
+            c.drawCircle(x, y, r * 3.4, paint(colr, 0.4 * a, blur=8, blend='add'))
+            c.drawCircle(x, y, r, paint(colr, a, blend='add'))
+        # the screen swallows them
+        f = smooth(t0 + 0.75, t0 + 1.0, T) * (1 - smooth(t0 + 1.1, t0 + 1.7, T))
+        if f > 0:
+            c.drawCircle(dst[0], dst[1], 90, paint('#BFE6FF', 0.45 * f, blur=30, blend='add'))
+            c.drawCircle(dst[0], dst[1], 34 + 30 * f, paint('#FFFFFF', 0.5 * f, stroke=4, blur=3, blend='add'))
 
 
 def chest(T):
@@ -202,7 +228,7 @@ def drain(c, t, T):
              phone_at=phone_spot(T), old_rim=0.7, hero_rim=0.6)
 
     def after(cc, TT):
-        phone_side(cc, *phone_spot(TT), 18, TT, 1.0)
+        phone_side(cc, *phone_spot(TT), phone_angle(TT), TT, 1.0)
         drain_motes(cc, TT, chest(TT), phone_spot(TT), EV['drain'])
     R.after = after
     draw_room(c, T, R)
@@ -222,7 +248,7 @@ def shadow_whisper(c, t, T):
              hero_rim=0.6)
 
     def after(cc, TT):
-        phone_side(cc, *phone_spot(TT), 18, TT, 1.0)
+        phone_side(cc, *phone_spot(TT), phone_angle(TT), TT, 1.0)
         eye = smooth(EV['eyes_open'], EV['eyes_open'] + 0.3, TT)
         shade_emissive(cc, TT, 452 + 22 * smooth(16.5, 17.4, TT), 792, lean=lean * 0.62, eye=eye, scale=1.22,
                        reach=0.12 * smooth(17.0, 17.8, TT))
@@ -257,7 +283,7 @@ def night_room(T, *, old_kw=None, hero_kw=None, whisper_at=None, eyes=0.0, **kw)
              phone_at=phone_spot(T), old_rim=0.7, hero_rim=0.5, **kw)
 
     def after(cc, TT):
-        phone_side(cc, *phone_spot(TT), 18, TT, 1.0, swipes=LOOP_SWIPES)
+        phone_side(cc, *phone_spot(TT), phone_angle(TT), TT, 1.0, swipes=LOOP_SWIPES)
         if eyes > 0:
             from engine.rig import eye_pair
             cc.drawCircle(486, 690, 70, paint('#FF2A22', 0.12 * eyes, blur=30, blend='add'))
@@ -377,7 +403,7 @@ def bed_rot(c, t, T):
         laptop_lap(cc, p, TT)
         return p
 
-    R = Room(light='day', sky='day', curtain=0.3, hero=hero, ambient='#E8E1D6', notes_drop=(0, EV['note_falls']))
+    R = Room(light='day', sky='day', curtain=0.3, hero=hero, ambient='#E8E1D6')
     draw_room(c, T, R)
 
 
@@ -436,11 +462,10 @@ def timelapse(c, t, T):
 
     amb = blend_hex('#2A3150', '#E8E1D6', day)
     R = Room(light='night' if day < 0.5 else 'day', sky='night' if day < 0.5 else 'day', curtain=0.86 - 0.5 * day,
-             hero=hero, old=old, ambient=amb, phone_at=phone_spot(T), phone_amt=night, moon=night,
-             notes_fallen=tuple(range(min(5, k_notes))))
+             hero=hero, old=old, ambient=amb, phone_at=phone_spot(T), phone_amt=night, moon=night)
     draw_room(c, T, R)
     if night > 0.2:
-        phone_side(c, *phone_spot(T), 18, T, 1.0, swipes=[a + 0.25 * i for i in range(40)])
+        phone_side(c, *phone_spot(T), phone_angle(T), T, 1.0, swipes=[a + 0.25 * i for i in range(40)])
     for i, t0 in enumerate(CHORUS):
         x = [560, 1240, 760, 1420, 640, 1120, 900][i]
         y = [520, 470, 380, 600, 640, 360, 500][i]
@@ -503,7 +528,7 @@ def mirror_scene(c, t, T):
     c.clipRect(skia.Rect.MakeXYWH(x, y, w, h))
     mirror_back(c, T, x, y, w, h)
     spit = smooth(EV['spit'], EV['spit'] + 0.35, T) * (1 - smooth(EV['old_in_mirror'] - 0.3, EV['old_in_mirror'], T))
-    dip = 260 * spit
+    dip = 230 * spit
     rx, ry, rs = 900, 770 + dip, 2.15
     old_phase = EV['old_in_mirror'] <= T < EV['normal']
     shade_eyes = smooth(EV['shade_mirror'], EV['shade_mirror'] + 0.4, T)
@@ -529,6 +554,8 @@ def mirror_scene(c, t, T):
         face = dict(eye=(0.6 + 0.4 * scared) * blink(T, 4, 3.3), eyes='wide' if scared > 0.5 else 'dot',
                     mopen=0.3 * scared, brow=-14 * scared, bags=0.8, ly=0.2 * (1 - scared))
         pose = brush_pose(T, False, face=face, frozen=EV['normal'] if T > EV['normal'] else None)
+        pose['lean'] = 26 * spit
+        pose['tilt'] = 18 * smooth(EV['spit'] + 0.05, EV['spit'] + 0.4, T) * (1 - smooth(EV['old_in_mirror'] - 0.35, EV['old_in_mirror'] - 0.05, T))
         if T > EV['normal']:
             pose['hand_f'] = (20, -60)
         reflection(c, T, rx, ry, rs, HERO, pose, foam_a=1.0, brush=T < EV['normal'])
@@ -745,10 +772,11 @@ def slumped(T, extra_head=0.0, look=0.0):
                 wx, wy = to_world(pp, (52, -8))
             else:
                 dt = TT - EV['watch_stops']
-                drop = min(1.0, dt / 0.25)
-                ang = math.radians(28 * math.exp(-dt / 1.6) * math.cos(dt * 5.4))
+                fall = min(1.0, (dt / 0.3) ** 2)                      # it drops under its own weight...
+                jerk = settle(dt, 0.3, 9.0, 5.5, 0.14) if dt > 0.3 else 0.0   # ...and bounces on the chain
+                ang = math.radians(28 * math.exp(-dt / 1.6) * math.cos(dt * 5.4) * min(1.0, dt / 0.3))
                 hand = to_world(pp, (34, 18))
-                L = 70 * drop + 10
+                L = 10 + 70 * fall + jerk
                 wx, wy = hand[0] + math.sin(ang) * L, hand[1] + math.cos(ang) * L
                 anchor = hand
             pocket_watch(c2, wx, wy, 11, TT, detail=False, open_lid=False, chain=anchor,
@@ -765,7 +793,7 @@ def slump(c, t, T):
              phone_at=phone_spot(T), old_rim=0.7, hero_rim=0.5)
 
     def after(cc, TT):
-        phone_side(cc, *phone_spot(TT), 18, TT, 1.0, swipes=BOTTOM_SWIPES)
+        phone_side(cc, *phone_spot(TT), phone_angle(TT), TT, 1.0, swipes=BOTTOM_SWIPES)
         from engine.rig import eye_pair
         eye_pair(cc, 486, 690, 72, corner_eyes(TT, WHISPERS[6][1], WHISPERS[6][2]), 18)
     R.after = after

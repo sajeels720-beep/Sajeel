@@ -426,8 +426,7 @@ def day48(c, t, T):
         draw_old_standing(cc, p, TT, v)
         return p
 
-    R = Room(light='day', sky='day', curtain=1.0, ambient='#F1E8DC', hero=hero, old=old, back=back, books=True,
-             notes_checked=(0,))
+    R = Room(light='day', sky='day', curtain=1.0, ambient='#F1E8DC', hero=hero, old=old, back=back, books=True)
     draw_room(c, T, R)
 
 
@@ -635,7 +634,7 @@ def day330(c, t, T):
         old_man(v, run=True).draw(cc, p, t=TT)
         return p
 
-    R = Room(light='day', sky='day', curtain=1.0, ambient='#F1E8DC', hero=hero, old=old, notes_checked=(0, 1, 2, 3))
+    R = Room(light='day', sky='day', curtain=1.0, ambient='#F1E8DC', hero=hero, old=old)
     draw_room(c, T, R)
 
 

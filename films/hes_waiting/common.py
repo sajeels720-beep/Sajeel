@@ -547,19 +547,50 @@ def curtains(c, T, open_amt=0.0, sway=0.0):
     curtain_panel(c, x + w / 2 - 4, x + w + 40, y - 30, y + h + 60, open_amt, 1, T=T, sway=sway)
 
 
-def wall_notes(c, T, fallen=(), drop=None, checked=()):
-    """The goals on the wall above the desk. drop=(index, t0) lets one fall; checked ones get a tick."""
+NOTE_FALLS = {0: 32.6, 1: 37.5, 2: 38.6, 3: 39.6, 4: 40.5}    # each goal lets go of the wall
+NOTE_REPIN = 112.0                                               # after Day 1 he puts them all back up
+NOTE_CHECKS = {0: 124.0, 1: 148.6, 2: 149.6, 3: 150.6, 4: 190.0}   # and ticks them off, one by one
+NOTE_FLOOR = [(150, FLOOR + 10), (232, FLOOR + 18), (318, FLOOR + 8), (196, FLOOR + 26), (352, FLOOR + 22)]
+NOTE_COLORS = ['#F6D654', '#FF9F7A', '#8FD3FF', '#A8E6A1', '#F6D654']
+
+
+def wall_notes(c, T, fallen=None, drop=None, checked=None):
+    """The goals on the wall above the desk. Unless told otherwise, they follow the story: one falls on the
+    second day, the rest during the time-lapse, they lie on the floor until he pins them back after Day 1,
+    then they get ticked off."""
     from engine.home import sticky
     for k, (x, y, txt, ang) in enumerate(NOTES):
-        if k in fallen:
+        tf = NOTE_FALLS[k]
+        if fallen is not None:
+            gone = k in fallen
+            falling = None
+        else:
+            gone = tf <= T < NOTE_REPIN
+            falling = T - tf if gone and T - tf < 1.3 else None
+        if gone and falling is None:
+            fx, fy = NOTE_FLOOR[k]
+            c.save()
+            c.translate(fx, fy)
+            c.scale(1.0, 0.3)
+            c.rotate(ang * 3 + 20 * k)
+            c.drawRect(skia.Rect.MakeXYWH(-34, -34, 68, 68), paint(NOTE_COLORS[k]))
+            c.drawRect(skia.Rect.MakeXYWH(-34, -34, 68, 68), paint('outline', stroke=6))
+            c.restore()
             continue
-        yy, rot = y, ang
-        if drop and drop[0] == k and T >= drop[1]:
-            u = T - drop[1]
-            yy = min(FLOOR - 26, y + 0.5 * 2200 * u * u)
-            rot = ang + 260 * u * (1 if yy < FLOOR - 26 else 0) + (40 if yy >= FLOOR - 26 else 0)
-        sticky(c, x, yy, txt, rot, size=84, color=['#F6D654', '#FF9F7A', '#8FD3FF', '#A8E6A1', '#F6D654'][k])
-        if k in checked:
+        xx, yy, rot = x, y, ang
+        if falling is not None:
+            u = falling
+            # paper falls: a quick start, then it drifts down at an even speed, swinging side to side
+            yy = y + (380 * u - 120 * (1 - math.exp(-u / 0.32)))
+            land = NOTE_FLOOR[k][1] - 4
+            sway = math.sin(u * 7.5) * 46 * min(1.0, u * 3)
+            xx = x + sway + (NOTE_FLOOR[k][0] - x) * min(1.0, u / 1.2)
+            rot = ang + 38 * math.sin(u * 7.5 + 0.8)
+            if yy >= land:
+                yy = land
+        sticky(c, xx, yy, txt, rot, size=84, color=NOTE_COLORS[k])
+        ticked = (k in checked) if checked is not None else T >= NOTE_CHECKS[k]
+        if ticked and not gone:
             c.drawLine(x - 30, y + 16, x - 14, y + 30, paint('#2F9E5B', stroke=7))
             c.drawLine(x - 14, y + 30, x + 26, y - 18, paint('#2F9E5B', stroke=7))
 
@@ -603,8 +634,27 @@ LIE_ROT = -68
 
 
 def phone_spot(T, lift=0.0):
-    """Where the phone is held over his face (world), drifting a little; lift raises it (a bright clip)."""
-    return (676 + noise1(T * 0.6, 3) * 4, 616 - lift + noise1(T * 0.5, 4) * 4)
+    """Where the phone is held over his face (world): it drifts, sags and gets re-gripped every few seconds,
+    and kicks a little with each swipe of the thumb."""
+    regrip = 0.0
+    for k in range(int(T / 3.7) - 1, int(T / 3.7) + 1):
+        t0 = 3.7 * k + 1.3 * hrand(k, 51)
+        regrip += math.exp(-max(0.0, T - t0) / 0.5) * (T >= t0) * (hrand(k, 52) - 0.5) * 18
+    sag = 6 * math.sin(T * 0.45)
+    kick = 0.0
+    for s_ in EV['swipes']:
+        if 0 <= T - s_ < 0.4:
+            kick += math.sin(math.pi * (T - s_) / 0.4) * 5
+    return (676 + noise1(T * 0.6, 3) * 9 + regrip, 616 - lift + noise1(T * 0.5, 4) * 8 + sag - kick)
+
+
+def phone_angle(T):
+    """The phone tips a little as he holds it and with each swipe."""
+    tip = 0.0
+    for s_ in EV['swipes']:
+        if 0 <= T - s_ < 0.35:
+            tip -= math.sin(math.pi * (T - s_) / 0.35) * 6
+    return 18 + noise1(T * 0.4, 7) * 7 + tip
 
 
 def lying_pose(T, *, phone=True, face=None, swipes=None, laugh=0.0, sleepy=0.0, look_at=None):
@@ -669,8 +719,8 @@ class Room:
         self.door_open = 0.0
         self.door_light = 0.0
         self.notes_drop = None
-        self.notes_fallen = ()
-        self.notes_checked = ()
+        self.notes_fallen = None      # None: follow the story (see wall_notes)
+        self.notes_checked = None
         self.books = False
         self.stand_phone = None       # (on, face_down) when the phone lies on the nightstand
         self.stand_watch = False

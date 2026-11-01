@@ -607,6 +607,8 @@ def place_sfx(mx):
         mx.add('sfx', stereo(sfx.shimmer(1.2, seed=70 + k), 0.1)[::-1].copy(), t0, -20)
     mx.add('sfx', stereo(cough(3), 0.45), EV['cough'], -10)
     mx.add('sfx', stereo(sfx.thoom(1), -0.6), EV['eyes_open'] - 0.1, -6)
+    mx.add('sfx', stereo(sfx.reverse_swell(1.1, seed=90), 0.3), 9.05, -12)
+    mx.add('sfx', stereo(sfx.shimmer(1.4, seed=91), 0.3), 9.6, -18)
     mx.add('sfx', stereo(creak(1), 0.4), EV['head_up'] - 0.1, -16)
     mx.add('sfx', stereo(creak(2, 0.8), -0.2), EV['sit_up'], -14)
     mx.add('sfx', stereo(creak(3), 0.3), EV['old_lifts'], -18)
@@ -731,14 +733,15 @@ def place_voices(mx, work):
             from audio.dsp import ffmpeg_filter
             y = ffmpeg_filter(voices.trim_silence(raw), f'rubberband=tempo={rate:.2f}:pitch={0.92 + 0.03 * i:.2f}', tmp)
             y = voices.process(y, 'soft', tmp, pan=[-0.7, 0.6, -0.3, 0.8, -0.8, 0.4, 0.0][i])
-            mx.add('voice', y, t0, -4 + 0.5 * i, fade_out=0.2)
+            y = hp(y, 200, order=3)
+            mx.add('voice', y, t0, -7 + 0.5 * i, fade_out=0.2)
         windows.append((CHORUS[0], CHORUS[-1] + 0.8))
     # the old man, once; and the boy's answer
     speak = {'old': ('Algenib', 'old', 0.25), 'hero': ('Orus', 'firm', -0.1)}
     for text, t0, t1, who in SPEECH:
         voice, style, pan = speak[who]
         x = voices.line(text.replace('…', '...'), style, voice, cache, tmp, pan=pan, seed=90, max_dur=t1 - t0 + 0.6)
-        mx.add('voice', x, t0, 1.0 if who == 'old' else 0.0, fade_out=0.3)
+        mx.add('voice', x, t0, 4.0 if who == 'old' else 1.0, fade_out=0.3)
         windows.append((t0, t1))
     return windows
 
