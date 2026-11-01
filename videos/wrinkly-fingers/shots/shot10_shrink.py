@@ -38,13 +38,13 @@ def build():
     V.setup_shot(N / FPS, fps=FPS, engine="CYCLES" if PREVIEW else "EEVEE", samples=24 if PREVIEW else 64,
                  scale=50 if PREVIEW else 100)
     parts = CA.build()
-    CA.drain(parts, -10, -1)                       # drained in shot 09
+    CA.drain(parts, -10, -1, frames=(1, N))        # drained in shot 09
     CA.shrink(parts, [(SHRINK[0], 0.0), (SHRINK[1], 1.0)])
-    c0 = PAD + S09.K.look_dir(-12, 5) * 1.75
-    c1 = PAD + S09.K.look_dir(-8, 4) * 1.45
+    # camera: closer on the pad, a steady push in (constant speed) as it shrinks and buckles
+    c0 = PAD + S09.K.look_dir(-20, 8) * 1.7
+    c1 = PAD + S09.K.look_dir(-12, 5) * 1.42
     r = V.camera_rig("Cam_Shot10", lens=LENS, fstop=8.0)
-    V.cam_keys(r, [(1, c0, PAD, LENS), (N, c1, PAD + Vector((0.0, 0.0, -0.01)), LENS)])
-    V.handheld(r, amount=0.001, aim_amount=0.0007)
+    V.cam_keys(r, [(1, c0, PAD, LENS), (N, c1, PAD + Vector((0.0, 0.0, -0.01)), LENS)], interp="LINEAR")
     SKY.studio(c0, S09.AIM, LENS)
     SKY.lights(S09.AIM, c0, SKY.view_dir(c0, S09.AIM, LENS), scale=0.8)
     V.compositor(glow=0.25, threshold=1.0, dispersion=0.005)

@@ -42,11 +42,12 @@ def build():
     V.setup_shot(N / FPS, fps=FPS, engine="CYCLES" if PREVIEW else "EEVEE", samples=24 if PREVIEW else 64,
                  scale=50 if PREVIEW else 100)
     parts = CA.build()
-    CA.drain(parts, *DRAIN)
-    c0, c1 = cam(-24, 8, 2.45), cam(-10, 6, 2.3)
+    CA.drain(parts, *DRAIN, frames=(1, N))
+    # camera: three-quarters from the nail side, so the cut's relief and the rounded outside show;
+    # a steady swing round and in (constant speed, so it doesn't stop before the cut)
+    c0, c1 = cam(-34, 13, 2.4), cam(-17, 8, 2.2)
     r = V.camera_rig("Cam_Shot09", lens=LENS, fstop=8.0)
-    V.cam_keys(r, [(1, c0, AIM, LENS), (N, c1, AIM, LENS)])
-    V.handheld(r, amount=0.0012, aim_amount=0.0008)
+    V.cam_keys(r, [(1, c0, AIM, LENS), (N, c1, AIM, LENS)], interp="LINEAR")
     SKY.studio(c0, AIM, LENS)
     SKY.lights(AIM, c0, SKY.view_dir(c0, AIM, LENS), scale=0.8)
     V.compositor(glow=0.25, threshold=1.0, dispersion=0.005)
