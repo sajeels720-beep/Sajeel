@@ -47,6 +47,8 @@ class Look:
     sleeve: str = 'long'              # 'long', 'short' (t-shirt) or 'none' (vest): bare skin below the sleeve
     shorts: str | None = None         # colour of shorts; the lower legs are then bare
     print_text: str | None = None     # a slogan printed on the chest
+    stubble: str | None = None        # colour of a short beard that follows the jaw
+    wrinkles: float = 0.0             # 0..1: forehead lines, crow's feet and smile lines
     print_color: str = '#2B2416'
     head_r: float = 62.0
     torso: float = 100.0
@@ -389,6 +391,10 @@ class Character:
         if not pose.get('back'):
             if L.beard:
                 beard(c, R, pose, L.beard, L.outline)
+            if L.stubble:
+                stubble(c, R, pose, L.stubble, L.outline)
+            if L.wrinkles > 0:
+                wrinkles(c, R, pose, L.wrinkles, L.outline)
             face(c, R, pose, L.outline, L.brow_color)
             if L.mustache:
                 mustache(c, R, pose, L.mustache, L.outline)
@@ -465,6 +471,60 @@ def beard(c, R, p, color, outline='outline'):
         c.drawLine(x, R * 0.62 + dy, x + R * 0.03, R * 0.85 + dy, paint(outline, 0.18, stroke=2.5))
 
 
+def stubble(c, R, p, color, outline='outline'):
+    """A short beard hugging the jaw and chin, leaving the cheeks and the mouth clear."""
+    fx = p.get('turn', 0.35) * R * 0.42
+    dy = p.get('face_dy', 0.0) * R * 0.5
+    my = R * (0.38 + p.get('mouth_dy', 0.0))
+    path = skia.Path()
+    path.moveTo(-R * 0.86, R * 0.48)
+    path.cubicTo(-R * 0.62, R * 0.86, fx - R * 0.42, R * 1.05 + dy, fx + R * 0.04, R * 1.05 + dy)
+    path.cubicTo(fx + R * 0.46, R * 1.05 + dy, R * 0.7, R * 0.84, R * 0.88, R * 0.46)
+    path.cubicTo(R * 0.74, R * 0.6, fx + R * 0.4, my + R * 0.28 + dy, fx + R * 0.24, my + R * 0.2 + dy)
+    path.quadTo(fx + R * 0.02, my + R * 0.3 + dy, fx - R * 0.2, my + R * 0.2 + dy)
+    path.cubicTo(fx - R * 0.38, my + R * 0.28 + dy, -R * 0.7, R * 0.62, -R * 0.86, R * 0.48)
+    path.close()
+    head = skia.Path()
+    head.addCircle(0, 0, R - 1)
+    c.save()
+    c.clipPath(head, doAntiAlias=True)
+    c.drawPath(path, paint(color, 0.92))
+    c.drawPath(path, paint(outline, 0.35, stroke=3))
+    c.restore()
+
+
+def wrinkles(c, R, p, amount, outline='outline'):
+    """Age lines that follow the face's turn: forehead creases, crow's feet, lines beside the mouth."""
+    turn = p.get('turn', 0.35)
+    fx = turn * R * 0.42
+    hs = R * 0.30 * (1 - 0.32 * turn)
+    a = min(1.0, amount)
+    ink = paint(outline, 0.55 * a, stroke=3.2)
+    fdy = p.get('face_dy', 0.0) * R
+    lift = p.get('brow_y', 0.0) * R
+    for k, (y, w) in enumerate(((-0.47, 0.34), (-0.56, 0.27))):
+        yy = R * y + fdy - lift * 0.6
+        path = skia.Path()
+        path.moveTo(fx - R * w, yy + R * 0.025)
+        path.quadTo(fx, yy - R * (0.03 + 0.02 * k), fx + R * w, yy + R * 0.025)
+        c.drawPath(path, ink)
+    ey = -R * 0.05 + fdy
+    ex = fx + hs + R * 0.2
+    if ex < R * 0.9:
+        for dy, ang in ((-0.05, -18), (0.04, 0), (0.12, 18)):
+            x0, y0 = ex, ey + R * dy
+            r = math.radians(ang)
+            c.drawLine(x0, y0, x0 + math.cos(r) * R * 0.11, y0 + math.sin(r) * R * 0.11, ink)
+    mx, my = fx + R * 0.03, R * (0.38 + p.get('mouth_dy', 0.0))
+    mw = R * 0.2 * p.get('mwide', 1.0)
+    for side in (-1, 1):
+        x0 = mx + side * (mw + R * 0.07)
+        path = skia.Path()
+        path.moveTo(x0 - side * R * 0.02, my - R * 0.17)
+        path.quadTo(x0 + side * R * 0.06, my - R * 0.06, x0 + side * R * 0.02, my + R * 0.04)
+        c.drawPath(path, paint(outline, 0.4 * a, stroke=2.8))
+
+
 def headband(c, R, color, outline='outline'):
     """A sweatband round the forehead, tied at the back."""
     head = skia.Path()
@@ -496,8 +556,8 @@ def brows(c, R, p, outline='outline', color=None):
         a = math.radians(brow) * inner
         dx, dy = math.cos(a) * bl, math.sin(a) * bl
         if color:
-            c.drawLine(ex - dx, by - dy, ex + dx, by + dy, paint(outline, stroke=10.5))
-            c.drawLine(ex - dx, by - dy, ex + dx, by + dy, paint(color, stroke=6.5))
+            c.drawLine(ex - dx, by - dy, ex + dx, by + dy, paint(outline, stroke=9.0))
+            c.drawLine(ex - dx, by - dy, ex + dx, by + dy, paint(color, stroke=4.6))
         else:
             c.drawLine(ex - dx, by - dy, ex + dx, by + dy, paint(outline, stroke=6.5))
 
@@ -546,6 +606,20 @@ def face(c, R, p, outline='outline', brow_color=None):
                 c.drawOval(oval(ex, ey, size, ry), ink)
                 if size > 4:
                     c.drawCircle(ex + size * 0.35, ey - ry * 0.4, size * 0.28, paint('#FFFFFF', 0.85))
+                refl = p.get('reflect')
+                if refl and ry > size * 0.3:
+                    # a lit screen caught in the eye
+                    rc, ra = refl
+                    c.drawRRect(skia.RRect.MakeRectXY(skia.Rect.MakeXYWH(ex - size * 0.62, ey - ry * 0.55,
+                                                                         size * 0.5, ry * 0.78), 1.5, 1.5),
+                                paint(rc, ra))
+                if p.get('wet', 0) > 0:
+                    wa = p['wet']
+                    arc = skia.Path()
+                    arc.moveTo(ex - size * 1.15, ey + ry * 0.9)
+                    arc.quadTo(ex, ey + ry * 1.75, ex + size * 1.15, ey + ry * 0.9)
+                    c.drawPath(arc, paint('#BFE6FF', 0.85 * wa, stroke=3.0))
+                    c.drawCircle(ex - size * 0.3, ey + ry * 0.35, size * 0.2, paint('#FFFFFF', 0.7 * wa))
             if eyes == 'tired':
                 c.drawLine(ex - size * 1.5, ey - size * 0.35, ex + size * 1.5, ey - size * 0.15,
                            paint(outline, stroke=4))
@@ -670,7 +744,33 @@ def beanie(c, R, color, outline):
     c.drawCircle(0, -R * 1.07, R * 0.17, paint(outline, stroke=4))
 
 
+def _swoop(R, height=1.0):
+    h = height
+    path = skia.Path()
+    path.moveTo(-R * 0.97, R * 0.08)
+    path.cubicTo(-R * 1.08, -R * 0.45, -R * 0.82, -R * (0.98 + 0.12 * h), -R * 0.3, -R * (1.06 + 0.16 * h))
+    path.cubicTo(R * 0.15, -R * (1.13 + 0.22 * h), R * 0.72, -R * (1.1 + 0.2 * h), R * (0.98 + 0.06 * h), -R * (0.8 + 0.16 * h))
+    path.cubicTo(R * 1.06, -R * 0.68, R * 0.92, -R * 0.5, R * 0.74, -R * 0.56)
+    path.cubicTo(R * 0.6, -R * 0.62, R * 0.42, -R * 0.66, R * 0.2, -R * 0.6)
+    path.cubicTo(-R * 0.08, -R * 0.54, -R * 0.36, -R * 0.52, -R * 0.52, -R * 0.3)
+    path.cubicTo(-R * 0.66, -R * 0.08, -R * 0.74, R * 0.12, -R * 0.97, R * 0.08)
+    path.close()
+    return path
+
+
 def hair_front(c, R, style, color, outline):
+    if style in ('swoop', 'swoop_thin'):
+        thin = style == 'swoop_thin'
+        path = _swoop(R, 0.35 if thin else 1.0)
+        c.drawPath(path, paint(color))
+        # strands: two soft lines sweeping toward the quiff
+        for k, (y0, y1) in enumerate(((-0.78, -0.95), (-0.62, -0.78))):
+            sp = skia.Path()
+            sp.moveTo(-R * 0.55, -R * (0.58 + 0.2 * k))
+            sp.quadTo(R * 0.05, R * y1, R * 0.62, R * y0)
+            c.drawPath(sp, paint(outline, 0.35 if not thin else 0.25, stroke=3))
+        c.drawPath(path, paint(outline, stroke=4.5))
+        return
     if style == 'sides':
         # greying hair left only at the temples: soft patches clipped to the head
         head = skia.Path()

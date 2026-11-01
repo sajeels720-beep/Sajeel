@@ -156,10 +156,24 @@ def process(x, style, tmpdir, pan=0.0, max_dur=None):
         y = 0.75 * breath[:n_] + 0.5 * voice[:n_]
         y = hp(y, 140)
         y = reverb(stereo(y, pan, 0.3), wet=0.16, length=1.2, decay=0.4)
+    elif style == 'old':
+        # a frail old man: slower, a little lower, a tremor in the voice, breath around the words
+        # (two separate passes: chained in one filter graph, vibrato after rubberband returns NaNs)
+        v = ffmpeg_filter(x, 'rubberband=pitch=0.95:tempo=0.88:formant=preserved', tmpdir)
+        v = np.nan_to_num(ffmpeg_filter(v, 'vibrato=f=5.4:d=0.16', tmpdir))
+        breath = whisperize(v)
+        n_ = min(len(v), len(breath))
+        y = 0.85 * v[:n_] + 0.3 * breath[:n_]
+        y = lp(hp(y, 110), 7600)
+        y = reverb(stereo(y, pan, 0.2), wet=0.13, length=1.1, decay=0.35)
+    elif style == 'firm':
+        # quiet, certain, close to the mic
+        y = soft_clip(hp(x, 85) * 1.15, 1.1)
+        y = reverb(stereo(y, pan, 0.15), wet=0.1, length=0.9, decay=0.3)
     else:  # roar layer
         y = soft_clip(x * 1.8, 2.0)
         y = reverb(stereo(y, pan, 1.0), wet=0.45, length=3.2, decay=0.9)
-    return norm(y, 0.9)
+    return norm(np.nan_to_num(y), 0.9)
 
 
 def line(text, style, voice, cache_dir, tmpdir, pan=0.0, seed=0, max_dur=None):

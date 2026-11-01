@@ -123,8 +123,19 @@ def _render_range(film, f0, f1, out_path, progress_path):
     Path(progress_path).write_text(f'done {f1 - f0} frames in {time.time() - t_start:.0f}s\n')
 
 
-def render(film: Film, out_path, workers=4, t0=0.0, t1=None, workdir=None):
-    """Render [t0, t1) to out_path (video only)."""
+_FILM = None   # set before forking, so pool workers inherit the film without pickling it
+
+
+def _render_chunk(job):
+    f0, f1, out_path, progress_path = job
+    _render_range(_FILM, f0, f1, out_path, progress_path)
+    return str(out_path)
+
+
+def render(film: Film, out_path, workers=4, t0=0.0, t1=None, workdir=None, chunks=None):
+    """Render [t0, t1) to out_path (video only). The frames are cut into more chunks than workers (3 each by
+    default) and handed out as workers come free, so a few slow scenes don't hold up the whole render."""
+    global _FILM
     out_path = Path(out_path)
     workdir = Path(workdir or out_path.parent / (out_path.stem + '_parts'))
     if workdir.exists():
@@ -132,21 +143,15 @@ def render(film: Film, out_path, workers=4, t0=0.0, t1=None, workdir=None):
     workdir.mkdir(parents=True)
     f0 = int(round(t0 * film.fps))
     f1 = int(round((film.duration if t1 is None else t1) * film.fps))
-    n = max(1, min(workers, f1 - f0))
+    n = max(1, min(chunks or workers * 3, f1 - f0))
     bounds = [f0 + (f1 - f0) * k // n for k in range(n + 1)]
+    parts = [workdir / f'part{k:02d}.mp4' for k in range(n)]
+    jobs = [(bounds[k], bounds[k + 1], parts[k], workdir / f'progress{k:02d}.txt') for k in range(n)]
+    _FILM = film
     ctx = mp.get_context('fork')
-    procs = []
-    parts = []
-    for k in range(n):
-        part = workdir / f'part{k:02d}.mp4'
-        parts.append(part)
-        p = ctx.Process(target=_render_range, args=(film, bounds[k], bounds[k + 1], part, workdir / f'progress{k}.txt'))
-        p.start()
-        procs.append(p)
-    for p in procs:
-        p.join()
-        if p.exitcode != 0:
-            raise RuntimeError(f'render worker failed with exit code {p.exitcode}')
+    with ctx.Pool(min(workers, n)) as pool:
+        for _ in pool.imap_unordered(_render_chunk, jobs):
+            pass
     listing = workdir / 'parts.txt'
     listing.write_text(''.join(f"file '{p.resolve()}'\n" for p in parts))
     subprocess.run(['ffmpeg', '-hide_banner', '-loglevel', 'error', '-y', '-f', 'concat', '-safe', '0',

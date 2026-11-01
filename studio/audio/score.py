@@ -89,7 +89,8 @@ class Score:
         mid.tracks.append(track)
         track.append(mido.MetaMessage('set_tempo', tempo=500000, time=0))
         for ch, (prog, vol, pan, rev) in sorted(self.programs[stem].items()):
-            if ch != 9:
+            if ch != 9 or prog:
+                # on channel 10 the program picks the drum kit (0 standard, 25 TR-808, 40 brush, 48 orchestra)
                 track.append(mido.Message('program_change', channel=ch, program=prog, time=0))
             track.append(mido.Message('control_change', channel=ch, control=7, value=vol, time=0))
             track.append(mido.Message('control_change', channel=ch, control=10, value=pan, time=0))

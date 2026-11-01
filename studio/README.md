@@ -53,7 +53,9 @@ key, wordless synthetic whispers are used and the on-screen text still carries t
 studio/
   engine/   core.py (time, easing, keyframes)  draw.py (Skia helpers, palette)  rig.py (character rig, IK, faces,
             clothes, run/walk cycles)  props.py (guitar, bed, stage, ...)  home.py (desk, books, doors, clocks, ...)
-            gym.py (weights, benches, racks, treadmills, banners, photos)  fx.py (notes, shards, eyes, smoke
+            gym.py (weights, benches, racks, treadmills, banners, photos)  motion.py (smooth spline keyframes,
+            overlapping action, planted-foot walks and runs, slopes, camera paths)  light.py (light maps, rim light)
+            fx.py (notes, shards, eyes, smoke
             dissolve, fireworks, snow, rain, leaves)  thumbkit.py (brush lettering, soft light)  captions.py  render.py
   audio/    score.py (MIDI in seconds -> FluidR3 GM stems)  sfx.py (synthesised effects)  voices.py (TTS whispers)
             dsp.py  mix.py (buses, ducking, leveller, limiter)
@@ -73,6 +75,7 @@ Every frame is a pure function of time, so renders are deterministic and split a
 | WHAT WILL PEOPLE SAY? | `films/what_will_people_say` |
 | 90 DAYS LEFT. | `films/ninety_days_left` |
 | EVERYONE QUITS IN FEBRUARY. | `films/everyone_quits_in_february` |
+| HE'S WAITING. | `films/hes_waiting` |
 
 ## Making the next film
 

@@ -4,7 +4,8 @@ Writes two files to output/<film>/:
   subtitles.srt   timed captions (YouTube Studio > Subtitles > Add > Upload file > With timing)
   transcript.txt  the same lines without times (YouTube Studio > Subtitles > Add > Auto-sync)
 
-Lines come from the film's cues.py: NARRATOR, WHISPERS, ROAR, COUNTDOWN and TITLE_CARD, whichever it has.
+Lines come from the film's cues.py: NARRATOR, WHISPERS, SPEECH, ROAR, COUNTDOWN, TITLE_CARD and SUBTITLES_EXTRA,
+whichever it has.
 """
 from __future__ import annotations
 
@@ -31,6 +32,10 @@ def lines(cues):
         out.append((t0, t1, text))
     for text, t0, t1, *_ in getattr(cues, 'WHISPERS', []):
         out.append((t0, t1, _sentence(text)))
+    for text, t0, t1, *_ in getattr(cues, 'SPEECH', []):
+        out.append((t0, t1, text))
+    for t0, t1, text in getattr(cues, 'SUBTITLES_EXTRA', []):
+        out.append((t0, t1, text))
     roar = getattr(cues, 'ROAR', None)
     if roar:
         out.append((roar[1], roar[2], roar[0]))

@@ -19,5 +19,20 @@ words. Look at that image before designing a new one.
 Every film the owner gets comes with subtitles, without being asked: `make_film.py films/<film> subs` writes
 `output/<film>/subtitles.srt` (timed; YouTube Studio > Subtitles > Add > Upload file > With timing) and
 `transcript.txt` (YouTube's Auto-sync). Send both with the video, thumbnail and upload sheet. The lines come from
-the film's `cues.py` (`NARRATOR`, `WHISPERS`, `ROAR`, `COUNTDOWN`, `TITLE_CARD`), so keep every on-screen or spoken
-line there.
+the film's `cues.py` (`NARRATOR`, `WHISPERS`, `SPEECH`, `ROAR`, `COUNTDOWN`, `TITLE_CARD`, `SUBTITLES_EXTRA`), so keep
+every on-screen or spoken line there.
+
+## Every film is its own film
+
+The owner asked for this on film 4 and it holds for every film after it:
+
+- **Its own music and sound design.** Never reuse the previous films' palette. Films 1-3 used piano, strings,
+  choir, horns, timpani and taiko over a 120 BPM 4/4 grind; film 4 used a ticking pocket watch as the pulse, a
+  lo-fi loop for the villain, a clarinet theme, marimba in 6/8 and church organ. Pick new instruments (General
+  MIDI programs and drum kits), a new key, tempo and metre, motifs that come from the story's own objects, and
+  sound effects built for its world. Note the palette in the film's `sound.py` docstring.
+- **A strong opening hook.** Within the first 5 seconds a question the viewer needs answered; the premise and
+  stakes clear by about 15 seconds; then the title.
+- **Smooth movement.** Animate with `studio/engine/motion.py`: `Curve` (spline keys that flow through poses,
+  with `lag` for overlapping action), `Gait` (planted-foot walks and runs, also on slopes), `blend` for
+  transitions, `CamPath` for cameras. Avoid switching poses between frames; blend them. Films render at 30 fps.
