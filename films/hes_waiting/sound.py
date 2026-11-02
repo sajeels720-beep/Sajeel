@@ -731,19 +731,15 @@ def place_sfx(mx):
     # the montage: running steps from the gaits themselves
     import act2
     for gait, t0, t1, g in ((act2.RUN_OUT, 109.1, 111.0, -18), (act2.D3_GAIT1, 111.0, 113.3, -18),
-                            (act2.D3_GAIT2, 114.65, 115.0, -18), (act2.G77_H, 127.0, 135.0, -20),
-                            (act2.G77_O, 129.6, 135.0, -22)):
+                            (act2.D3_GAIT2, 114.65, 115.0, -18), (act2.G77_H, 127.0, 135.0, -20)):
         for k, t in enumerate(run_steps(gait, t0, t1)):
             mx.add('sfx', stereo(sfx.footstep(False, seed=100 + k), 0.1 * (-1) ** k), t, g)
-    for t in (114.2, 114.5):                                             # the old man, on his own feet
-        mx.add('sfx', stereo(sfx.footstep(False, seed=7)), t, -20)
     mx.add('sfx', stereo(old_breath(1.4, 1.6, seed=26, rasp=0.0)), 113.3, -12)
     for k in range(5):
         mx.add('sfx', stereo(sfx.grunt(seed=27 + k, dur=0.4), 0.3), 115.6 + k / 0.8 * 0.95, -18)
     mx.add('sfx', stereo(sfx.drawer(True, seed=28), -0.6), EV['drawer'] - 0.7, -12)
     mx.add('sfx', stereo(sfx.drawer(False, seed=29), -0.6), EV['drawer'], -12)
     mx.add('sfx', stereo(sfx.click(seed=30), -0.6), 120.9, -10)
-    mx.add('sfx', stereo(sfx.rustle(1.2, seed=31, level=0.2)[:, 0], 0.3), EV['tuck'], -14)
     mx.add('amb', crickets(4.0, seed=32), 119.0, -10, fade_in=0.3, fade_out=0.3)
     mx.add('amb', sfx.birds(4.0, seed=33, level=0.16), 115.0, -20, fade_in=0.2, fade_out=0.2)
     mx.add('amb', sfx.birds(4.0, seed=34, level=0.16), 123.0, -20, fade_in=0.2, fade_out=0.2)
@@ -773,12 +769,23 @@ def place_sfx(mx):
     mx.add('amb', sfx.wind(20.0, seed=48, level=0.18, gusty=1.2), EV['ascent'] - 1.0, -12, fade_in=2.0, fade_out=1.0)
     for k in range(60):
         t = EV['ascent'] + k * 0.42 + 0.05 * math.sin(k)
-        if t > EV['last_step'] + 2:
+        if t > EV['last_step'] - 0.1:
             break
         mx.add('sfx', stereo(gravel(k), 0.15 * (-1) ** k), t, -20)
-    mx.add('sfx', stereo(sfx.grunt(seed=71, dur=0.5)), EV['last_step'] + 0.9, -14)
-    mx.add('sfx', stereo(sfx.grunt(seed=72, dur=0.6), 0.1), EV['pull_up'] + 0.2, -14)
-    mx.add('sfx', stereo(sfx.slap(seed=73)), EV['hand_offer'] + 0.5, -16)
+    # the last step, alone: a push, his foot slips off the edge, stones fall; hard breathing; again, and up
+    mx.add('sfx', stereo(sfx.grunt(seed=71, dur=0.5)), EV['slip'] - 0.25, -14)
+    mx.add('sfx', stereo(gravel(91), -0.1), EV['slip'] + 0.05, -8)
+    for k in range(3):
+        mx.add('sfx', stereo(gravel(92 + k), -0.2), EV['slip'] + 0.35 + 0.12 * k, -16 - 2 * k)
+    mx.add('sfx', stereo(old_breath(1.5, 1.9, seed=95, rasp=0.0)), EV['slip'] + 0.6, -11)
+    mx.add('sfx', stereo(sfx.grunt(seed=72, dur=0.6), 0.1), EV['push2'] + 0.05, -11)
+    mx.add('sfx', stereo(gravel(96)), EV['push2'] + 0.55, -16)
+    mx.add('sfx', stereo(gravel(97)), EV['push2'] + 0.85, -16)
+    # the summit: the old man takes shape out of the sunlight
+    mx.add('sfx', stereo(sfx.shimmer(1.8, seed=98), 0.25), EV['appear'] - 0.1, -10)
+    # every day he shows up: the sparks rising off him
+    for k, t in enumerate([114.3, 115.15, 116.25, 117.5, 118.4, 130.2, 133.0]):
+        mx.add('sfx', stereo(sfx.shimmer(1.0, seed=120 + k), 0.2), t, -22)
     # the sunrise
     mx.add('sfx', stereo(sfx.reverse_swell(2.0, seed=74)), EV['sun_breaks'] - 2.0, -6)
     mx.add('amb', sfx.wind(24.0, seed=75, level=0.15, gusty=0.6), 172.0, -14, fade_in=1.0, fade_out=3.0)
@@ -913,6 +920,8 @@ def build(out_dir):
     # silence where the watch stops, until his face shows in the dead glass; and in the black before dawn
     mx.duck('music', [(EV['watch_stops'] + 0.02, 72.95)], -40.0, 0.05)
     mx.duck('music', [(EV['black'] - 0.2, EV['dawn'] + 0.3)], -40.0, 0.4)
+    # the climb drops away when his foot slips, and comes back as he goes again
+    mx.duck('music', [(EV['slip'] + 0.05, EV['push2'] - 0.35)], -9.0, 0.3)
     master = mx.render({'music': 0.0, 'shadow': -3.0, 'phone': -6.0, 'sfx': -6.0, 'amb': -8.0, 'voice': 3.0},
                        level={'music': -21.0}, ceiling=0.6)
     return write_wav(work / 'mix.wav', master)

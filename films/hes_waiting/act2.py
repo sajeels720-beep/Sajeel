@@ -277,18 +277,19 @@ def stand_shot(c, t, T):
 
     def old(cc, TT, rim_pass=False):
         v = vitality(TT)
-        sit = sit_edge_pose(OLD_X, TT, v, head_up=0.6, look=0.9)
-        sit['hand_f'] = (40, -10)
-        st = old_standing(OLD_X - 40, TT, v, facing=-1, face=dict(lx=0.6, smile=0.15))
-        p = sit_to_stand(TT, EV['rise'] + 0.3, 1.5, sit, st)
+        p = stand_old(TT)
         j = old_man(v).draw(cc, p, t=TT)
-        up = smooth(EV['rise'] + 0.3, EV['rise'] + 1.8, TT)
-        hand = to_world(p, j['hand_f'])
-        lean_tip = (OLD_X + 92, FLOOR - 2)
-        planted = (hand[0] - 18, FLOOR - 2)
-        tip = (lean_tip[0] + (planted[0] - lean_tip[0]) * up, FLOOR - 2)
-        top = (OLD_X + 74 + (hand[0] - OLD_X - 74) * up, MATT - 70 + (hand[1] - MATT + 70) * up)
-        cane(cc, top, tip)
+        if TT < EV['cane_drop']:
+            up = smooth(EV['rise'] + 0.2, EV['cane_drop'], TT)
+            hand = to_world(p, j['hand_f'])
+            lean_tip = (OLD_X + 92, FLOOR - 2)
+            planted = (hand[0] - 18, FLOOR - 2)
+            tip = (lean_tip[0] + (planted[0] - lean_tip[0]) * up, FLOOR - 2)
+            top = (OLD_X + 74 + (hand[0] - OLD_X - 74) * up, MATT - 70 + (hand[1] - MATT + 70) * up)
+            cane(cc, top, tip)
+        else:
+            hand, tip = dropped_cane()
+            falling_cane(cc, TT, EV['cane_drop'], hand, tip, side=-1)
         return p
 
     R = Room(light='day', sky='dawn', curtain=1.0, warm=0.8, ambient='#E9D6C2', hero=hero, old=old)
@@ -296,7 +297,44 @@ def stand_shot(c, t, T):
     draw_room(c, T, R)
 
 
-cam_stand = CamPath([(0.0, (870, 690, 1.55)), (5.0, (890, 670, 1.5))], handheld=4, seed=53)
+cam_stand = CamPath([(0.0, (870, 690, 1.55)), (5.4, (890, 674, 1.5))], handheld=4, seed=53)
+
+
+def stand_old(T):
+    """Day 1: the old man gets up with the boy, on his stick; then he lets it go and stands a little straighter."""
+    v = vitality(T)
+    drop = EV['cane_drop']
+    sit = sit_edge_pose(OLD_X, T, v, head_up=0.6, look=0.9)
+    sit['hand_f'] = (40, -10)
+    st = old_standing(OLD_X - 40, T, v, facing=-1,
+                      face=dict(lx=0.6, smile=0.15 + 0.3 * smooth(drop + 0.3, drop + 0.9, T)))
+    p = sit_to_stand(T, EV['rise'] + 0.2, 1.05, sit, st)
+    free = smooth(drop + 0.1, drop + 0.7, T)
+    p['lean'] = p.get('lean', 0.0) - 7 * free
+    p['sf'] = p.get('sf', 0.0) * (1 - free) + 6 * free
+    p['ef'] = p.get('ef', 0.0) * (1 - free) + 14 * free
+    return p
+
+
+_DROPPED = {}
+
+
+def dropped_cane():
+    """(hand, tip) of the stick at the moment he lets it go."""
+    if not _DROPPED:
+        drop = EV['cane_drop']
+        q = stand_old(drop)
+        pp = dict(BASE_POSE)
+        pp.update(q)
+        hand = to_world(q, solve(old_man(vitality(drop)).look, pp)['hand_f'])
+        _DROPPED['v'] = (hand, (hand[0] - 18, FLOOR - 2))
+    return _DROPPED['v']
+
+
+def cane_on_floor(c, T=None):
+    """The stick he let fall on Day 1, still lying where it fell at the end of the bed."""
+    hand, tip = dropped_cane()
+    falling_cane(c, EV['cane_drop'] + 5.0, EV['cane_drop'], hand, tip, side=-1)
 
 
 # --- 4. out of the door (107-111) ---------------------------------------------------------------------------------------
@@ -310,20 +348,6 @@ RUN_OUT = Gait(OUT_RUN, 109.1, 111.2, PATH_Y, step=118, run=True, lean=9, arm=34
 def out_shot(c, t, T):
     door = smooth(EV['door_open'], EV['door_open'] + 0.4, T)
     street_dawn(c, T, cam_x=960, warm=0.3, door_open=door)
-    v = vitality(T)
-    if T >= 108.5:
-        drop = EV['cane_drop']
-        p = _out_old(T)
-        if T < drop:
-            draw_old_standing(c, p, T, v)
-        else:
-            old_man(v).draw(c, p, t=T)
-            # the stick he no longer needs tips over on the step
-            q = _out_old(drop)
-            pp = dict(BASE_POSE)
-            pp.update(q)
-            hand = to_world(q, solve(old_man(vitality(drop)).look, pp)['hand_f'])
-            falling_cane(c, T, drop, hand, (hand[0] + 16, FLOOR - 2), side=1)
     if T >= EV['door_open'] + 0.2:
         if T < 109.1:
             p = GAIT_OUT.pose(T)
@@ -340,21 +364,6 @@ def out_shot(c, t, T):
                 c.drawCircle(hp[0] + 60 * u, hp[1] - 10 * u, 10 + 22 * u, paint('#FFFFFF', 0.35 * (1 - u), blur=6))
 
 
-def _out_old(T):
-    """The old man in the doorway on Day 1: he watches the boy run, lets go of his stick and stands straighter."""
-    v = vitality(T)
-    free = smooth(EV['cane_drop'] + 0.15, EV['cane_drop'] + 0.8, T)
-    p = old_standing(820, T, v, facing=1, face=dict(lx=1.0, smile=0.1 + 0.3 * smooth(109.6, 110.6, T)))
-    p['alpha'] = smooth(108.5, 109.0, T)
-    p['lean'] -= 7 * free
-    p['sf'] = p.get('sf', 0) * (1 - free) + 6 * free
-    p['ef'] = p.get('ef', 0) * (1 - free) + 14 * free
-    if T > 110.35:
-        p['hand_b'] = (30, -60 - 30 * smooth(110.35, 110.75, T))
-        p['ik_b'] = 1.0
-    return p
-
-
 def falling_cane(c, T, t0, hand, tip, side=1):
     """A walking stick let go of: it tips over around its foot and clatters down flat."""
     L = math.hypot(hand[0] - tip[0], hand[1] - tip[1])
@@ -368,46 +377,35 @@ def falling_cane(c, T, t0, hand, tip, side=1):
     cane(c, (tip[0] + math.sin(ang) * L, tip[1] - math.cos(ang) * L), tip)
 
 
-cam_out = CamPath([(0.0, (960, 640, 1.08)), (4.0, (1040, 640, 1.08))], handheld=3, seed=54)
-# the stick hitting the step, close
-cam_cane = CamPath([(0.0, (860, 800, 2.5)), (0.75, (866, 806, 2.62))], handheld=3, seed=56)
-CANE_INSERT = (EV['cane_drop'] + 0.05, EV['cane_drop'] + 0.8)
-
-
-def cam_out_after(t):
-    return cam_out(t + CANE_INSERT[1] - EV['out'])
+cam_out = CamPath([(0.0, (960, 640, 1.08)), (3.6, (1040, 640, 1.08))], handheld=3, seed=54)
 
 
 # --- the montage ----------------------------------------------------------------------------------------------------------
 
-def gift_motes(c, T, src, dst, pulses, n=26, seed=9, dur=1.15):
-    """The drain run backwards: each time he pushes on, warm sparks leave his chest fast and settle into the old
-    man's, which glows as it takes them in. src and dst are fn(T) -> (x, y) (both of them move)."""
+def rising_motes(c, T, src, pulses, n=24, seed=9, dur=1.7, drift=(160.0, -330.0)):
+    """The drain run backwards: each time he pushes on, warm sparks leave his chest and float up and away, toward
+    the light. The old man is not with him; this is him getting stronger, somewhere ahead. src is fn(T) -> (x, y);
+    each spark keeps the place it left him from."""
     for t0 in pulses:
-        if T < t0 or T > t0 + dur + 1.0:
+        if T < t0 or T > t0 + dur + 0.6:
             continue
-        s_, d_ = src(T), dst(T)
+        s0 = src(t0)
         k = math.exp(-max(0.0, T - t0) / 0.3) * smooth(t0, t0 + 0.06, T)
-        c.drawCircle(s_[0], s_[1], 44, paint('#FFD27A', 0.35 * k, blur=18, blend='add'))
+        c.drawCircle(s0[0], s0[1], 46, paint('#FFD27A', 0.4 * k, blur=18, blend='add'))
         for i in range(n):
-            delay = hrand(i, seed, int(t0 * 10)) * 0.35
+            delay = hrand(i, seed, int(t0 * 10)) * 0.4
             u = (T - t0 - delay) / dur
             if u <= 0 or u >= 1:
                 continue
-            e = 1 - (1 - u) ** 2.2                      # fast out of him, settling into the old man
-            bend = -70 + hrange(-30, 30, i, seed, 2)
-            jx, jy = hrange(-24, 24, i, seed, 3) * (1 - e), hrange(-24, 24, i, seed, 4) * (1 - e)
-            x = s_[0] + (d_[0] - s_[0]) * e + jx
-            y = s_[1] + (d_[1] - s_[1]) * e + bend * math.sin(math.pi * e) + jy
-            a = min(1.0, u * 6) * (1 - smooth(0.85, 1.0, u))
+            o = src(t0 + delay)
+            e = 1 - (1 - u) ** 1.8
+            x = o[0] + drift[0] * e + hrange(-70, 70, i, seed, 2) * e + 14 * math.sin(u * 7 + i)
+            y = o[1] + drift[1] * e + hrange(-40, 40, i, seed, 3) * e
+            a = min(1.0, u * 6) * (1 - smooth(0.6, 1.0, u))
             colr = mixc('#FFF1C9', '#FFC24F', e)
-            r = hrange(3.0, 6.0, i, seed, 5)
+            r = hrange(3.0, 6.0, i, seed, 5) * (1 - 0.4 * e)
             c.drawCircle(x, y, r * 3.2, paint(colr, 0.35 * a, blur=8, blend='add'))
             c.drawCircle(x, y, r, paint(colr, 0.95 * a, blend='add'))
-        f = smooth(t0 + 0.7, t0 + 1.0, T) * (1 - smooth(t0 + 1.2, t0 + 1.9, T))
-        if f > 0:
-            c.drawCircle(d_[0], d_[1], 84, paint('#FFC86B', 0.45 * f, blur=28, blend='add'))
-            c.drawCircle(d_[0], d_[1], 26, paint('#FFF1C9', 0.6 * f, blur=6, blend='add'))
 
 
 def track(cam_curve, y=600, z=1.15, seed=0, hh=3):
@@ -416,27 +414,18 @@ def track(cam_curve, y=600, z=1.15, seed=0, hh=3):
     return cam
 
 
-# DAY 3: he runs out of breath; the old man, without his stick now, catches up
+# DAY 3: he runs out of breath, alone; he gets it back and runs on
 D3 = EV['days'][0]
 D3_GAIT1 = Gait(Curve([(D3 - 1.4, 0.0), (D3 + 2.3, 1060.0, 'stop')]), D3 - 1.4, D3 + 2.3, PATH_Y, step=104,
                 run=True, lean=8, arm=26, lift=10, duty=0.4, blend_steps=0.25)
 D3_GAIT2 = Gait(Curve([(D3 + 3.65, 1060.0), (D3 + 4.6, 1420.0)]), D3 + 3.65, D3 + 4.6, PATH_Y, step=104, run=True,
                 lean=8, arm=26, lift=10, blend_steps=0.25)
-D3_OLD = Curve([(D3 + 0.6, 560.0), (D3 + 3.2, 900.0)])
-D3_OLD_GAIT = Gait(D3_OLD, D3 + 0.6, D3 + 3.2, PATH_Y, step=44, lift=8, arm=6, lean=2)
 
 
 def day3(c, t, T):
     cx = cam_day3(t)[0]
     river_path(c, T, cx, 'dawn')
-    v = vitality(T)
-    # the old man, shuffling in on his stick
-    if T > D3 + 0.6:
-        p = D3_OLD_GAIT.pose(T)
-        p.update(old_face(v, T))
-        p.update(lean=p.get('lean', 0) + 18, tilt=8, turn=0.3, lx=0.6)
-        old_man(v).draw(c, p, t=T)          # no stick since Day 1: slow, but on his own feet
-    # the boy
+    # the boy, alone
     if T < D3 + 2.3:
         p = D3_GAIT1.pose(T)
         p.update(mopen=0.0, smile=-0.3, sweat=0.8, brow=-6)
@@ -447,13 +436,13 @@ def day3(c, t, T):
         p.update(lean=48 * bent, tilt=10 * bent - 14 * smooth(D3 + 3.3, D3 + 3.5, T), mopen=0.0, smile=-0.35,
                  sweat=1.2, brow=-10, hand_f=(40 * bent + 4, 30 * bent), hand_b=(30 * bent, 36 * bent),
                  ik_f=-1.0, ik_b=-1.0, y=stand_feet(1060, PATH_Y)['y'] + 10 * bent + 2 * pant * bent,
-                 lx=-0.6 * smooth(D3 + 3.2, D3 + 3.4, T))
+                 ly=-0.4 * smooth(D3 + 3.2, D3 + 3.4, T))
     else:
         p = D3_GAIT2.pose(T)
         p.update(mopen=0.0, smile=-0.2, sweat=0.8, brow=-8)
     p.update(turn=0.3, eye=blink(T, 1, 3.3))
     RUNNER.draw(c, p, t=T)
-    gift_motes(c, T, _d3_hero_chest, _d3_old_chest, [D3 + 3.25], n=22, dur=1.0)
+    rising_motes(c, T, _d3_hero_chest, [D3 + 3.3])
 
 
 def _d3_hero_chest(T):
@@ -463,12 +452,6 @@ def _d3_hero_chest(T):
     return to_world(q, (14, -66))
 
 
-def _d3_old_chest(T):
-    q = D3_OLD_GAIT.pose(min(T, D3 + 3.2))
-    q.update(lean=q.get('lean', 0) + 18)
-    return to_world(q, (14, -62))
-
-
 D3_CAM = Curve([(0.0, 620.0), (2.3, 980.0), (3.6, 1000.0), (4.0, 1080.0)])
 
 
@@ -476,7 +459,7 @@ def cam_day3(t):
     return (D3_CAM(t), 640 + noise1(t * 0.5, 61) * 3, 1.25, 0.0)
 
 
-# DAY 12: push-ups on the bedroom floor; the old man counts them with a nod
+# DAY 12: push-ups on the bedroom floor, alone; the old man's place at the end of the bed is empty
 def pushup(T, x, floor, rate=0.75, phase=0.0, depth=1.0, shaky=0.0, facing=1, scale=1.0):
     """A push-up rotating about the toes. Returns a pose with IK hands on the floor."""
     cyc = 0.5 - 0.5 * math.cos(2 * math.pi * (T * rate + phase))      # 0 up .. 1 down
@@ -503,16 +486,8 @@ def day12(c, t, T):
         RUNNER.draw(cc, p, t=TT)
         return p
 
-    def old(cc, TT, rim_pass=False):
-        v = vitality(TT)
-        p = sit_edge_pose(OLD_X, TT, v, head_up=0.7, look=0.8)
-        nod = 0.5 - 0.5 * math.cos(2 * math.pi * TT * 0.8)
-        p.update(tilt=p['tilt'] + 7 * nod, smile=0.2, hand_f=(40, -10))
-        old_man(v).draw(cc, p, t=TT)
-        return p
-
-    R = Room(light='day', sky='day', curtain=1.0, ambient='#F1E8DC', hero=hero, old=old)
-    R.after = lambda cc, TT: gift_motes(cc, TT, _d12_hero_chest, _d12_old_chest, D12_PULSES)
+    R = Room(light='day', sky='day', curtain=1.0, ambient='#F1E8DC', hero=hero, back=cane_on_floor)
+    R.after = lambda cc, TT: rising_motes(cc, TT, _d12_hero_chest, D12_PULSES, drift=(-90.0, -360.0))
     draw_room(c, T, R)
 
 
@@ -522,11 +497,6 @@ D12_PULSES = [115.15, 116.25, 117.5, 118.4]
 def _d12_hero_chest(T):
     p = pushup(T, 1470, FLOOR + 10, rate=0.8, shaky=1.0, facing=-1)
     return to_world(p, (14, -70))
-
-
-def _d12_old_chest(T):
-    v = vitality(T)
-    return to_world(sit_edge_pose(OLD_X, T, v, head_up=0.7, look=0.8), (14, -62))
 
 
 cam_day12 = CamPath([(0.0, (1190, 720, 1.6)), (4.0, (1206, 716, 1.66))], handheld=4, seed=62)
@@ -557,26 +527,14 @@ def day30(c, t, T):
             phone_side(cc, hand[0], hand[1] - 20, 30, TT, 0.9, on=True, swipes=[])
         return p
 
-    def old(cc, TT, rim_pass=False):
-        v = vitality(TT)
-        tuck = smooth(EV['tuck'], EV['tuck'] + 0.6, TT) * (1 - smooth(EV['tuck'] + 1.3, EV['tuck'] + 1.8, TT))
-        p = sit_edge_pose(OLD_X, TT, v, head_up=0.75, look=0.9)
-        p.update(smile=0.25, hand_f=(40, -10))
-        if tuck > 0:
-            p['hand_f'] = to_local_pose(p, (OLD_X - 90 - 30 * tuck, MATT - 30 + 10 * tuck))
-            p['ik_f'] = 1.0
-            p['lean'] += 14 * tuck
-        old_man(v).draw(cc, p, t=TT)
-        return p
-
-    R = Room(light='night', sky='night', curtain=0.86, lamp=lamp, drawer=drawer, hero=hero, old=old, old_rim=0.5)
+    R = Room(light='night', sky='night', curtain=0.86, lamp=lamp, drawer=drawer, hero=hero, back=cane_on_floor)
     draw_room(c, T, R)
 
 
 cam_day30 = CamPath([(0.0, (760, 690, 1.55)), (4.0, (800, 690, 1.6))], handheld=3, seed=63)
 
 
-# DAY 48: reading at the desk, the old man reading over his shoulder
+# DAY 48: reading at the desk
 def day48(c, t, T):
     def back(cc, TT):
         from common import chair
@@ -596,47 +554,26 @@ def day48(c, t, T):
         HERO.draw(cc, p, t=TT)
         return p
 
-    def old(cc, TT, rim_pass=False):
-        v = vitality(TT)
-        p = old_standing(20, TT, v, facing=1, face=dict(lx=0.8, ly=0.5, smile=0.35))
-        nod = smooth(125.0, 125.3, TT) * (1 - smooth(125.5, 125.9, TT))
-        p.update(lean=p['lean'] + 4, tilt=p['tilt'] + 6 + 10 * nod)
-        draw_old_standing(cc, p, TT, v, stick=False)
-        return p
-
-    R = Room(light='day', sky='day', curtain=1.0, ambient='#F1E8DC', hero=hero, old=old, back=back, books=True)
+    R = Room(light='day', sky='day', curtain=1.0, ambient='#F1E8DC', hero=hero, back=back, books=True)
     draw_room(c, T, R)
 
 
 cam_day48 = CamPath([(0.0, (200, 640, 1.55)), (4.0, (212, 636, 1.62))], handheld=3, seed=64)
 
 
-# DAY 77: he looks back, and the old man is jogging behind him
+# DAY 77: he runs further and faster, alone
 D77 = EV['days'][4]
 D77_HERO = Curve([(D77 - 1.0, 0.0), (D77 + 9.0, 3300.0)])
-D77_OLD = Curve([(D77 - 1.0, -380.0), (D77 + 9.0, 2980.0)])
 G77_H = Gait(D77_HERO, D77 - 1.0, D77 + 9.0, PATH_Y, step=120, run=True, lean=9, arm=34, lift=13)
-G77_O = Gait(D77_OLD, D77 - 1.0, D77 + 9.0, PATH_Y, step=104, run=True, lean=7, arm=26, lift=10)
 
 
 def day77(c, t, T):
     cx = cam_day77(t)[0]
     river_path(c, T, cx, 'golden')
-    v = vitality(T)
-    look = smooth(EV['jog_look'], EV['jog_look'] + 0.3, T) * (1 - smooth(EV['jog_look'] + 1.6, EV['jog_look'] + 2.0, T))
-    smile = smooth(EV['jog_look'] + 0.5, EV['jog_look'] + 1.0, T)
-    p = G77_O.pose(T)
-    p.update(old_face(v, T))
-    wave = smooth(EV['wave'], EV['wave'] + 0.3, T) * (1 - smooth(EV['wave'] + 1.0, EV['wave'] + 1.4, T))
-    p.update(turn=0.3, smile=0.45 + 0.2 * wave, eye=0.9 * blink(T, 2, 3.8), mopen=0.0)
-    if wave > 0:
-        p['sf'] = 150 * wave + p['sf'] * (1 - wave)
-        p['ef'] = 20 + 20 * math.sin(T * 14) * wave
-    old_man(v, run=True).draw(c, p, t=T)
     p = G77_H.pose(T)
-    p.update(turn=0.3 - 0.35 * look, lx=-1.0 * look, tilt=-6 * look, eye=blink(T, 1, 3.3),
-             smile=0.2 + 0.5 * smile * look, mopen=0.0)
+    p.update(turn=0.3, eye=blink(T, 1, 3.3), smile=0.2 + 0.25 * smooth(D77 + 2.0, D77 + 3.0, T), mopen=0.0)
     RUNNER.draw(c, p, t=T)
+    rising_motes(c, T, lambda TT: to_world(G77_H.pose(TT), (14, -66)), [D77 + 3.2, D77 + 6.0], n=18)
 
 
 D77_CAM = Curve([(0.0, 700.0), (3.6, 1880.0), (5.0, 2290.0), (8.0, 3200.0)])
@@ -646,9 +583,7 @@ def cam_day77(t):
     T = D77 + t
     z = 1.3 - 0.18 * smooth(3.6, 4.6, t)
     hx = D77_HERO(T)
-    ox = D77_OLD(T)
-    reveal = smooth(3.6, 4.6, t)
-    cx = hx + 520 + (((hx + ox) / 2) - (hx + 520)) * reveal
+    cx = hx + 260 + 120 * smooth(3.6, 4.6, t)
     return (cx, 640 + noise1(t * 0.5, 66) * 3, z, 0.0)
 
 
@@ -657,13 +592,13 @@ def cam_day77(t):
 def temptation(c, t, T):
     up = smooth(EV['up_through'], EV['up_through'] + 0.75, T)
     speak = 0.0                      # he doesn't say it out loud: the caption carries it
-    look = smooth(EV['look_door'], EV['look_door'] + 0.4, T)
+    look = smooth(EV['look_spot'], EV['look_spot'] + 0.4, T)
 
     def hero(cc, TT, rim_pass=False):
         from common import sit_blanket_contour, sit_up_pose
         face = dict(eye=(0.35 + 0.5 * smooth(136.0, 136.6, TT) - 0.25 * smooth(139.0, 140.0, TT)
                          + 0.4 * look) * blink(TT, 1, 3.4),
-                    lx=0.3 + 0.7 * look, ly=-0.3 + 0.5 * look, brow=-12 * smooth(EV['he_doesnt'] - 0.4, EV['he_doesnt'], TT), mopen=speak,
+                    lx=0.3 + 0.7 * look, ly=-0.3 + 0.75 * look, brow=-12 * smooth(EV['he_doesnt'] - 0.4, EV['he_doesnt'], TT), mopen=speak,
                     smile=0.0)
         from common import quilt_contour
         lie = lying_pose(TT, phone=False, face=face, swipes=[])
@@ -688,27 +623,17 @@ def temptation(c, t, T):
             HERO.draw(cc, p, layers={'mid': quilt}, t=TT)
         return p
 
-    def old(cc, TT, rim_pass=False):
-        v = vitality(TT)
-        p = old_standing(DOOR[0] + 70, TT, v, facing=-1, run=True,
-                         face=dict(lx=0.9, smile=0.15 + 0.35 * smooth(143.4, 144.0, TT), eye=0.95 * blink(TT, 2, 4.0)))
-        hold = (DOOR[0] + 70 - 64, 712)
-        p['hand_f'] = to_local_pose(p, hold)
-        p['hand_b'] = to_local_pose(p, (hold[0] + 10, hold[1] + 4))
-        p['ik_f'] = p['ik_b'] = 1.0
-        p['lean'] = 2
-        old_man(v, run=True).draw(cc, p, t=TT)
-        for k, dx in enumerate((-10, 12)):
-            sw = 6 * math.sin(TT * 2.2 + k)
-            cc.drawLine(hold[0] + dx * 0.3, hold[1], hold[0] + dx + sw, hold[1] + 44, paint('#ECE9E2', stroke=2.5))
-            sneaker(cc, hold[0] + dx + sw, hold[1] + 62, 0.9, -1)
-        return p
+    def spot(cc, TT):
+        # where the old man used to sit every night: nobody. His stick on the floor, the boy's shoes beside it.
+        cane_on_floor(cc)
+        sneaker(cc, 1060, FLOOR - 9, 1.0, 1)
+        sneaker(cc, 1112, FLOOR - 9, 1.0, 1)
 
     ring = 1.0 - smooth(143.0, 143.1, T)
-    R = Room(light='rain', sky='rain', curtain=0.86, hero=hero, old=old, stand_phone=(ring, False), ambient='#3E465C',
-             old_rim=0.5, door_open=0.55, door_light=0.85)
-    R.lights_extra = lambda cc: (pool(cc, DOOR[0] + 90, 700, 300, 380, '#FFC98A', 0.75),
-                                 pool(cc, DOOR[0] + 20, 760, 200, 300, '#FFD9A0', 0.4))
+    R = Room(light='rain', sky='rain', curtain=0.86, hero=hero, front=spot, stand_phone=(ring, False),
+             ambient='#3E465C')
+    R.lights_extra = lambda cc: (pool(cc, 1050, 800, 420, 300, '#B4C4E8', 0.6),
+                                 pool(cc, 1000, 880, 300, 120, '#C9D6FF', 0.4))
 
     def after(cc, TT):
         from act1 import _buzz
@@ -728,9 +653,10 @@ def temptation(c, t, T):
     whisper(c, T, w[0], w[1], w[2], 560, 520, 64, seed=70)
 
 
-# his eyes go to the door, the camera follows them to the old man waiting there with his shoes, and back
+# his eyes go to the end of the bed, the camera follows them: the old man's place is empty, his stick on the
+# floor, the running shoes beside it. And back.
 cam_temptation = CamPath([(0.0, (640, 660, 2.0)), (5.3, (650, 664, 2.15)), (5.6, (652, 664, 2.15)),
-                          (6.1, (1500, 640, 2.0)), (6.75, (1520, 640, 2.05)), (7.2, (680, 666, 2.15)),
+                          (6.1, (1010, 744, 1.95)), (6.75, (1016, 746, 2.0)), (7.2, (680, 666, 2.15)),
                           (8.2, (700, 668, 2.2)), (8.6, (820, 660, 1.6)), (10.0, (840, 660, 1.55))],
                          handheld=4, seed=71)
 
@@ -759,39 +685,27 @@ def sneaker(c, x, y, s=1.0, facing=1):
 
 def run_pair(t0, mood, weather=None, dur=2.0):
     hero_x = Curve([(t0 - 1.0, 0.0), (t0 + dur + 1.0, (dur + 2.0) * 470)])
-    old_x = Curve([(t0 - 1.0, -260.0), (t0 + dur + 1.0, (dur + 2.0) * 470 - 230)])
     gh = Gait(hero_x, t0 - 1.0, t0 + dur + 1.0, PATH_Y, step=124, run=True, lean=10, arm=36, lift=14)
-    go = Gait(old_x, t0 - 1.0, t0 + dur + 1.0, PATH_Y, step=118, run=True, lean=9, arm=32, lift=13)
 
     def draw(c, t, T):
-        cx = (hero_x(T) + old_x(T)) / 2 + 40
+        cx = hero_x(T) + 120
         river_path(c, T, cx, mood)
-        v = vitality(T)
-        p = go.pose(T)
-        p.update(old_face(v, T))
-        p.update(turn=0.3, smile=0.5, mopen=0.0, eye=0.95 * blink(T, 2, 3.6))
-        old_man(v, run=True).draw(c, p, t=T)
         p2 = gh.pose(T)
         p2.update(turn=0.3, smile=0.3, mopen=0.0, eye=blink(T, 1, 3.3))
         RUNNER.draw(c, p2, t=T)
         if weather == 'rain':
             rainfall(c, cx - 1100, -200, cx + 1100, 1200, T, n=160, a=0.45)
-            for who in (p, p2):
-                for side in ('f', 'b'):
-                    pass
         elif weather == 'snow':
             snowfall(c, cx - 1100, -200, cx + 1100, 1200, T, n=140, a=0.85)
-            for who, k in ((p, 0), (p2, 1)):
-                u = ((T * 1.3 + k * 0.4) % 1.0)
-                hx_, hy_ = who['x'] + 80, who['y'] - 150
-                c.drawCircle(hx_ + 50 * u, hy_ - 6 * u, 8 + 18 * u, paint('#FFFFFF', 0.35 * (1 - u), blur=6))
+            u = ((T * 1.3 + 0.4) % 1.0)
+            hx_, hy_ = p2['x'] + 80, p2['y'] - 150
+            c.drawCircle(hx_ + 50 * u, hy_ - 6 * u, 8 + 18 * u, paint('#FFFFFF', 0.35 * (1 - u), blur=6))
         elif weather == 'leaves':
             falling_leaves(c, cx - 1100, -200, cx + 1100, 1100, T, n=40)
 
     def cam(t):
         T = t0 + t
-        cx = (hero_x(T) + old_x(T)) / 2 + 40
-        return (cx, 640, 1.22, 0.0)
+        return (hero_x(T) + 120, 640, 1.22, 0.0)
     return draw, cam
 
 
@@ -802,19 +716,11 @@ def day330(c, t, T):
         RUNNER.draw(cc, p, t=TT)
         return p
 
-    def old(cc, TT, rim_pass=False):
-        v = vitality(TT)
-        p = pushup(TT, 1980, FLOOR + 10, rate=1.0, facing=-1)
-        p.update(old_face(v, TT))
-        p.update(smile=0.55, eye=0.9 * blink(TT, 2, 3.6), turn=0.3)
-        old_man(v, run=True).draw(cc, p, t=TT)
-        return p
-
-    R = Room(light='day', sky='day', curtain=1.0, ambient='#F1E8DC', hero=hero, old=old)
+    R = Room(light='day', sky='day', curtain=1.0, ambient='#F1E8DC', hero=hero)
     draw_room(c, T, R)
 
 
-cam_day330 = CamPath([(0.0, (1585, 750, 1.42)), (2.0, (1590, 746, 1.47))], handheld=3, seed=72)
+cam_day330 = CamPath([(0.0, (1290, 760, 1.6)), (2.0, (1296, 756, 1.66))], handheld=3, seed=72)
 
 
 # --- the trailhead (153-157) ---------------------------------------------------------------------------------------------
@@ -861,32 +767,21 @@ def headband_lamp(c, j):
 
 
 TH_WALK_H = Curve([(EV['set_off'], 880.0), (EV['set_off'] + 1.6, 1460.0)])
-TH_WALK_O = Curve([(EV['set_off'] + 0.25, 620.0), (EV['set_off'] + 1.85, 1200.0)])
 G_TH_H = Gait(TH_WALK_H, EV['set_off'], EV['set_off'] + 1.6, PATH_Y, step=92, lean=6, arm=20)
-G_TH_O = Gait(TH_WALK_O, EV['set_off'] + 0.25, EV['set_off'] + 1.85, PATH_Y, step=88, lean=5, arm=18)
 
 
 def trailhead_shot(c, t, T):
     trailhead(c, T)
-    v = vitality(T)
-    nod = smooth(EV['nod'], EV['nod'] + 0.25, T) * (1 - smooth(EV['nod'] + 0.45, EV['nod'] + 0.8, T))
-    po = G_TH_O.pose(T) if T > EV['set_off'] + 0.25 else old_standing(620, T, v, facing=1)
-    po.update(old_face(v, T))
-    po.update(turn=0.3, smile=0.5, lx=0.8, tilt=po.get('tilt', 0) + 10 * nod, eye=0.95 * blink(T, 2, 3.8))
-    jo = old_man(v, run=False).draw(c, po, layers={'behind': strap_layer('#4A3A2E'), 'over_head': headband_lamp}, t=T)
-    hand = to_world(po, jo['hand_f'])
-    c.drawLine(hand[0], hand[1] - 30, hand[0] + 26, PATH_Y - 2, paint('outline', stroke=10))
-    c.drawLine(hand[0], hand[1] - 30, hand[0] + 26, PATH_Y - 2, paint('#9C7A52', stroke=5))
-    ph = G_TH_H.pose(T) if T > EV['set_off'] else stand_feet(880, PATH_Y, 1.0, -1 if T < EV['nod'] + 0.6 else 1)
+    up = smooth(154.9, 155.4, T) * (1 - smooth(155.6, 156.0, T))         # he looks up at the mountain
+    ph = G_TH_H.pose(T) if T > EV['set_off'] else stand_feet(880, PATH_Y, 1.0, 1)
     strap = smooth(153.4, 153.8, T) * (1 - smooth(154.6, 155.0, T))
-    ph.update(turn=0.3, eye=blink(T, 1, 3.4), smile=0.2 + 0.3 * smooth(EV['nod'], EV['nod'] + 0.5, T),
-              tilt=ph.get('tilt', 0) + 10 * nod, lx=0.6)
+    ph.update(turn=0.3, eye=blink(T, 1, 3.4), smile=0.15 + 0.2 * smooth(155.3, 155.8, T),
+              tilt=ph.get('tilt', 0) - 10 * up, ly=-0.6 * up, lx=0.6)
     if strap > 0 and T < EV['set_off']:
         ph['hand_f'] = (16, -78)
         ph['hand_b'] = (6, -70)
         ph['ik_f'] = ph['ik_b'] = 1.0
     jh = HIKER.draw(c, ph, layers={'behind': strap_layer(), 'over_head': headband_lamp}, t=T)
-    headlamp(c, po, jo, T)
     headlamp(c, ph, jh, T)
 
 
@@ -906,9 +801,7 @@ def shots():
         Shot(EV['strike'] - 0.2, 97.0, day_one, cam_day_one, name='day_one'),
         Shot(97.0, 102.0, curtains_shot, cam_curtains, name='curtains'),
         Shot(102.0, EV['out'], stand_shot, cam_stand, name='stand'),
-        Shot(EV['out'], CANE_INSERT[0], out_shot, cam_out, name='out'),
-        Shot(CANE_INSERT[0], CANE_INSERT[1], out_shot, cam_cane, name='cane_drop'),
-        Shot(CANE_INSERT[1], d[0], out_shot, cam_out_after, name='out_run'),
+        Shot(EV['out'], d[0], out_shot, cam_out, name='out'),
         Shot(d[0], d[1], day3, cam_day3, name='day3'),
         Shot(d[1], d[2], day12, cam_day12, name='day12'),
         Shot(d[2], d[3], day30, cam_day30, name='day30'),

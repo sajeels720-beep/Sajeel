@@ -12,8 +12,10 @@ TICK = 1.0
 # at 75) who sits at the foot of his bed every night and fades with every wasted day. At 4:12 AM the watch stops and
 # the phone dies; in the black glass his own face is the old man's; he looks up and, for the first time, sees him.
 # "I'm you." The old man looks at the poster on the wall, ONE DAY.: "One day never came." "I waited for you... my
-# whole life." At dawn the boy crosses out ONE DAY. and writes DAY ONE. Every day he shows up, the old man gets
-# stronger, until they stand on the poster's mountain together.
+# whole life." At dawn the boy crosses out ONE DAY. and writes DAY ONE.; the old man stands with him and lets his
+# stick fall. From then on the boy does the work alone (every day he shows up, the old man gets stronger, unseen),
+# until, on the poster's mountain at sunrise, the old man is there, waiting for him, strong. He gives him the watch
+# and goes into the light.
 
 MUSIC = {
     'hook': (0.0, 19.4),        # tinny clips from his phone over a low drone; the watch fades in; braams at the reveal
@@ -169,21 +171,18 @@ EV = {
     'curtains': 100.2,
     'old_wakes': 101.0,
     'shoes': 102.4,
-    'rise': 105.2,              # he stands, and the old man stands with him, a little straighter
-    'out': 107.0,
+    'rise': 105.2,              # he stands, and the old man stands with him, a little straighter...
+    'cane_drop': 106.4,         # ...and lets his stick fall: he won't need it any more
+    'out': 107.4,               # from here the boy does the work alone; the old man is not seen again until the top
     'door_open': 107.6,
-    'cane_drop': 109.55,        # the boy runs, and the old man lets go of his cane for good
     # the climb
     'days': [111.0, 115.0, 119.0, 123.0, 127.0],
     'drawer': 120.4,            # the phone goes in the drawer
-    'tuck': 121.4,              # the old man pulls the blanket over the boy's feet
-    'jog_look': 130.6,          # the boy looks back: the old man is jogging behind him
-    'wave': 131.6,
     # the last temptation
     'temptation': 135.0,
     'alarm': 135.4,
     'shade_rises': 137.0,
-    'look_door': 140.4,
+    'look_spot': 140.4,         # he looks at the end of the bed, where the old man used to sit
     'he_doesnt': 142.15,
     'up_through': 143.2,
     'shade_gone': 143.6,
@@ -191,15 +190,16 @@ EV = {
     'quick_days': [145.0, 147.0, 149.0, 151.0],
     # the summit
     'trailhead': 153.0,
-    'nod': 155.2,
     'set_off': 156.0,
     'ascent': 157.0,
     'last_step': 167.0,
-    'hand_offer': 169.0,
-    'pull_up': 169.8,
-    'on_top': 171.4,
+    'slip': 167.85,             # his foot slips off the edge...
+    'push2': 170.0,             # ...he gets his breath back and goes again, alone
+    'on_top': 171.3,
     'sunrise': 172.0,
     'sun_breaks': 173.0,
+    'appear': 173.5,            # in the light at the edge of the summit: the old man, waiting for him
+    'sees': 174.8,              # he lowers his hand from the sun and sees him
     'look_proud': 175.4,
     'watch_give': (177.0, 179.6),
     'shoulder': (180.2, 182.4),

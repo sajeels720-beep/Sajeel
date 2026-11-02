@@ -29,40 +29,31 @@ def stick(c, p, j, ground_y, a=1.0):
     c.drawLine(hand[0], hand[1] - 28, tip[0], tip[1], paint('#9C7A52', a, stroke=5))
 
 
-# --- 1. the climb in the dark (157-167) --------------------------------------------------------------------------
+# --- 1. the climb in the dark, alone (157-167) --------------------------------------------------------------------------
 
 A0 = EV['ascent']
 ASC_H = Curve([(A0 - 0.5, 380.0), (A0 + 10.5, 1640.0)])
-ASC_O = Curve([(A0 - 0.5, 150.0), (A0 + 10.5, 1430.0)])
 G_ASC_H = Gait(ASC_H, A0 - 0.5, A0 + 10.5, 0, step=74, lean=12, arm=16, ground=slope_y, lift=16)
-G_ASC_O = Gait(ASC_O, A0 - 0.5, A0 + 10.5, 0, step=72, lean=11, arm=14, ground=slope_y, lift=15)
 
 
 def ascent(c, t, T):
     cx, cy, z, _ = cam_ascent(t)
     dawn = 0.35 * smooth(A0, A0 + 10, T)
     mountainside(c, T, cx, cy, dawn)
-    v = vitality(T)
-    po = G_ASC_O.pose(T)
-    po.update(old_face(v, T))
-    po.update(turn=0.3, smile=0.35, eye=0.95 * blink(T, 2, 3.8), lean=po['lean'] + 6, breathe=breath(T, 0.45, 1.0, 2))
-    jo = old_man(v).draw(c, po, layers={'behind': strap_layer('#4A3A2E'), 'over_head': headband_lamp}, t=T)
-    stick(c, po, jo, slope_y(to_world(po, jo['hand_f'])[0] + 24))
     ph = G_ASC_H.pose(T)
     ph.update(turn=0.3, eye=blink(T, 1, 3.4), lean=ph['lean'] + 6, mopen=0.0, breathe=breath(T, 0.5, 1.0, 1),
               brow=-4)
     jh = HIKER.draw(c, ph, layers={'behind': strap_layer(), 'over_head': headband_lamp}, t=T)
-    headlamp(c, po, jo, T, reach=460)
     headlamp(c, ph, jh, T, reach=460)
 
 
 def cam_ascent(t):
     T = A0 + t
-    mx = (ASC_H(T) + ASC_O(T)) / 2 + 60
+    mx = ASC_H(T) + 40
     return (mx, slope_y(mx) - 210 + noise1(t * 0.4, 91) * 3, 1.12, 0.0)
 
 
-# --- 2. the last step (167-172) ---------------------------------------------------------------------------------------
+# --- 2. the last step, alone (167-172) ---------------------------------------------------------------------------------------
 
 LEDGE_X = 980          # the rock step: low ground to the left, the summit to the right
 LOW_Y = 920
@@ -86,79 +77,40 @@ def step_up_pose(T, keys, facing=1):
 
 
 L0 = EV['last_step']
-# He gathers himself at the foot of the step, pushes up, lands with bent knees and settles: the feet stay put
-# from the moment each one lands, only the hips travel.
+SLIP, PUSH2, UP = EV['slip'], EV['push2'], EV['on_top']
+# He gathers himself at the foot of the step and pushes up; his foot slips off the edge and he drops back, bent
+# over, breathing. He gathers himself again and this time he makes it. The feet stay put from the moment each one
+# lands; only the hips travel.
 HERO_CLIMB = [
     (L0 + 0.0, 880, LOW_Y - 120.5, (883, LOW_Y), (877, LOW_Y), 6),
-    (L0 + 0.35, 884, LOW_Y - 108, (883, LOW_Y), (877, LOW_Y), 16),
-    (L0 + 0.75, 930, LOW_Y - 140, (1000, TOP_Y), (877, LOW_Y), 30),
-    (L0 + 1.15, 996, TOP_Y - 100, (1000, TOP_Y), (950, LOW_Y - 46), 22),
-    (L0 + 1.45, 1026, TOP_Y - 104, (1000, TOP_Y), (1036, TOP_Y), 10),
-    (L0 + 1.8, 1032, TOP_Y - 120, (1028, TOP_Y), (1036, TOP_Y), 4),
+    (L0 + 0.4, 884, LOW_Y - 106, (883, LOW_Y), (877, LOW_Y), 18),
+    (SLIP - 0.05, 930, LOW_Y - 140, (1000, TOP_Y), (877, LOW_Y), 30),
+    (SLIP + 0.3, 912, LOW_Y - 124, (968, LOW_Y - 30), (877, LOW_Y), 26),
+    (SLIP + 0.7, 884, LOW_Y - 110, (900, LOW_Y), (877, LOW_Y), 30),
+    (PUSH2 - 0.7, 882, LOW_Y - 112, (900, LOW_Y), (877, LOW_Y), 28),
+    (PUSH2 - 0.3, 886, LOW_Y - 104, (900, LOW_Y), (877, LOW_Y), 16),
+    (PUSH2 + 0.15, 930, LOW_Y - 140, (1000, TOP_Y), (877, LOW_Y), 30),
+    (PUSH2 + 0.55, 996, TOP_Y - 100, (1000, TOP_Y), (950, LOW_Y - 46), 22),
+    (PUSH2 + 0.85, 1026, TOP_Y - 104, (1000, TOP_Y), (1036, TOP_Y), 10),
+    (UP, 1032, TOP_Y - 120, (1028, TOP_Y), (1036, TOP_Y), 4),
 ]
-# their hands meet below the edge, then rise and move back as he pulls the old man up
-GRIP = Curve([(EV['hand_offer'], (990.0, 690.0)), (EV['pull_up'], (990.0, 690.0)),
-              (EV['pull_up'] + 0.7, (1032.0, 650.0)), (EV['pull_up'] + 1.2, (1066.0, 640.0))])
-BACKSTEP = Gait(Curve([(EV['pull_up'], 1032.0), (EV['pull_up'] + 1.1, 1140.0)]), EV['pull_up'],
-                EV['pull_up'] + 1.1, TOP_Y, step=56, lean=0, arm=0, facing=-1)
 
 
 def hero_last(T):
-    if T < L0 + 1.8:
-        p = step_up_pose(T, HERO_CLIMB)
-        p.update(facing=1)
-        return p
-    if T < EV['pull_up']:
-        # standing at the edge, he turns and reaches down for him
-        fac = 1 if T < L0 + 1.95 else -1
-        p = dict(x=1032, y=TOP_Y - 120, facing=fac, scale=1.0, ikl_f=-1.0, ikl_b=-1.0)
-        p['foot_f'] = to_local(p, (1028 if fac > 0 else 1036, TOP_Y - 9))
-        p['foot_b'] = to_local(p, (1036 if fac > 0 else 1028, TOP_Y - 9))
-        reach = smooth(EV['hand_offer'] - 0.4, EV['hand_offer'], T)
-        p['lean'] = 4 + 18 * reach
-        p['y'] += 6 * reach
-    else:
-        # the pull: stepping back, leaning back against his weight
-        p = BACKSTEP.pose(T)
-        pull = smooth(EV['pull_up'], EV['pull_up'] + 0.5, T)
-        p['lean'] = 22 * (1 - pull) - 8 * pull * (1 - smooth(EV['on_top'] - 0.3, EV['on_top'] + 0.3, T))
-        if T >= EV['on_top'] + 0.3:
-            p['facing'] = 1
-            p = dict(p, **{k: v for k, v in BACKSTEP._stand(1140.0).items() if k.startswith('foot')})
-            p['facing'] = 1
-            p['foot_f'], p['foot_b'] = (3.0, p['foot_f'][1]), (-3.0, p['foot_b'][1])
-    hold = smooth(EV['hand_offer'] - 0.4, EV['hand_offer'], T) * (1 - smooth(EV['on_top'] - 0.1, EV['on_top'] + 0.3, T))
-    if p['facing'] < 0 and hold > 0:
-        p['hand_f'] = to_local(p, GRIP(T))
+    p = step_up_pose(T, HERO_CLIMB)
+    p.update(facing=1)
+    # a hand on the edge of the rock as he pushes
+    grab = smooth(SLIP - 0.4, SLIP - 0.15, T) * (1 - smooth(SLIP + 0.05, SLIP + 0.3, T))
+    grab = max(grab, smooth(PUSH2 - 0.15, PUSH2 + 0.1, T) * (1 - smooth(PUSH2 + 0.5, PUSH2 + 0.8, T)))
+    if grab > 0:
+        rest = to_world(p, (30, 20))
+        edge = (994.0, TOP_Y - 4.0)
+        p['hand_f'] = to_local(p, (rest[0] + (edge[0] - rest[0]) * grab, rest[1] + (edge[1] - rest[1]) * grab))
         p['ik_f'] = 1.0
-        p['hand_b'] = (10, 20)
-    return p
-
-
-def old_hand_world(T):
-    return GRIP(T)
-
-
-OLD_CLIMB = [
-    (EV['pull_up'] - 0.4, 900, LOW_Y - 120.5, (903, LOW_Y), (897, LOW_Y), 4),
-    (EV['pull_up'] + 0.1, 938, LOW_Y - 132, (1004, TOP_Y), (897, LOW_Y), 24),
-    (EV['pull_up'] + 0.7, 996, TOP_Y - 104, (1004, TOP_Y), (978, TOP_Y - 34), 16),
-    (EV['pull_up'] + 1.2, 1008, TOP_Y - 118, (1004, TOP_Y), (1012, TOP_Y), 6),
-]
-
-
-def old_last(T, v):
-    if T < EV['pull_up'] - 0.4:
-        walk_in = Curve([(L0 + 1.2, 700.0), (EV['pull_up'] - 0.4, 900.0)])
-        g = Gait(walk_in, L0 + 1.2, EV['pull_up'] - 0.4, LOW_Y, step=76, lean=6, arm=14)
-        p = g.pose(T)
-    else:
-        p = step_up_pose(T, OLD_CLIMB)
-    p['facing'] = 1
-    reach = smooth(EV['hand_offer'] + 0.1, EV['hand_offer'] + 0.5, T) * (1 - smooth(EV['on_top'], EV['on_top'] + 0.4, T))
-    if reach > 0:
-        p['hand_f'] = to_local(p, old_hand_world(T))
-        p['ik_f'] = 1.0
+    # bent over, breathing hard, between the two tries
+    pant = smooth(SLIP + 0.5, SLIP + 0.8, T) * (1 - smooth(PUSH2 - 0.4, PUSH2 - 0.2, T))
+    p['breathe'] = breath(T, 0.9, 1.0, 1) * (0.4 + 0.6 * pant)
+    p['y'] += 3 * math.sin(T * 9.0) * pant
     return p
 
 
@@ -182,27 +134,19 @@ def last_step(c, t, T):
     rock.close()
     c.drawPath(rock, paint(hexmix('#141826', '#2E2434', dawn)))
     c.drawPath(rock, paint(hexmix('#2A3350', '#E8946A', dawn), 0.9, stroke=6))
-    v = vitality(T)
-    po = old_last(T, v)
-    po.update(old_face(v, T))
-    po.update(turn=0.3, smile=0.3 + 0.3 * smooth(EV['on_top'], EV['on_top'] + 0.6, T), eye=0.95 * blink(T, 2, 3.8),
-              ly=-0.4, lx=0.6)
-    if EV['hand_offer'] - 0.2 <= T < EV['on_top']:
-        # he is pulled up past the boy, so he is the nearer of the two: draw him in front, his effort in view
-        po.update(mopen=0.0, smile=-0.3, brow=-12, eye=0.8)
+    # a few stones knocked loose when his foot slips
+    for k in range(3):
+        u = (T - SLIP - 0.05 - 0.06 * k) / 0.5
+        if 0 < u < 1:
+            c.drawCircle(990 - 10 * k - 20 * u, TOP_Y + 6 + (LOW_Y - TOP_Y - 10) * u * u, 5 - k,
+                         paint(hexmix('#3A3346', '#8A6A62', dawn)))
     ph = hero_last(T)
-    ph.update(turn=0.3, eye=blink(T, 1, 3.4), mopen=0.0, smile=0.2 + 0.4 * smooth(EV['on_top'], EV['on_top'] + 0.6, T),
-              ly=0.4 * smooth(EV['hand_offer'] - 0.3, EV['hand_offer'], T))
-    old_gear = {'behind': strap_layer('#4A3A2E'), 'over_head': headband_lamp}
-    hero_gear = {'behind': strap_layer(), 'over_head': headband_lamp}
-    if EV['hand_offer'] - 0.2 <= T < EV['on_top'] + 0.6:
-        jh = HIKER.draw(c, ph, layers=hero_gear, t=T)
-        jo = old_man(v).draw(c, po, layers=old_gear, t=T)
-    else:
-        jo = old_man(v).draw(c, po, layers=old_gear, t=T)
-        jh = HIKER.draw(c, ph, layers=hero_gear, t=T)
+    effort = smooth(SLIP - 0.3, SLIP, T) * (1 - smooth(UP - 0.2, UP + 0.3, T))
+    ph.update(turn=0.3, eye=blink(T, 1, 3.4) * (1 - 0.25 * effort), mopen=0.0,
+              smile=0.2 - 0.5 * effort + 0.4 * smooth(UP, UP + 0.6, T), brow=-10 * effort,
+              sweat=0.8 * effort, ly=-0.5 * smooth(UP + 0.2, UP + 0.6, T))
+    jh = HIKER.draw(c, ph, layers={'behind': strap_layer(), 'over_head': headband_lamp}, t=T)
     lamp_a = 1 - smooth(EV['sunrise'] - 1.0, EV['sunrise'], T)
-    headlamp(c, po, jo, T, a=lamp_a, reach=380)
     headlamp(c, ph, jh, T, a=lamp_a, reach=380)
 
 
@@ -243,17 +187,25 @@ def summit_scene(c, T, cx, cy, *, people=True, fade_old=None, give=None, shoulde
     return sun
 
 
-HX, OX = 1080, 920       # where they stand on the summit: the old man a step behind, the boy nearer the sun
+HX, OX = 900, 1130       # the boy, facing the sunrise; the old man waiting for him at the edge, in the light
+
+
+def ox(T):
+    """Where the old man stands: he steps closer to the boy as he gives him the watch."""
+    return OX - 70 * smooth(EV['watch_give'][0] + 0.2, EV['watch_give'][1] - 0.2, T)
 
 
 def pair_poses(T, give=None, shoulder=0.0, hero_face=None, old_face_kw=None):
     from engine.motion import sway
     v = vitality(T)
     look_o = smooth(EV['look_proud'], EV['look_proud'] + 0.6, T)
-    awe = smooth(EV['sun_breaks'], EV['sun_breaks'] + 0.5, T) * (1 - smooth(EV['sun_breaks'] + 1.8, EV['sun_breaks'] + 2.6, T))
+    awe = smooth(EV['sun_breaks'], EV['sun_breaks'] + 0.5, T) * (1 - smooth(EV['sees'] - 0.2, EV['sees'] + 0.4, T))
+    seen = smooth(EV['sees'], EV['sees'] + 0.3, T)
+    wonder = seen * (1 - smooth(EV['sees'] + 0.9, EV['sees'] + 1.6, T))
     ph = stand_feet(HX, SUMMIT_Y, 1.0, 1)
-    ph.update(turn=0.3, eye=blink(T, 1, 3.6) * (1 - 0.45 * awe), smile=0.35, ly=-0.3, lx=0.4,
-              breathe=breath(T, 0.3, 0.9, 1))
+    ph.update(turn=0.3, eye=blink(T, 1, 3.6) * (1 - 0.45 * awe) * (1 - 0.3 * wonder) + 0.3 * wonder,
+              smile=0.35 - 0.3 * wonder + 0.15 * seen, ly=-0.3 * (1 - seen), lx=0.4 + 0.5 * seen,
+              brow=-8 * wonder, breathe=breath(T, 0.3, 0.9, 1))
     for k, val in sway(T, 1.0, 3).items():
         ph[k] = ph.get(k, 0.0) + val
     ph['lean'] = ph.get('lean', 0.0) - 5 * awe
@@ -264,19 +216,19 @@ def pair_poses(T, give=None, shoulder=0.0, hero_face=None, old_face_kw=None):
         ph['ef'] = 90
     if hero_face:
         ph.update(hero_face)
-    po = stand_feet(OX, SUMMIT_Y, 1.0, 1)
+    # the old man faces him: he has been waiting up here
+    po = stand_feet(ox(T), SUMMIT_Y, 1.0, -1)
     po.update(old_face(v, T))
     for k, val in sway(T + 4.0, 0.8, 9).items():
         po[k] = po.get(k, 0.0) + val
-    po['lean'] = po.get('lean', 0.0) - 3 * awe
-    po.update(turn=0.3 - 0.15 * look_o, smile=0.5 + 0.2 * look_o, eye=0.95 * blink(T, 2, 3.8),
-              ly=-0.3 * (1 - look_o) + 0.1 * look_o, lx=0.6 + 0.4 * look_o, wet=look_o * 0.8, tilt=4 * look_o)
+    po.update(turn=0.3, smile=0.5 + 0.2 * look_o, eye=0.95 * blink(T, 2, 3.8), ly=0.05, lx=0.7,
+              wet=look_o * 0.8, tilt=4 * look_o)
     if old_face_kw:
         po.update(old_face_kw)
     if shoulder > 0:
-        sh = to_world(ph, (-14, -(100 - 16)))
+        sh = to_world(ph, (18, -(100 - 16)))
         rest = to_world(po, (10, 30))
-        target = (rest[0] + (sh[0] - rest[0]) * shoulder, rest[1] + (sh[1] - 6 - rest[1]) * shoulder)
+        target = (rest[0] + (sh[0] + 4 - rest[0]) * shoulder, rest[1] + (sh[1] - 6 - rest[1]) * shoulder)
         po['hand_f'] = to_local(po, target)
         po['ik_f'] = 1.0
     return ph, po, v
@@ -298,23 +250,54 @@ def sunlit(c, fn, x, sun):
 def draw_pair(c, T, sun, fade_old=None, give=None, shoulder=0.0, hero_face=None, old_face_kw=None, old_alpha=1.0):
     ph, po, v = pair_poses(T, give, shoulder, hero_face, old_face_kw)
     rim_a = 0.35 + 0.55 * sun
-    gear = {'behind': strap_layer('#4A3A2E'), 'over_head': headband_lamp}
+    hero_gear = {'behind': strap_layer(), 'over_head': headband_lamp}
 
     def old_draw(cc):
-        sunlit(cc, lambda c2: old_man(v).draw(c2, dict(po, alpha=old_alpha), layers=gear, t=T), OX, sun)
+        # no pack, no lamp, no stick: he did not climb, he was waiting
+        sunlit(cc, lambda c2: old_man(v).draw(c2, dict(po, alpha=old_alpha), t=T), ox(T), sun)
 
-    if fade_old is None:
+    sunlit(c, lambda cc: HIKER.draw(cc, ph, layers=hero_gear, t=T), HX, sun)
+    _sun_rim(c, lambda cc: HIKER.draw(cc, ph, layers=hero_gear, t=T), rim_a)
+    form = smooth(EV['appear'], EV['appear'] + 1.1, T)
+    if form <= 0:
+        return
+    if form < 1:
+        # he takes shape out of the sunlight
+        gather_motes(c, T, EV['appear'], 1.1)
+        c.saveLayerAlpha(None, int(255 * form))
+        old_draw(c)
+        glow = paint('#FFEBC2', (1 - form) ** 1.5)
+        glow.setBlendMode(skia.BlendMode.kSrcATop)
+        c.drawRect(skia.Rect.MakeLTRB(OX - 200, SUMMIT_Y - 400, OX + 200, SUMMIT_Y + 40), glow)
+        c.restore()
+        c.drawCircle(OX, SUMMIT_Y - 150, 170, paint('#FFE2A8', 0.5 * (1 - form), blur=60, blend='add'))
+    elif fade_old is None:
         old_draw(c)
         _sun_rim(c, old_draw, rim_a)
     else:
-        dissolve(c, old_draw, (OX - 120, SUMMIT_Y - 330, OX + 120, SUMMIT_Y + 10), T, fade_old, dur=4.0, seed=17,
+        x = ox(T)
+        dissolve(c, old_draw, (x - 120, SUMMIT_Y - 330, x + 120, SUMMIT_Y + 10), T, fade_old, dur=4.0, seed=17,
                  smoke='#FFD49A', smoke_a=0.6, grey=0.0, rise=320, embers='#FFF1C9', n=60, drift=70)
         golden_motes(c, T, fade_old)
-    hero_gear = {'behind': strap_layer(), 'over_head': headband_lamp}
-    sunlit(c, lambda cc: HIKER.draw(cc, ph, layers=hero_gear, t=T), HX, sun)
-    _sun_rim(c, lambda cc: HIKER.draw(cc, ph, layers=hero_gear, t=T), rim_a)
-    if give is not None:
-        hand = to_world(ph, ph.get('hand_f', (16, 30)))
+
+
+def gather_motes(c, T, t0, dur, n=46, seed=29):
+    """Specks of sunlight drawn together into the shape of a man."""
+    for i in range(n):
+        delay = hrand(i, seed) * dur * 0.5
+        u = (T - t0 - delay) / (dur * 0.8)
+        if u <= 0 or u >= 1:
+            continue
+        ang = hrange(0, math.tau, i, seed, 1)
+        r0 = hrange(160, 380, i, seed, 2)
+        e = u ** 1.7
+        tx, ty = OX + hrange(-40, 40, i, seed, 3), SUMMIT_Y - hrange(30, 290, i, seed, 4)
+        x = tx + math.cos(ang) * r0 * (1 - e)
+        y = ty + math.sin(ang) * r0 * 0.7 * (1 - e)
+        a = math.sin(math.pi * u) * 0.9
+        r = hrange(2.5, 5.0, i, seed, 5)
+        c.drawCircle(x, y, r * 3, paint('#FFD49A', 0.35 * a, blur=6, blend='add'))
+        c.drawCircle(x, y, r, paint('#FFF6DD', a, blend='add'))
 
 
 def _sun_rim(c, fn, a):
@@ -330,7 +313,7 @@ def golden_motes(c, T, t0, n=70, seed=23):
         if age < 0 or age > 3.2:
             continue
         u = age / 3.2
-        x0 = OX + hrange(-60, 60, i, seed, 1)
+        x0 = ox(t0) + hrange(-60, 60, i, seed, 1)
         y0 = SUMMIT_Y - 40 - hrange(0, 260, i, seed, 2) * min(1.0, (born - t0) / 3.6 + 0.2)
         x = x0 + (SUN_X - x0) * (u ** 1.6) * 0.75 + 30 * noise1(age * 1.3 + i, seed)
         y = y0 - 220 * u + 20 * noise1(age + i, seed + 3)
@@ -350,7 +333,8 @@ cam_sunrise_wide = CamPath([(0.0, (1000, 600, 1.35)), (3.4, (1060, 560, 1.12))],
 
 def sunrise_two(c, t, T):
     cx, cy, z, _ = cam_sunrise_two(t)
-    summit_scene(c, T, cx, cy, hero_face=dict(lx=0.4, ly=-0.25, smile=0.3 + 0.2 * smooth(176.4, 177.0, T)))
+    summit_scene(c, T, cx, cy, hero_face=dict(lx=0.9, ly=0.0, smile=0.3 + 0.2 * smooth(176.4, 177.0, T),
+                                              wet=0.5 * smooth(175.6, 176.6, T)))
 
 
 cam_sunrise_two = CamPath([(0.0, (990, 560, 2.1)), (1.6, (994, 556, 2.2))], handheld=3, seed=102)
@@ -367,8 +351,11 @@ def finger(c, x, y, ang, length, width, color):
 
 
 def hands_insert(c, t, T):
-    """The old hand (from the left, where he stands) lowers the watch on its chain into the boy's open palm,
-    lets go, and folds the boy's fingers over it."""
+    """The old hand (from the right, where he stands) lowers the watch on its chain into the boy's open palm,
+    lets go, and folds the boy's fingers over it. Drawn mirrored; the watch itself is not."""
+    c.save()
+    c.translate(W, 0)
+    c.scale(-1, 1)
     grad(c, (-200, -200, W + 200, H + 200), [(0.0, '#F7C08A'), (1.0, '#E07A5A')])
     c.drawCircle(1500, 160, 460, paint('#FFF1C9', 0.45, blur=170, blend='add'))
     t0, t1 = EV['watch_give']
@@ -392,8 +379,13 @@ def hands_insert(c, t, T):
     wy = hold[1] + math.cos(sw) * chain
     if let_go > 0:
         wx, wy = wx + (1150 - wx) * let_go, wy + (770 - wy) * let_go
-    pocket_watch(c, wx, wy, 100, T, open_lid=False, glow=0.35,
-                 chain=(hold[0], hold[1]) if let_go < 0.5 else (1000, 700))
+    anchor = (hold[0], hold[1]) if let_go < 0.5 else (1000, 700)
+    c.save()
+    c.translate(wx, wy)
+    c.scale(-1, 1)
+    c.translate(-wx, -wy)
+    pocket_watch(c, wx, wy, 100, T, open_lid=False, glow=0.35, chain=(2 * wx - anchor[0], anchor[1]))
+    c.restore()
     # the boy's four fingers curl over the watch
     for k in range(4):
         finger(c, 1000 - 10 * k, 760 + 34 * k, 180 + (150 - 12 * k) * close * 1.0 - 10, 150 - 14 * k, 54, young)
@@ -410,6 +402,7 @@ def hands_insert(c, t, T):
         finger(c, ox + 70, oy - 20 + 26 * k, 90 - 80 * open_ + 6 * k, 70 + 40 * open_, 44, old)
     for k in range(3):
         c.drawLine(ox - 30 + 24 * k, oy - 10, ox - 20 + 24 * k, oy + 40, paint('outline', 0.25, stroke=3))
+    c.restore()
 
 
 def cam_hands(t):
