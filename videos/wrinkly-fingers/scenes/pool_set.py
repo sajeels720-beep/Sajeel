@@ -558,8 +558,26 @@ def marble(col=None, at=(0.12, -0.32, None), radius=0.008):
     col.objects.link(glass)
     for p in glass.data.polygons:
         p.use_smooth = True
-    gm = V.principled("Marble_Glass", H("#F4FBFF"), rough=0.0, transmission=1.0, ior=1.52, spec=0.6)
-    for prop, val in (("surface_render_method", "DITHERED"), ("use_raytrace_refraction", True), ("thickness_mode", "SPHERE")):
+    # clear glass made like the water: see-through with a Fresnel sheen and no refraction, so EEVEE and
+    # Cycles match (EEVEE's ray-traced refraction blew the swirl up to fill the whole marble: an orange ball)
+    gm = bpy.data.materials.new("Marble_Glass")
+    gm.use_nodes = True
+    nt, L = gm.node_tree, gm.node_tree.links
+    nt.nodes.clear()
+    out = nt.nodes.new("ShaderNodeOutputMaterial")
+    tr = nt.nodes.new("ShaderNodeBsdfTransparent")
+    tr.inputs["Color"].default_value = (*H("#F4FBFF"), 1)
+    gl = nt.nodes.new("ShaderNodeBsdfGlossy")
+    gl.inputs["Roughness"].default_value = 0.0
+    fr = nt.nodes.new("ShaderNodeFresnel")
+    fr.inputs["IOR"].default_value = 1.52
+    mix = nt.nodes.new("ShaderNodeMixShader")
+    L.new(fr.outputs[0], mix.inputs[0])
+    L.new(tr.outputs[0], mix.inputs[1])
+    L.new(gl.outputs[0], mix.inputs[2])
+    L.new(mix.outputs[0], out.inputs["Surface"])
+    for prop, val in (("surface_render_method", "DITHERED"), ("use_transparent_shadow", True),
+                      ("use_backface_culling", False)):
         if hasattr(gm, prop):
             setattr(gm, prop, val)
     glass.data.materials.append(gm)
