@@ -57,10 +57,12 @@ PAD = (0.04, 0.08)               # kept before and after each phrase, so no cons
 
 SFX = {  # sfx_name: [(time s, level dB against the voice[, until s[, fade s]]), ...]: its hit (hit_time) lands on
          # the time (its first sound, for START); until cuts it off at that time in the video, fading out over fade
-    "sfx_timelapse": [(0.05, -14, 2.30, 0.3)],                # shot 1 runs fast
+    "sfx_timelapse": [(0.95, -14, 2.40, 0.1)],                # shot 1 runs fast: its rise (first heard 0.6 s in)
+                                                              # peaks 1.8 s in, just before the cut to shot 2 (2.3 s)
     "sfx_splash_small": [(2.78, -8), (23.75, -6)],            # his hand out of the water; the marble plops in
     "sfx_drips": [(3.00, -16, 3.60), (21.60, -16, 22.90)],   # water off his fingers
-    "sfx_whoosh_fast": [(4.50, -8), (7.12, -8), (10.57, -8), (15.68, -8), (23.20, -12)],  # crash zooms; the toss
+    "sfx_whoosh_fast": [(4.50, -8), (7.12, -8), (10.57, -8), (15.68, -3), (23.20, -6)],   # crash zooms; the toss
+                                                              # ("wrinkles" and the toss land on words: louder)
     "sfx_boom": [(7.22, -6), (10.68, -6)],                    # under "nerves" and "squeeze"
     "sfx_alert_pop": [(5.90, -6), (16.80, -6)],               # his red "?"
     "sfx_sigh": [(24.50, -6, 25.00, 0.35)],                   # he leans back at sunset (after "tyres"); the video
@@ -68,14 +70,15 @@ SFX = {  # sfx_name: [(time s, level dB against the voice[, until s[, fade s]]),
     "sfx_crinkle": [(3.73, -10, 4.75), (13.20, -12, 14.10), (14.43, -10, 15.70)],   # the skin puckers
     "sfx_drop_plink": [(5.30, -8), (5.43, -10), (5.57, -8), (5.70, -10)],          # drops land on his fingertips
     "sfx_seep": [(8.07, -12, 9.00)],                          # drops drain into the pores
-    "sfx_xray_scan": [(6.50, -10)],                           # the x-ray reveal
+    "sfx_xray_scan": [(6.30, -10)],                           # the x-ray reveal: it leads the cut, so it peaks (0.6 s
+                                                              # in) as the scan line reaches the fingertips (6.9 s)
     "sfx_zap": [(6.75, -12), (9.37, -6), (10.47, -10)],       # nerves light; the ending sparks; the fibres light
     "sfx_signal": [(7.20, -12), (9.40, -10)],                 # pulses race along the nerves
     "sfx_squeeze": [(10.60, -6)],                             # the vessels clamp down
     "sfx_heartbeat": [(11.05, -10), (11.55, -12)],            # the blood slows
     "sfx_drain": [(12.00, -12, 12.85)],                       # the vessels drain
     "sfx_marble_click": [(18.65, -10)],                       # his fingertips pinch the marble off the tiles
-    "sfx_tyre_splash": [(20.00, -6)],                         # the tyre through the water
+    "sfx_tyre_splash": [(20.00, -6, 21.40, 0.25)],            # the tyre through the water; out on the cut to shot 15
     "sfx_glint": [(21.50, -8)],                               # the marble glints in the sun
 }
 START = {"sfx_timelapse", "sfx_drips", "sfx_crinkle", "sfx_seep", "sfx_xray_scan", "sfx_drain",
