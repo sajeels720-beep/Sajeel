@@ -705,7 +705,8 @@ def place_sfx(mx):
     mx.add('sfx', stereo(marker(1.3, 8, seed=37), -0.1), EV['write'] + 0.1, -11)
     mx.add('sfx', stereo(sfx.click(seed=38), -0.1), EV['write'] + 1.7, -12)
     # Day 1
-    mx.add('amb', sfx.birds(18.0, seed=20, level=0.16), EV['curtains'], -16, fade_in=0.6)
+    # dawn birds only while the curtains open and he gets ready, kept low so they never read as a cheerful tune
+    mx.add('amb', sfx.birds(7.0, seed=20, level=0.16), EV['curtains'], -21, fade_in=0.6, fade_out=1.5)
     mx.add('sfx', sfx.curtain(1.2, seed=21), EV['curtains'] - 0.05, -8)
     mx.add('sfx', sfx.footsteps([97.65 + 0.33 * k for k in range(6)], wood=True, seed=22), 0.0, -16)
     mx.add('sfx', stereo(sfx.door(True, seed=23), -0.3), EV['door_open'], -10)
@@ -728,8 +729,8 @@ def place_sfx(mx):
     mx.add('sfx', stereo(sfx.click(seed=30), -0.6), 120.9, -10)
     mx.add('sfx', stereo(sfx.rustle(1.2, seed=31, level=0.2)[:, 0], 0.3), EV['tuck'], -14)
     mx.add('amb', crickets(4.0, seed=32), 119.0, -10, fade_in=0.3, fade_out=0.3)
-    mx.add('amb', sfx.birds(4.0, seed=33, level=0.16), 115.0, -14, fade_in=0.2, fade_out=0.2)
-    mx.add('amb', sfx.birds(4.0, seed=34, level=0.16), 123.0, -14, fade_in=0.2, fade_out=0.2)
+    mx.add('amb', sfx.birds(4.0, seed=33, level=0.16), 115.0, -20, fade_in=0.2, fade_out=0.2)
+    mx.add('amb', sfx.birds(4.0, seed=34, level=0.16), 123.0, -20, fade_in=0.2, fade_out=0.2)
     for t in (124.3, 125.6):
         mx.add('sfx', stereo(sfx.page_flip(seed=35)), t, -16)
     mx.add('amb', sfx.wind(8.0, seed=36, level=0.12), 127.0, -14, fade_in=0.4, fade_out=0.4)
