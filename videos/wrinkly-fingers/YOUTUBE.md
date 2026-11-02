@@ -30,7 +30,7 @@ Animated in Blender by Jay3Dfilms. Character made with MakeHuman (CC0); pool, te
 #shorts #science #humanbody #wrinklyfingers #animation
 ```
 
-Only if the voice or sounds were made on ElevenLabs' free plan, add this line (and note that the video can't be monetized then): `Voice and sound: ElevenLabs (elevenlabs.io)`
+Only if the voice, sounds or music were made on ElevenLabs' free plan, add this line (and note that the video can't be monetized then): `Voice, sound and music: ElevenLabs (elevenlabs.io)`
 
 ## Tags
 

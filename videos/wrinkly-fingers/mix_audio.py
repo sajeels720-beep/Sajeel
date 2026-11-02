@@ -1,21 +1,25 @@
 """Mix the voiceover, sound effects and music into the wrinkly-fingers video at the times and levels
 in timeline.py: each voiceover part is split into phrases that start on their cues, every sound is
 brought to the same loudness as the voice and then offset, the music dips under the voice, and the
-result is set to YouTube loudness (-14 LUFS). (The sneeze video's, without her sneeze.)
+result is set to YouTube loudness: measured first, then set to -14 LUFS with peaks under -1.5 dB (two
+passes; one pass landed about 1 dB under). (The sneeze video's, without her sneeze.)
 
 usage: python3 mix_audio.py AUDIO_DIR VIDEO.mp4 OUT.mp4
 AUDIO_DIR holds voiceover_1 ... voiceover_4, the sfx_* files and music (.wav, .mp3, .m4a ...);
 any of them may be missing. Needs ffmpeg.
 """
 import argparse
+import json
 import os
 import subprocess
+import tempfile
 
-from timeline import (BEDS, MUSIC_BUTTON, MUSIC_DB, PAD, SFX, START, duration, find_audio, loudness, button_time,
-                      hit_time, place_voice)
+from timeline import (BEDS, MUSIC_BUTTON, MUSIC_DB, MUSIC_START, PAD, SFX, START, duration, find_audio, loudness,
+                      button_time, hit_time, place_voice)
 
 RATE = 48000
 VOICE_LUFS = -20                 # every voiceover part is brought to this level first
+TARGET = "I=-14:TP=-1.5:LRA=11"    # YouTube loudness; true peaks under -1.5 dB
 
 
 def main():
@@ -90,14 +94,18 @@ def main():
     if files["music"]:                                                # its last big hit lands on MUSIC_BUTTON
         path = files["music"]
         button = button_time(path)
-        tempo = button / MUSIC_BUTTON                                 # slowed or sped up a little (same pitch)
+        start = MUSIC_START or 0.0
+        if MUSIC_START is None and button / MUSIC_BUTTON > 1.15:      # too long to stretch: start it later
+            start = button - MUSIC_BUTTON
+        tempo = (button - start) / MUSIC_BUTTON                       # slowed or sped up a little (same pitch)
         fit = f"atempo={tempo:.4f}," if 0.85 <= tempo <= 1.15 else ""
+        head = f"atrim=start={start:.3f},asetpts=PTS-STARTPTS,afade=t=in:d=0.15," if start > 0 else ""
         k = new_input(path)
-        chains.append(f"[{k}:a]{fmt},{fit}atrim=0:{length:.3f},asetpts=PTS-STARTPTS,afade=t=out:st={length - 0.3:.3f}:"
-                      f"d=0.3,volume={gain(path, MUSIC_DB):.2f}dB[mraw]")
-        report.append(f"  music: its last hit ({button:.2f} s in the track) lands at "
-                      f"{button / tempo if fit else button:.2f} s" + (f" ({abs(1 / tempo - 1) * 100:.1f}% "
-                                                                      f"{'slower' if tempo < 1 else 'faster'})" if fit else ""))
+        chains.append(f"[{k}:a]{fmt},{head}{fit}atrim=0:{length:.3f},asetpts=PTS-STARTPTS,"
+                      f"afade=t=out:st={length - 0.3:.3f}:d=0.3,volume={gain(path, MUSIC_DB):.2f}dB[mraw]")
+        report.append(f"  music: from {start:.2f} s into the track; its last hit ({button:.2f} s in) lands at "
+                      f"{(button - start) / tempo if fit else button - start:.2f} s"
+                      + (f" ({abs(1 / tempo - 1) * 100:.1f}% {'slower' if tempo < 1 else 'faster'})" if fit else ""))
         if vo:                                                        # dip the music while the voice talks
             chains.append("[mraw][duck]sidechaincompress=threshold=0.06:ratio=2:attack=40:release=400[music]")
         else:
@@ -108,12 +116,26 @@ def main():
     if not mix:
         raise SystemExit(f"No audio files found in {a.audio_dir}")
     chains.append("".join(mix) + f"amix=inputs={len(mix)}:normalize=0:duration=longest,"
-                  f"apad=whole_dur={length:.3f},atrim=0:{length:.3f},loudnorm=I=-14:TP=-3.0:LRA=11,"
-                  f"aresample={RATE}[aout]")
-    cmd = ["ffmpeg", "-v", "error", "-y", *inputs, "-filter_complex", ";".join(chains), "-map", "0:v",
-           "-map", "[aout]", "-c:v", "copy", "-c:a", "aac", "-b:a", "192k", "-shortest", "-movflags", "+faststart",
-           os.path.abspath(a.out)]
-    subprocess.run(cmd, check=True)
+                  f"apad=whole_dur={length:.3f},atrim=0:{length:.3f},aresample={RATE}[aout]")
+    fd, mixed = tempfile.mkstemp(suffix=".wav")                      # 1: the mix, as it is
+    os.close(fd)
+    try:
+        subprocess.run(["ffmpeg", "-v", "error", "-y", *inputs, "-filter_complex", ";".join(chains), "-map", "[aout]",
+                        "-c:a", "pcm_s24le", mixed], check=True)
+        log = subprocess.run(["ffmpeg", "-hide_banner", "-nostats", "-i", mixed, "-af",   # 2: measure it
+                              f"loudnorm={TARGET}:print_format=json", "-f", "null", "-"],
+                             capture_output=True, text=True).stderr
+        m = json.loads(log[log.rindex("{"):log.rindex("}") + 1])
+        norm = (f"loudnorm={TARGET}:measured_I={m['input_i']}:measured_TP={m['input_tp']}:"
+                f"measured_LRA={m['input_lra']}:measured_thresh={m['input_thresh']}:offset={m['target_offset']}:"
+                f"linear=true")
+        subprocess.run(["ffmpeg", "-v", "error", "-y", "-i", os.path.abspath(a.video), "-i", mixed,   # 3: set it
+                        "-filter_complex", f"[1:a]{norm},aresample={RATE}[a]", "-map", "0:v", "-map", "[a]",
+                        "-c:v", "copy", "-c:a", "aac", "-b:a", "192k", "-shortest", "-movflags", "+faststart",
+                        os.path.abspath(a.out)], check=True)
+    finally:
+        os.remove(mixed)
+    report.append(f"  loudness: measured {m['input_i']} LUFS, set to -14 LUFS")
     print("\n".join(report))
     print("voiceover parts:", sorted(files["vo"]), "| sound effects:", sorted(files["sfx"]),
           "| music:", bool(files["music"]))

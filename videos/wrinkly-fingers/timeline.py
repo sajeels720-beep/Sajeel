@@ -91,6 +91,9 @@ BEDS = {  # sfx_name: ([(start s, end s), ...], level dB): trimmed to each span,
 }
 MUSIC_DB = -12                   # under the voice; dips a few dB more while it talks
 MUSIC_BUTTON = 24.55             # the music's last big hit lands here, as he leans back (it is stretched a little)
+MUSIC_START = 10.33              # the user's track is 40 s (73.3 BPM, a beat every 0.818 s): it starts on its bar
+                                 # line 10.33 s in, so its final note (34.9 s in) lands on MUSIC_BUTTON unstretched.
+                                 # None: start at 0, or later if the track is too long to stretch (not on a beat)
 AUDIO_EXT = (".wav", ".mp3", ".m4a", ".aac", ".flac", ".ogg")
 
 
