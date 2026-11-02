@@ -15,7 +15,7 @@ Every night at 2:47 AM, someone sits at the foot of his bed. He never looks up.
 It's him. Fifty years from now.
 Everything he does today, the old man has to live with. Every day he wastes, the old man gets weaker.
 
-Then, one night, his phone dies.
+Then, one night, his phone dies, and for the first time he looks up.
 
 HE'S WAITING. is a short animated film about your future self: the person every scroll, every "start tomorrow" and every "you have time" is quietly taking from. "One day" never comes. Day one can start tonight.
 
@@ -28,7 +28,8 @@ One day you'll meet him. Make sure he's proud.
 1:32 Day one
 1:51 The year
 2:15 "You have time."
-2:37 The summit
+2:37 The climb
+2:52 He's waiting
 3:13 2:47 AM, again
 
 Every frame and every note of music in this film was made from scratch.
