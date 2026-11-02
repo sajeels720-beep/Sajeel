@@ -121,9 +121,9 @@ def compose():
     s.program('phone', PH_KIT, 0, 90, 64, 10)
 
     # --- the hook: a low drone creeps in under the phone; the figure in the dark; his face; the drain; the shadow
-    phone_clips(s, EV['swipes'], 0.3, 19.4)
-    pad(s, 'drone', CBASS, 0.3, 19.0, [n('D1'), n('D2')], 64, swell_in=2.0, fade_out=0.6)
-    pad(s, 'drone', SOUNDTRACK, 3.0, 16.3, [n('D2'), n('A2'), n('F3')], 58, swell_in=3.0, fade_out=0.4)
+    phone_clips(s, EV['swipes'], 0.3, EV['title'])
+    pad(s, 'drone', CBASS, 0.3, EV['title'] + 0.2, [n('D1'), n('D2')], 64, swell_in=2.0, fade_out=0.5)
+    pad(s, 'drone', SOUNDTRACK, 3.0, EV['title'] - 2.7, [n('D2'), n('A2'), n('F3')], 58, swell_in=3.0, fade_out=0.4)
     pad(s, 'drone', SVOICE, 4.0, 4.6, [n('D4'), n('Eb4')], 52, swell_in=2.5, fade_out=1.2)    # dread, unresolved
     pad(s, 'strings', SSTR2, 8.8, 3.6, [n('D3'), n('A3'), n('E4'), n('F4')], 66, swell_in=0.4, fade_out=0.8)
     theme(s, 'lead', EHORN, 9.4, 0.5, 66, bars=(0, 1))                   # three notes as his face ages
@@ -132,10 +132,13 @@ def compose():
     pad(s, 'strings', SSTR2, 12.0, 4.8, [n('D3'), n('F3'), n('Bb3')], 60, swell_in=3.5)
     for k in range(2):                                                    # the shadow's loop creeps in
         shadow_bar(s, 14.0 + 3 * k, k, vel=0.7 + 0.2 * k)
-    s.note('perc', REVCYM, 17.4, 2.0, n('C4'), 90)                       # into the title
-    # --- the title: a braam, a low bell
-    title_hit(s, 19.42)
-    s.note('lead', BELLS, 19.45, 3.0, n('D3'), 80)
+    s.note('perc', REVCYM, EV['title'] - 2.0, 2.0, n('C4'), 90)          # into the title
+    # --- the title: a braam, a low bell, and a low drone that carries on into the first night (no dead air)
+    title_hit(s, EV['title'] + 0.02)
+    s.note('lead', BELLS, EV['title'] + 0.05, 3.0, n('D3'), 80)
+    pad(s, 'drone', CBASS, EV['title'] + 1.0, 23.9 - EV['title'], [n('D1'), n('D2')], 56, swell_in=1.0, fade_out=1.2)
+    pad(s, 'drone', SOUNDTRACK, EV['title'] + 1.2, 23.6 - EV['title'], [n('D2'), n('A2')], 50, swell_in=1.0,
+        fade_out=1.0)
 
     # --- the loop: the shadow's music, night after night (it wears out in the mix)
     for k in range(7):
@@ -158,7 +161,7 @@ def compose():
     pad(s, 'drone', CBASS, 57.0, 10.0, [n('D1')], 60, swell_in=1.0)
     # --- rock bottom: the phone until it dies; then nothing but his breath and a slow heart
     phone_clips(s, BOTTOM_SWIPES, 67.0, EV['phone_dies'], quiet=True)
-    pad(s, 'drone', SOUNDTRACK, 67.0, EV['watch_stops'] - 67.0, [n('D2'), n('A2')], 56, fade_out=0.15)
+    pad(s, 'drone', SOUNDTRACK, 67.0, EV['watch_stops'] - 67.0 + 1.2, [n('D2'), n('A2')], 56, fade_out=1.2)
     # the black glass: a cold drone as his face shows in it, a cluster as it turns old
     pad(s, 'drone', SWEEP, 73.0, 3.0, [n('D2'), n('Ab2')], 50, swell_in=1.4, fade_out=0.3)
     pad(s, 'drone', SVOICE, EV['reflection'], 2.2, [n('D4'), n('Eb4'), n('Ab4')], 58, swell_in=1.0, fade_out=0.4)
@@ -203,17 +206,21 @@ def compose():
     s.note('perc', REVCYM, 143.0, 2.0, n('C4'), 110)                     # he sits up through it: into the drop
     # --- the rise
     climb(s, 145.0, 153.0, full=True)
-    # the trailhead: only a dark pad and the tick, then the pulse as they set off
-    pad(s, 'drone', SOUNDTRACK, 153.0, 4.2, [n('D2'), n('A2'), n('E3')], 54, swell_in=0.5, fade_out=0.5)
-    pad(s, 'drone', CBASS, 153.0, 4.0, [n('D1')], 58)
+    # the trailhead: the year ends on a hit that rings out under a dark pad and the tick; then the pulse as he sets off
+    title_hit(s, 153.0)
+    pad(s, 'drone', SOUNDTRACK, 152.6, 4.6, [n('D2'), n('A2'), n('E3')], 56, swell_in=0.4, fade_out=0.8)
+    pad(s, 'drone', CBASS, 152.8, 4.4, [n('D1')], 58, fade_out=0.8)
     for k in range(6):
         s.note('pulse', PULSE, 156.0 + k / 3, 0.22, n('D2'), 66 + 3 * k)
     # --- the ascent: a relentless build
     ascent(s, 157.0, 171.0)
+    # he is up: the reverse cymbal lands on a soft hit, not on nothing
+    s.note('perc', TOMS, 171.02, 2.0, n('D1'), 92)
+    s.note('perc', KIT, 171.02, 2.5, 49, 64)
     # --- the sunrise: D major at last
     sunrise(s, 171.0)
     # --- the epilogue: night again, heavy and quiet; his words on a held chord, then hope
-    pad(s, 'drone', SOUNDTRACK, 193.0, 10.0, [n('D2'), n('A2')], 50, swell_in=2.0, fade_out=0.3)
+    pad(s, 'drone', SOUNDTRACK, 191.4, 11.6, [n('D2'), n('A2')], 50, swell_in=2.0, fade_out=0.3)
     pad(s, 'strings', SSTR2, 195.6, 3.8, [n('D3'), n('F3'), n('A3'), n('E4')], 54, swell_in=1.5)
     theme(s, 'lead', EHORN, 195.8, 0.55, 60, bars=(0, 1))
     pad(s, 'strings', SSTR2, 199.4, 3.6, [n('D3'), n('F#3'), n('A3'), n('D4')], 58, swell_in=0.8)   # ...proud.
@@ -315,7 +322,9 @@ def ascent(s, t0, t1):
 
 def sunrise(s, t0):
     """171-193: the hush at the top, the sun at 173 in D major, the gift, the fading, alone."""
-    pad(s, 'drone', SWEEP, t0, 2.0, [n('A3'), n('E4')], 44)               # a breath before the sun
+    pad(s, 'drone', SWEEP, t0 - 0.3, 2.4, [n('A3'), n('E4')], 60, swell_in=0.3)   # a breath before the sun
+    pad(s, 'strings', SSTR2, t0 - 0.2, 2.3, [n('D3'), n('A3'), n('D4')], 54, swell_in=0.4)
+    pad(s, 'drone', CBASS, t0 - 0.2, 2.3, [n('D1'), n('D2')], 56)
     t = EV['sun_breaks']
     title_hit(s, t, major=True)
     s.notes('lead', BELLS, t, 4.0, [n('D4'), n('A4')], 96)
@@ -594,10 +603,10 @@ def pan_of(x, cam_x=960, zoom=1.0):
 def tick_times():
     """Every tick the watch makes, and how loud (dB)."""
     out = []
-    for k in range(1, 20):            # the hook: fades in from nowhere
+    for k in range(1, 21):            # the hook: fades in from nowhere
         t = float(k)
         out.append((t, -26 + min(12, 3 * (t - 1)) if t < 5 else -14, 0.45))
-    for t in (20.0, 21.0, 22.0):
+    for t in (21.0, 22.0):
         out.append((t, -8, 0.0))
     for k in range(23, 37):
         out.append((float(k), -20, 0.4))
@@ -657,7 +666,7 @@ def place_sfx(mx):
     for k, t in enumerate(EV['swipes'] + [23.3, 24.4, 25.6, 26.9, 29.4, 30.5, 31.6, 33.8, 34.7, 35.6] + BOTTOM_SWIPES):
         mx.add('sfx', stereo(swipe(k), -0.3), t - 0.03, -14)
     # the clips that are sound effects: a laugh track, a cheer, a cartoon boing
-    for k, (a, b) in enumerate(zip([0.3] + EV['swipes'], EV['swipes'] + [19.4])):
+    for k, (a, b) in enumerate(zip([0.3] + EV['swipes'], EV['swipes'] + [EV['title']])):
         kind = CLIP_KINDS[(k + 0) % len(CLIP_KINDS)]
         if kind == 'laugh':
             mx.add('phone', sfx.murmur(b - a, voices=8, seed=40 + k, level=0.6), a, -2)
@@ -883,45 +892,51 @@ def build(out_dir):
         mx.add('shadow', src[a:b], t0, g, fade_in=fi, fade_out=fo)
 
     seg(phone, 14.0, 17.0, -8, fi=0.6)                   # it starts on his phone...
-    seg(near, 16.6, 19.4, -3, fi=0.5, fo=0.02)           # ...then it is in the room, as the shadow leans in
-    seg(near, 23.0, 29.0, -3)
-    seg(worn, 29.0, 36.5, -4, fi=0.3)
+    seg(near, 16.6, EV['title'], -3, fi=0.5, fo=0.02)    # ...then it is in the room, as the shadow leans in
+    seg(near, 23.0, 29.3, -3, fi=0.6, fo=0.4)
+    seg(worn, 28.9, 36.5, -4, fi=0.4)
     tl = speed_ramp(worn, 36.5, 42.0, 1.0, 2.6, stop=0.45)
     mx.add('shadow', tl, 36.5, -3, fade_out=0.02)
     seg(leak, 57.0, 63.0, -10, fi=0.4, fo=0.6)
-    seg(near, 137.0, 141.6, -8, fi=1.2, fo=0.05)
-    mx.add('shadow', tape(near[secs(137.0):secs(141.6)], wobble=0.05, rate=0.9), 137.0, -13, fade_in=1.0, fade_out=0.05)
+    seg(near, 137.0, 141.9, -8, fi=1.2, fo=0.6)
+    mx.add('shadow', tape(near[secs(137.0):secs(141.9)], wobble=0.05, rate=0.9), 137.0, -13, fade_in=1.0, fade_out=0.6)
     mx.add('shadow', crack[secs(23.0):secs(42.0)], 23.0, -8, fade_out=0.05)
     # the phone's clips
     ph = read_wav(stems['phone'])
     ph = stereo(phone_eq(ph.mean(axis=1) if ph.ndim == 2 else ph), 0.3)
+    tt = np.arange(len(ph)) / SR
+    env = np.ones(len(ph))
+    for ts in EV['swipes'] + [23.3, 24.4, 25.6, 26.9, 29.4, 30.5, 31.6, 33.8, 34.7, 35.6] + BOTTOM_SWIPES:
+        a, b = secs(max(0.0, ts - 0.2)), secs(ts + 0.25)
+        env[a:b] *= 1 - 0.85 * np.exp(-((tt[a:b] - ts - 0.02) / 0.07) ** 2)
+    ph = ph * env[:, None]
     mx.add('phone', ph, 0.0, 0.0)
     place_sfx(mx)
     # the weight under the big hits
-    for k, (t, g, major) in enumerate(((9.0, -10, False), (19.42, -4, False), (EV['old_in_mirror'], -6, False),
+    for k, (t, g, major) in enumerate(((9.0, -10, False), (EV['title'] + 0.02, -4, False), (EV['old_in_mirror'], -6, False),
                                        (EV['drop'], -5, False), (EV['sun_breaks'], -4, True), (203.2, -6, True))):
         mx.add('sfx', stereo(braam(k, major=major)), t, g)
     windows = place_voices(mx, work)
     # levels by scene
     mx.automate('sfx', [(0.0, 5.0), (7.6, 5.0), (9.0, 0.0)])
     # the clips on his phone stay small and tinny under the drone; the phone dies mid-clip
-    mx.automate('phone', [(0.0, 6.0), (1.5, 4.0), (3.4, 2.0), (7.6, -2.0), (12.0, -4.0), (16.8, -10.0), (19.3, -12.0), (19.4, -40.0),
-                          (23.0, -14.0), (36.5, -14.0), (36.6, -40.0), (66.9, -40.0), (67.0, -12.0), (72.15, -14.0),
+    mx.automate('phone', [(0.0, 6.0), (1.5, 4.0), (3.4, 2.0), (7.6, -2.0), (12.0, -4.0), (16.8, -10.0), (20.3, -12.0), (20.4, -40.0),
+                          (23.0, -14.0), (36.5, -14.0), (37.0, -40.0), (66.9, -40.0), (67.0, -12.0), (72.15, -14.0),
                           (72.22, -60.0), (135.3, -60.0), (135.4, -6.0), (143.0, -6.0), (143.1, -40.0)])
-    mx.automate('music', [(0.0, 2.0), (3.0, 3.0), (19.4, 3.0), (23.0, 0.0), (75.6, 3.0), (90.2, 3.0), (92.6, 2.0),
-                          (111.0, 0.0), (134.95, 0.0), (135.0, -40.0), (142.9, -40.0), (143.0, -2.0), (145.0, 2.0),
+    mx.automate('music', [(0.0, 2.0), (3.0, 3.0), (20.4, 3.0), (23.0, 0.0), (75.6, 3.0), (90.2, 3.0), (92.6, 2.0),
+                          (111.0, 0.0), (133.4, 0.0), (135.2, -40.0), (142.9, -40.0), (143.0, -2.0), (145.0, 2.0),
                           (153.0, 0.0), (172.0, 0.0), (173.0, 3.0), (183.0, 1.0), (193.0, 1.0), (203.0, 2.0)])
     mx.automate('shadow', [(0.0, 0.0), (42.0, 0.0), (42.4, -60.0), (56.9, -60.0), (57.0, 0.0)])
-    mx.duck('music', windows, -6.0, 0.25)
-    mx.duck('shadow', windows, -7.0, 0.25)
-    mx.duck('phone', windows, -8.0, 0.2)
-    mx.duck('sfx', windows, -3.0, 0.2)
-    mx.duck('amb', windows, -6.0, 0.25)
+    mx.duck('music', windows, -3.5, 0.5)
+    mx.duck('shadow', windows, -4.0, 0.5)
+    mx.duck('phone', windows, -6.0, 0.35)
+    mx.duck('sfx', windows, -3.0, 0.3)
+    mx.duck('amb', windows, -4.0, 0.4)
     # silence where the watch stops, until his face shows in the dead glass; and in the black before dawn
-    mx.duck('music', [(EV['watch_stops'] + 0.02, 72.95)], -40.0, 0.05)
-    mx.duck('music', [(EV['black'] - 0.2, EV['dawn'] + 0.3)], -40.0, 0.4)
-    # the climb drops away when his foot slips, and comes back as he goes again
-    mx.duck('music', [(EV['slip'] + 0.05, EV['push2'] - 0.35)], -9.0, 0.3)
+    mx.duck('music', [(EV['watch_stops'] + 1.0, 72.95)], -40.0, 0.9)
+    mx.duck('music', [(EV['black'] + 0.3, EV['dawn'] + 0.3)], -40.0, 0.9)
+    # the climb sinks when his foot slips, and comes back as he goes again
+    mx.duck('music', [(EV['slip'] + 0.2, EV['push2'] - 0.4)], -6.0, 0.5)
     master = mx.render({'music': 0.0, 'shadow': -3.0, 'phone': -6.0, 'sfx': -6.0, 'amb': -8.0, 'voice': 3.0},
                        level={'music': -21.0}, ceiling=0.6)
     return write_wav(work / 'mix.wav', master)

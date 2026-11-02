@@ -238,37 +238,38 @@ def drain(c, t, T):
 cam_drain = CamPath([(0.0, (850, 690, 1.62)), (4.8, (876, 694, 1.76))], handheld=5, seed=3)
 
 
-# --- 4. the shadow behind the headboard (16.8-19.4) ----------------------------------------------------------------
+# --- 4. the shadow behind the headboard (16.8-20.4) ----------------------------------------------------------------
 
 def shadow_whisper(c, t, T):
-    lean = 34 * smooth(17.0, 17.9, T)
+    lean = 34 * smooth(17.8, 18.7, T)
     R = Room(light='night', sky='night', curtain=0.86,
-             hero=hero_in_bed(face_fn=lambda TT: dict(smile=0.05 + 0.3 * smooth(18.2, 18.9, TT),
-                                                      eye=0.7 - 0.25 * smooth(18.3, 19.0, TT))),
+             hero=hero_in_bed(face_fn=lambda TT: dict(smile=0.05 + 0.3 * smooth(19.0, 19.7, TT),
+                                                      eye=0.7 - 0.25 * smooth(19.1, 19.8, TT))),
              old=old_on_bed(head_up=lambda TT: 0.2, look=lambda TT: 0.3), phone_at=phone_spot(T), old_rim=0.6,
              hero_rim=0.6)
 
     def after(cc, TT):
         phone_side(cc, *phone_spot(TT), phone_angle(TT), TT, 1.0)
         eye = smooth(EV['eyes_open'], EV['eyes_open'] + 0.3, TT)
-        shade_emissive(cc, TT, 452 + 22 * smooth(17.0, 17.9, TT), 792, lean=lean * 0.62, eye=eye, scale=1.22,
-                       reach=0.12 * smooth(17.5, 18.3, TT))
+        shade_emissive(cc, TT, 452 + 22 * smooth(17.8, 18.7, TT), 792, lean=lean * 0.62, eye=eye, scale=1.22,
+                       reach=0.12 * smooth(18.3, 19.1, TT))
     R.after = after
     draw_room(c, T, R)
     w = WHISPERS[0]
     whisper(c, T, w[0], w[1], w[2], 520, 520, 64, seed=1)
 
 
-cam_shadow = CamPath([(0.0, (600, 650, 2.1)), (2.6, (612, 656, 2.3))], handheld=4, seed=4)
+cam_shadow = CamPath([(0.0, (600, 650, 2.1)), (3.6, (614, 657, 2.34))], handheld=4, seed=4)
 
 
-# --- 5. the title (19.4-23) ------------------------------------------------------------------------------------------
+# --- 5. the title (20.4-23) ------------------------------------------------------------------------------------------
 
 def title_drop(c, t, T):
     c.drawPaint(paint('#030305'))
-    t0, t1 = 19.7, 22.6
+    from cues import TITLE_CARD
+    _, t0, t1 = TITLE_CARD[0]
     title(c, T, 'HE’S WAITING.', t0, t1, 590, size=130, underline=t0 + 0.6, ul_color='#D6A23D')
-    a = smooth(19.9, 20.6, T) * (1 - smooth(22.2, 22.9, T))
+    a = smooth(t0 + 0.2, t0 + 0.8, T) * (1 - smooth(t1 - 0.4, t1 + 0.2, T))
     pocket_watch(c, W / 2, 360, 74, T, open_lid=False, a=a, glow=0.4)
 
 
@@ -1225,8 +1226,8 @@ def shots():
         Shot(7.6, 8.8, eyes_young, cam_eyes_young, name='eyes_young'),
         Shot(8.8, 12.0, eyes_old, cam_eyes_old, name='eyes_old'),
         Shot(12.0, 16.8, drain, cam_drain, name='drain'),
-        Shot(16.8, 19.4, shadow_whisper, cam_shadow, name='shadow'),
-        Shot(19.4, 23.0, title_drop, None, name='title'),
+        Shot(16.8, EV['title'], shadow_whisper, cam_shadow, name='shadow'),
+        Shot(EV['title'], 23.0, title_drop, None, name='title'),
         Shot(n[0], 27.5, night_shot(0), cam_night(0), name='night1'),
         Shot(27.5, 29.0, snooze, cam_snooze, name='snooze'),
         Shot(n[1], 32.0, night_shot(1), cam_night(1), name='night2'),

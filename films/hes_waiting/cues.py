@@ -18,8 +18,8 @@ TICK = 1.0
 # and goes into the light.
 
 MUSIC = {
-    'hook': (0.0, 19.4),        # tinny clips from his phone over a low drone; the watch fades in; braams at the reveal
-    'title': (19.4, 23.0),      # a braam and a low bell, on the tick
+    'hook': (0.0, 20.4),        # tinny clips from his phone over a low drone; the watch fades in; braams at the reveal
+    'title': (20.4, 23.0),      # a braam and a low bell, on the tick
     'loop': (23.0, 43.0),       # the shadow's hypnotic loop, more worn each night; the time-lapse speeds it up like tape
     'mirror': (43.0, 57.0),     # dread: a stinger when the old man appears, a held cluster while he looks
     'avoid': (57.0, 67.0),      # the loop leaking from under the blanket; a slow heart in the drone; the tick slows
@@ -38,13 +38,11 @@ MUSIC = {
 
 # Calm narrator captions: (text, start, end)
 NARRATOR = [
-    ('Every night, he’s there.', 5.0, 7.2),
-    ('He never looks up.', 7.3, 8.75),
-    ('That’s him. Fifty years from now.', 8.85, 11.0),
-    ('Everything he does today,', 11.15, 12.75),            # why he weakens: the old man is made of these days
-    ('the old man has to live with.', 12.85, 14.6),
-    ('Every day he wastes,', 14.75, 15.95),
-    ('the old man gets weaker.', 16.05, 17.45),
+    # the hook: four lines, each up long enough to read, with a breath between them
+    ('He never looks up from his phone.', 5.3, 8.2),
+    ('That’s him. Fifty years from now.', 8.7, 11.6),
+    ('Everything he does today, the old man has to live with.', 12.1, 15.4),   # why: he is made of these days
+    ('Every day he wastes, the old man gets weaker.', 15.9, 18.6),
     ('Every day he shows up,', 115.5, 117.3),
     ('the old man gets stronger.', 117.4, 119.4),
     ('One day you’ll meet him.', 195.6, 199.0),
@@ -53,7 +51,7 @@ NARRATOR = [
 
 # The shadow's whispers: (text, start, end, voice style)
 WHISPERS = [
-    ('you have time.', 17.6, 19.15, 'soft'),
+    ('you have time.', 18.8, 20.3, 'soft'),
     ('one more video.', 24.0, 25.7, 'close'),
     ('start tomorrow.', 30.1, 31.6, 'close'),
     ('you’re still young.', 33.9, 35.6, 'close'),
@@ -123,7 +121,7 @@ EV = {
     'drain': [12.7, 14.4, 15.4],  # each laugh and swipe pulls a little light out of the old man
     'cough': 15.0,
     'eyes_open': 16.9,          # red eyes in the corner behind the headboard
-    'title': 19.4,
+    'title': 20.4,
     # the loop
     'nights': [23.0, 29.0, 33.5],
     'coughs': [26.4, 31.4, 35.9],
@@ -212,6 +210,6 @@ EV = {
 
 # The title drop and the closing card: (text, start, end)
 TITLE_CARD = [
-    ('HE’S WAITING.', 19.7, 22.6),
+    ('HE’S WAITING.', 20.6, 22.8),
     ('HE’S WAITING.', 203.4, 211.6),
 ]
