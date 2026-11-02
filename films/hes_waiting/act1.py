@@ -235,31 +235,31 @@ def drain(c, t, T):
     draw_room(c, T, R)
 
 
-cam_drain = CamPath([(0.0, (850, 690, 1.62)), (4.2, (872, 694, 1.74))], handheld=5, seed=3)
+cam_drain = CamPath([(0.0, (850, 690, 1.62)), (4.8, (876, 694, 1.76))], handheld=5, seed=3)
 
 
-# --- 4. the shadow behind the headboard (16.2-19.4) ----------------------------------------------------------------
+# --- 4. the shadow behind the headboard (16.8-19.4) ----------------------------------------------------------------
 
 def shadow_whisper(c, t, T):
-    lean = 34 * smooth(16.5, 17.4, T)
+    lean = 34 * smooth(17.0, 17.9, T)
     R = Room(light='night', sky='night', curtain=0.86,
-             hero=hero_in_bed(face_fn=lambda TT: dict(smile=0.05 + 0.3 * smooth(17.6, 18.4, TT),
-                                                      eye=0.7 - 0.25 * smooth(17.8, 18.6, TT))),
+             hero=hero_in_bed(face_fn=lambda TT: dict(smile=0.05 + 0.3 * smooth(18.2, 18.9, TT),
+                                                      eye=0.7 - 0.25 * smooth(18.3, 19.0, TT))),
              old=old_on_bed(head_up=lambda TT: 0.2, look=lambda TT: 0.3), phone_at=phone_spot(T), old_rim=0.6,
              hero_rim=0.6)
 
     def after(cc, TT):
         phone_side(cc, *phone_spot(TT), phone_angle(TT), TT, 1.0)
         eye = smooth(EV['eyes_open'], EV['eyes_open'] + 0.3, TT)
-        shade_emissive(cc, TT, 452 + 22 * smooth(16.5, 17.4, TT), 792, lean=lean * 0.62, eye=eye, scale=1.22,
-                       reach=0.12 * smooth(17.0, 17.8, TT))
+        shade_emissive(cc, TT, 452 + 22 * smooth(17.0, 17.9, TT), 792, lean=lean * 0.62, eye=eye, scale=1.22,
+                       reach=0.12 * smooth(17.5, 18.3, TT))
     R.after = after
     draw_room(c, T, R)
     w = WHISPERS[0]
     whisper(c, T, w[0], w[1], w[2], 520, 520, 64, seed=1)
 
 
-cam_shadow = CamPath([(0.0, (600, 650, 2.1)), (3.2, (612, 656, 2.3))], handheld=4, seed=4)
+cam_shadow = CamPath([(0.0, (600, 650, 2.1)), (2.6, (612, 656, 2.3))], handheld=4, seed=4)
 
 
 # --- 5. the title (19.4-23) ------------------------------------------------------------------------------------------
@@ -297,6 +297,18 @@ def corner_eyes(T, t0, t1):
     return smooth(t0 - 0.4, t0, T) * (1 - smooth(t1 + 0.2, t1 + 0.6, T))
 
 
+CANE_TOP, CANE_TIP = (OLD_X + 74, MATT - 70), (OLD_X + 92, FLOOR - 2)
+
+
+def new_cane(c, T):
+    """Night 2, the morning after he snoozed his run: the old man has a walking stick now. It is the first thing we
+    see; it slips on the floor and knocks against the bed as he shifts his weight onto it."""
+    t0 = EV['cane'] + 0.3
+    k = math.exp(-max(0.0, T - t0) / 0.18) * math.sin(max(0.0, T - t0) * 26) * (T >= t0)
+    slide = 6 * smooth(t0 - 0.05, t0 + 0.08, T)
+    cane(c, (CANE_TOP[0] + 5 * k, CANE_TOP[1] - 2 * abs(k)), (CANE_TIP[0] + slide, CANE_TIP[1]))
+
+
 def night_shot(k):
     t0 = EV['nights'][k]
     w = WHISPERS[1 + k]
@@ -306,8 +318,10 @@ def night_shot(k):
     def draw(c, t, T):
         R = night_room(T, old_kw=dict(head_up=lambda TT: 0.25 + 0.25 * k, look=lambda TT: looks[k],
                                       cough_at=[EV['coughs'][k]]), eyes=corner_eyes(T, w[1], w[2]))
-        if cane_on:
-            R.front = lambda cc, TT: cane(cc, (OLD_X + 74, MATT - 70), (OLD_X + 92, FLOOR - 2))
+        if k == 1:
+            R.front = new_cane
+        elif cane_on:
+            R.front = lambda cc, TT: cane(cc, CANE_TOP, CANE_TIP)
         draw_room(c, T, R)
         whisper(c, T, w[0], w[1], w[2], 600, 560, 66, seed=10 + k)
     return draw
@@ -316,43 +330,104 @@ def night_shot(k):
 def cam_night(k):
     t0 = EV['nights'][k]
     z = [1.32, 1.42, 1.55][k]
+    if k == 1:
+        # close on the stick first, then back to the room: the old man is worse
+        return CamPath([(0.0, (1100, 806, 3.1)), (0.4, (1098, 802, 3.0)), (1.15, (890, 662, z)),
+                        (3.0, (900, 664, z + 0.04))], handheld=4, seed=11)
     return CamPath([(0.0, (880, 660, z)), (5.0, (900, 664, z + 0.06))], handheld=5, seed=10 + k)
 
 
 def snooze(c, t, T):
-    """1:04 PM: the alarm buzzing on the quilt beside him; a hand slaps it quiet; he sleeps on."""
-    reach = smooth(27.8, 28.02, T) * (1 - smooth(28.4, 28.75, T))
-    ring = 1.0 - smooth(28.0, 28.06, T)
-    spot = (712, MATT - 30)
+    """6:00 AM: his RUN 5K alarm buzzing on the quilt, seen from above. His hand slaps SNOOZE and the screen goes
+    dark. (The next night the old man needs a stick.)"""
+    t0 = EV['snooze']
+    ring = 1.0 - smooth(t0, t0 + 0.05, T)
+    # the quilt from above in grey morning light
+    c.drawPaint(paint('#3D5A80'))
+    for k in range(-3, 9):
+        y0 = -200 + k * 170 + 30 * math.sin(k * 1.7)
+        fold = skia.Path()
+        fold.moveTo(-100, y0)
+        fold.cubicTo(500, y0 + 90, 1300, y0 - 60, 2100, y0 + 40)
+        c.drawPath(fold, paint('#000000', 0.10, stroke=26, blur=10))
+        c.drawPath(fold, paint('#FFFFFF', 0.05, stroke=8, blur=4))
+    jx, jy = noise1(T * 70, 3) * 7 * ring, noise1(T * 70, 7) * 5 * ring
+    cx, cy = 980 + jx, 540 + jy
+    c.save()
+    c.translate(cx, cy)
+    c.rotate(-7)
+    w, h = 380, 760
+    c.drawRRect(rrect(-w / 2 + 14, -h / 2 + 22, w, h, 52), paint('#000000', 0.35, blur=24))
+    c.drawRRect(rrect(-w / 2, -h / 2, w, h, 52), paint('#16171C'))
+    scr = rrect(-w / 2 + 16, -h / 2 + 16, w - 32, h - 32, 40)
+    c.save()
+    c.clipRRect(scr, doAntiAlias=True)
+    sh = skia.GradientShader.MakeLinear(points=[(0, -h / 2), (0, h / 2)], colors=[col('#1E2A44'), col('#0E1220')])
+    c.drawRRect(scr, skia.Paint(Shader=sh))
+    glow = 0.5 + 0.5 * math.sin(T * 14)
+    text(c, '6:00', 0, -150, 150, 'Inter-Bold', '#FFFFFF')
+    text(c, 'RUN 5K', 0, -60, 58, 'Inter-Bold', '#FFB36B')
+    bw, bh, by = w * 0.74, 112, 120
+    if ring > 0:
+        c.drawRRect(rrect(-bw / 2 - 10, by - bh / 2 - 10, bw + 20, bh + 20, 64), paint('#F2A33A', 0.35 * glow * ring,
+                                                                                      blur=10))
+    c.drawRRect(rrect(-bw / 2, by - bh / 2, bw, bh, 56), paint('#F2A33A'))
+    text(c, 'SNOOZE', 0, by + 20, 52, 'Inter-Bold', '#1A1208')
+    text(c, 'stop', 0, by + 150, 40, 'Inter-Bold', '#8D97AD')
+    # snoozed: the screen dims, says so, and goes dark
+    off = smooth(t0 + 0.02, t0 + 0.12, T)
+    if off > 0:
+        c.drawRRect(scr, paint('#05060A', 0.8 * off))
+        text(c, 'Snoozed', 0, 10, 48, 'Inter-Bold', '#8D97AD', off * (1 - smooth(t0 + 0.7, t0 + 0.9, T)))
+        c.drawRRect(scr, paint('#05060A', smooth(t0 + 0.7, t0 + 0.9, T)))
+    c.restore()
+    c.drawRRect(rrect(-w / 2, -h / 2, w, h, 52), paint('outline', stroke=7))
+    c.restore()
+    # it buzzes against the quilt
+    if ring > 0.02:
+        for k in range(2):
+            for side in (-1, 1):
+                r = 250 + k * 50
+                arc = skia.Path()
+                arc.addArc(skia.Rect.MakeXYWH(cx - r + side * 200, cy - r, 2 * r, 2 * r), (0 if side > 0 else 180) - 18,
+                           36)
+                c.drawPath(arc, paint('#FFFFFF', 0.55 * ring * (1 - 0.35 * k) * glow, stroke=7))
+    # his hand comes down on SNOOZE, rests there, and slides away
+    come = smooth(t0 - 0.24, t0, T) ** 1.6
+    leave = smooth(t0 + 0.55, t0 + 0.95, T)
+    if come > 0 and leave < 1:
+        bx, byw = cx + 30, cy + 140
+        off_pos = (1750.0, -250.0)
+        u = come * (1 - leave)
+        hx = off_pos[0] + (bx - off_pos[0]) * u
+        hy = off_pos[1] + (byw - off_pos[1]) * u
+        squash = 1.0 + 0.06 * math.exp(-max(0.0, T - t0) / 0.08) * (T >= t0)
+        _slap_hand(c, hx, hy, 2.5 * squash)
+    # morning greyness at the edges
+    c.drawRect(skia.Rect.MakeLTRB(-200, -200, 2200, 1300), paint('#0A0E18', 0.0))
+    vg = skia.GradientShader.MakeRadial((960, 540), 1150, [col('#000000', 0.0), col('#000000', 0.55)], [0.55, 1.0])
+    c.drawRect(skia.Rect.MakeLTRB(-200, -200, 2200, 1300), skia.Paint(Shader=vg))
 
-    def hero(cc, TT, rim_pass=False):
-        p = lying_pose(TT, phone=False, face=dict(eyes='closed', smile=-0.1, brow=-6 - 6 * reach), swipes=[])
-        p['back_arm_late'] = True
-        rest = (740, 770)
-        p['hand_f'] = to_local_pose(p, (rest[0] + (spot[0] - rest[0]) * reach, rest[1] - 40 * math.sin(math.pi * reach)
-                                        + (spot[1] - rest[1]) * reach))
-        p['ik_f'] = -1.0
-        quilt = in_world(cc, lambda c2: blanket(c2, p['x'] - 130, lying_blanket_contour(p)))
-        HERO.draw(cc, p, layers={'mid': quilt}, t=TT)
-        return p
 
-    def front(cc, TT):
-        j = noise1(TT * 80, 3) * 3 * ring
-        cc.save()
-        cc.translate(spot[0] + j, spot[1] + 4)
-        cc.rotate(-8)
-        cc.drawRRect(skia.RRect.MakeRectXY(skia.Rect.MakeXYWH(-26, -8, 52, 12), 4, 4), paint('#16171C'))
-        cc.drawRRect(skia.RRect.MakeRectXY(skia.Rect.MakeXYWH(-23, -10, 46, 4), 2, 2), paint('#BFE6FF', 0.3 + 0.7 * ring))
-        cc.drawRRect(skia.RRect.MakeRectXY(skia.Rect.MakeXYWH(-26, -8, 52, 12), 4, 4), paint('outline', stroke=3))
-        cc.restore()
-
-    R = Room(light='day', sky='day', curtain=0.08, hero=hero, ambient='#D9D3CA', front=front)
-    R.after = lambda cc, TT: _buzz_at(cc, TT, ring, spot)
-    draw_room(c, T, R)
-    # his hand comes down on top of the phone
-    if reach > 0.85:
-        p = lying_pose(T, phone=False, swipes=[])
-        p['hand_f'] = to_local_pose(p, spot)
+def _slap_hand(c, x, y, s):
+    """A hand, palm down, fingers toward the bottom left, the blue sleeve running off to the top right."""
+    skin = HERO.look.skin
+    c.save()
+    c.translate(x, y)
+    c.rotate(35)
+    c.scale(s, s)
+    c.drawLine(10, -60, 60, -460, paint('outline', stroke=74))
+    c.drawLine(10, -60, 60, -460, paint(HERO.look.top, stroke=66))
+    for dx, ln in ((-40, 70), (-14, 86), (12, 84), (36, 70)):
+        f = skia.RRect.MakeRectXY(skia.Rect.MakeXYWH(dx - 11, 10, 22, ln), 11, 11)
+        c.drawRRect(f, paint(skin))
+        c.drawRRect(f, paint('outline', stroke=4))
+    th = skia.RRect.MakeRectXY(skia.Rect.MakeXYWH(46, -20, 22, 56), 11, 11)
+    c.drawRRect(th, paint(skin))
+    c.drawRRect(th, paint('outline', stroke=4))
+    c.drawOval(oval(0, -6, 60, 52), paint(skin))
+    c.drawOval(oval(0, -6, 60, 52), paint('outline', stroke=4))
+    c.restore()
 
 
 def _buzz_at(c, T, ring, spot):
@@ -387,7 +462,7 @@ def to_local_pose(p, world):
     return to_local(p, world)
 
 
-cam_snooze = CamPath([(0.0, (680, 712, 2.3)), (1.5, (684, 714, 2.4))], handheld=4, seed=21)
+cam_snooze = CamPath([(0.0, (960, 540, 1.0)), (1.5, (966, 546, 1.07))], handheld=3, seed=21)
 
 
 def bed_rot(c, t, T):
@@ -1149,8 +1224,8 @@ def shots():
         Shot(0.0, 7.6, reveal, cam_reveal, name='reveal'),
         Shot(7.6, 8.8, eyes_young, cam_eyes_young, name='eyes_young'),
         Shot(8.8, 12.0, eyes_old, cam_eyes_old, name='eyes_old'),
-        Shot(12.0, 16.2, drain, cam_drain, name='drain'),
-        Shot(16.2, 19.4, shadow_whisper, cam_shadow, name='shadow'),
+        Shot(12.0, 16.8, drain, cam_drain, name='drain'),
+        Shot(16.8, 19.4, shadow_whisper, cam_shadow, name='shadow'),
         Shot(19.4, 23.0, title_drop, None, name='title'),
         Shot(n[0], 27.5, night_shot(0), cam_night(0), name='night1'),
         Shot(27.5, 29.0, snooze, cam_snooze, name='snooze'),

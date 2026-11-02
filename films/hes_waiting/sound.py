@@ -127,9 +127,9 @@ def compose():
     pad(s, 'drone', SVOICE, 4.0, 4.6, [n('D4'), n('Eb4')], 52, swell_in=2.5, fade_out=1.2)    # dread, unresolved
     pad(s, 'strings', SSTR2, 8.8, 3.6, [n('D3'), n('A3'), n('E4'), n('F4')], 66, swell_in=0.4, fade_out=0.8)
     theme(s, 'lead', EHORN, 9.4, 0.5, 66, bars=(0, 1))                   # three notes as his face ages
-    for k in range(int((16.2 - 12.0) / 0.5)):                            # the drain: a pulse like a pulled heart
+    for k in range(int((16.8 - 12.0) / 0.5)):                            # the drain: a pulse like a pulled heart
         s.note('pulse', PULSE, 12.0 + 0.5 * k, 0.3, n('D1') if k % 2 == 0 else n('D2'), 70 + 3 * k)
-    pad(s, 'strings', SSTR2, 12.0, 4.2, [n('D3'), n('F3'), n('Bb3')], 60, swell_in=3.5)
+    pad(s, 'strings', SSTR2, 12.0, 4.8, [n('D3'), n('F3'), n('Bb3')], 60, swell_in=3.5)
     for k in range(2):                                                    # the shadow's loop creeps in
         shadow_bar(s, 14.0 + 3 * k, k, vel=0.7 + 0.2 * k)
     s.note('perc', REVCYM, 17.4, 2.0, n('C4'), 90)                       # into the title
@@ -501,6 +501,20 @@ def marker(dur, strokes=1, seed=0):
     return norm((scratch * 0.6 + squeak) * env * np.clip(ramp, 0, 1), 0.5)
 
 
+def stick_knock(seed=0, n_=1):
+    """A wooden walking stick knocking on a hard floor: a dry click with a hollow body, n_ bounces."""
+    dur = 0.5
+    out = np.zeros(secs(dur))
+    for k in range(n_):
+        a = secs(0.075 * k * (1.2 - 0.15 * k))
+        g = 0.75 ** k
+        click = bp(white(0.05, seed + k), 1500, 6000) * env_exp(0.05, 0.008) * 0.8
+        body = sine(260 + 40 * k, 0.12) * env_exp(0.12, 0.03) * 0.5
+        out[a:a + len(click)] += click * g
+        out[a:a + len(body)] += body * g
+    return norm(out, 0.5)
+
+
 def gravel(seed=0):
     dur = 0.16
     out = np.zeros(secs(dur), np.float32)
@@ -670,6 +684,7 @@ def place_sfx(mx):
     mx.add('sfx', stereo(sfx.thud(seed=4, heavy=0.4), -0.5), 28.05, -12)
     mx.add('amb', sfx.birds(1.5, seed=5, level=0.18), 27.5, -12, fade_in=0.1, fade_out=0.3)
     mx.add('amb', sfx.birds(1.5, seed=6, level=0.18), 32.0, -12, fade_in=0.1, fade_out=0.3)
+    mx.add('sfx', stereo(stick_knock(1, 2), 0.35), EV['cane'] + 0.3, -8)     # night 2: the new stick
     mx.add('sfx', stereo(sfx.slap(seed=7)[::-1] * 0.6, -0.6), EV['note_falls'], -16)
     for i, t0 in enumerate(CHORUS):
         mx.add('sfx', stereo(sfx.whoosh(0.4, 400, 2000, seed=80 + i), 0.3 * (-1) ** i), t0 - 0.05, -24)
@@ -710,6 +725,7 @@ def place_sfx(mx):
     mx.add('sfx', sfx.curtain(1.2, seed=21), EV['curtains'] - 0.05, -8)
     mx.add('sfx', sfx.footsteps([97.65 + 0.33 * k for k in range(6)], wood=True, seed=22), 0.0, -16)
     mx.add('sfx', stereo(sfx.door(True, seed=23), -0.3), EV['door_open'], -10)
+    mx.add('sfx', stereo(stick_knock(5, 3), -0.15), EV['cane_drop'] + 0.42, -4)  # he lets go of the stick
     mx.add('amb', sfx.city(4.0, seed=24, level=0.2), 107.0, -12, fade_in=0.3, fade_out=0.3)
     mx.add('sfx', sfx.footsteps([108.0 + 0.45 * k for k in range(3)], seed=25), 0.0, -16)
     # the montage: running steps from the gaits themselves
@@ -719,8 +735,8 @@ def place_sfx(mx):
                             (act2.G77_O, 129.6, 135.0, -22)):
         for k, t in enumerate(run_steps(gait, t0, t1)):
             mx.add('sfx', stereo(sfx.footstep(False, seed=100 + k), 0.1 * (-1) ** k), t, g)
-    for t in (114.2, 114.5):
-        mx.add('sfx', stereo(sfx.footstep(True, seed=7)), t, -14)
+    for t in (114.2, 114.5):                                             # the old man, on his own feet
+        mx.add('sfx', stereo(sfx.footstep(False, seed=7)), t, -20)
     mx.add('sfx', stereo(old_breath(1.4, 1.6, seed=26, rasp=0.0)), 113.3, -12)
     for k in range(5):
         mx.add('sfx', stereo(sfx.grunt(seed=27 + k, dur=0.4), 0.3), 115.6 + k / 0.8 * 0.95, -18)
@@ -859,8 +875,8 @@ def build(out_dir):
         a, b = secs(t0), min(n_, secs(t1))
         mx.add('shadow', src[a:b], t0, g, fade_in=fi, fade_out=fo)
 
-    seg(phone, 14.0, 16.4, -8, fi=0.6)                   # it starts on his phone...
-    seg(near, 16.0, 19.4, -3, fi=0.5, fo=0.02)           # ...then it is in the room, as the shadow leans in
+    seg(phone, 14.0, 17.0, -8, fi=0.6)                   # it starts on his phone...
+    seg(near, 16.6, 19.4, -3, fi=0.5, fo=0.02)           # ...then it is in the room, as the shadow leans in
     seg(near, 23.0, 29.0, -3)
     seg(worn, 29.0, 36.5, -4, fi=0.3)
     tl = speed_ramp(worn, 36.5, 42.0, 1.0, 2.6, stop=0.45)
@@ -882,7 +898,7 @@ def build(out_dir):
     # levels by scene
     mx.automate('sfx', [(0.0, 5.0), (7.6, 5.0), (9.0, 0.0)])
     # the clips on his phone stay small and tinny under the drone; the phone dies mid-clip
-    mx.automate('phone', [(0.0, 6.0), (1.5, 4.0), (3.4, 2.0), (7.6, -2.0), (12.0, -4.0), (16.2, -10.0), (19.3, -12.0), (19.4, -40.0),
+    mx.automate('phone', [(0.0, 6.0), (1.5, 4.0), (3.4, 2.0), (7.6, -2.0), (12.0, -4.0), (16.8, -10.0), (19.3, -12.0), (19.4, -40.0),
                           (23.0, -14.0), (36.5, -14.0), (36.6, -40.0), (66.9, -40.0), (67.0, -12.0), (72.15, -14.0),
                           (72.22, -60.0), (135.3, -60.0), (135.4, -6.0), (143.0, -6.0), (143.1, -40.0)])
     mx.automate('music', [(0.0, 2.0), (3.0, 3.0), (19.4, 3.0), (23.0, 0.0), (75.6, 3.0), (90.2, 3.0), (92.6, 2.0),

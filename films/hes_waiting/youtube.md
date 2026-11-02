@@ -13,7 +13,7 @@ Every Day You Waste, He Gets Weaker.
 ## Description
 Every night at 2:47 AM, someone sits at the foot of his bed. He never looks up.
 It's him. Fifty years from now.
-And every day he wastes, the old man gets weaker.
+Everything he does today, the old man has to live with. Every day he wastes, the old man gets weaker.
 
 Then, one night, his phone dies.
 

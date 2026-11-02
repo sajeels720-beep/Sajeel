@@ -18,7 +18,7 @@ from engine.fx import dissolve, falling_leaves, rainfall, snowfall
 from engine.light import pool
 from engine.motion import CamPath, Curve, Gait, blend, breath, settle, stand_feet
 from engine.render import Shot
-from engine.rig import blink
+from engine.rig import BASE_POSE, blink, solve
 from world import PATH_Y, river_path, street_dawn, trailhead
 
 RUNNER = Character(replace(HERO_LOOK, shoes='#ECE9E2'), seed=1)
@@ -312,13 +312,18 @@ def out_shot(c, t, T):
     street_dawn(c, T, cam_x=960, warm=0.3, door_open=door)
     v = vitality(T)
     if T >= 108.5:
-        a = smooth(108.5, 109.0, T)
-        p = old_standing(820, T, v, facing=1, face=dict(lx=1.0, smile=0.1 + 0.3 * smooth(109.6, 110.6, T)))
-        p['alpha'] = a
-        if T > 110.0:
-            p['hand_b'] = (30, -60 - 30 * smooth(110.0, 110.4, T))
-            p['ik_b'] = 1.0
-        draw_old_standing(c, p, T, v)
+        drop = EV['cane_drop']
+        p = _out_old(T)
+        if T < drop:
+            draw_old_standing(c, p, T, v)
+        else:
+            old_man(v).draw(c, p, t=T)
+            # the stick he no longer needs tips over on the step
+            q = _out_old(drop)
+            pp = dict(BASE_POSE)
+            pp.update(q)
+            hand = to_world(q, solve(old_man(vitality(drop)).look, pp)['hand_f'])
+            falling_cane(c, T, drop, hand, (hand[0] + 16, FLOOR - 2), side=1)
     if T >= EV['door_open'] + 0.2:
         if T < 109.1:
             p = GAIT_OUT.pose(T)
@@ -335,7 +340,42 @@ def out_shot(c, t, T):
                 c.drawCircle(hp[0] + 60 * u, hp[1] - 10 * u, 10 + 22 * u, paint('#FFFFFF', 0.35 * (1 - u), blur=6))
 
 
+def _out_old(T):
+    """The old man in the doorway on Day 1: he watches the boy run, lets go of his stick and stands straighter."""
+    v = vitality(T)
+    free = smooth(EV['cane_drop'] + 0.15, EV['cane_drop'] + 0.8, T)
+    p = old_standing(820, T, v, facing=1, face=dict(lx=1.0, smile=0.1 + 0.3 * smooth(109.6, 110.6, T)))
+    p['alpha'] = smooth(108.5, 109.0, T)
+    p['lean'] -= 7 * free
+    p['sf'] = p.get('sf', 0) * (1 - free) + 6 * free
+    p['ef'] = p.get('ef', 0) * (1 - free) + 14 * free
+    if T > 110.35:
+        p['hand_b'] = (30, -60 - 30 * smooth(110.35, 110.75, T))
+        p['ik_b'] = 1.0
+    return p
+
+
+def falling_cane(c, T, t0, hand, tip, side=1):
+    """A walking stick let go of: it tips over around its foot and clatters down flat."""
+    L = math.hypot(hand[0] - tip[0], hand[1] - tip[1])
+    a0 = math.atan2(hand[0] - tip[0], tip[1] - hand[1])
+    flat = side * math.pi / 2 * 0.97
+    dt = T - t0
+    if dt < 0.42:
+        ang = a0 + (flat - a0) * (dt / 0.42) ** 2
+    else:
+        ang = flat - side * 0.12 * math.exp(-(dt - 0.42) / 0.1) * abs(math.sin((dt - 0.42) * 28))
+    cane(c, (tip[0] + math.sin(ang) * L, tip[1] - math.cos(ang) * L), tip)
+
+
 cam_out = CamPath([(0.0, (960, 640, 1.08)), (4.0, (1040, 640, 1.08))], handheld=3, seed=54)
+# the stick hitting the step, close
+cam_cane = CamPath([(0.0, (860, 800, 2.5)), (0.75, (866, 806, 2.62))], handheld=3, seed=56)
+CANE_INSERT = (EV['cane_drop'] + 0.05, EV['cane_drop'] + 0.8)
+
+
+def cam_out_after(t):
+    return cam_out(t + CANE_INSERT[1] - EV['out'])
 
 
 # --- the montage ----------------------------------------------------------------------------------------------------------
@@ -376,7 +416,7 @@ def track(cam_curve, y=600, z=1.15, seed=0, hh=3):
     return cam
 
 
-# DAY 3: he runs out of breath; the old man catches up with his stick
+# DAY 3: he runs out of breath; the old man, without his stick now, catches up
 D3 = EV['days'][0]
 D3_GAIT1 = Gait(Curve([(D3 - 1.4, 0.0), (D3 + 2.3, 1060.0, 'stop')]), D3 - 1.4, D3 + 2.3, PATH_Y, step=104,
                 run=True, lean=8, arm=26, lift=10, duty=0.4, blend_steps=0.25)
@@ -395,11 +435,7 @@ def day3(c, t, T):
         p = D3_OLD_GAIT.pose(T)
         p.update(old_face(v, T))
         p.update(lean=p.get('lean', 0) + 18, tilt=8, turn=0.3, lx=0.6)
-        tap = [D3 + 3.2, D3 + 3.5]
-        j = old_man(v).draw(c, p, t=T)
-        hand = to_world(p, j['hand_f'])
-        lift = sum(14 * math.sin(math.pi * clamp((T - t0) / 0.25)) for t0 in tap)
-        cane(c, (hand[0], hand[1] - lift), (hand[0] + 18, PATH_Y - 2 - lift))
+        old_man(v).draw(c, p, t=T)          # no stick since Day 1: slow, but on his own feet
     # the boy
     if T < D3 + 2.3:
         p = D3_GAIT1.pose(T)
@@ -473,7 +509,6 @@ def day12(c, t, T):
         nod = 0.5 - 0.5 * math.cos(2 * math.pi * TT * 0.8)
         p.update(tilt=p['tilt'] + 7 * nod, smile=0.2, hand_f=(40, -10))
         old_man(v).draw(cc, p, t=TT)
-        cane(cc, (OLD_X + 74, MATT - 70), (OLD_X + 92, FLOOR - 2))
         return p
 
     R = Room(light='day', sky='day', curtain=1.0, ambient='#F1E8DC', hero=hero, old=old)
@@ -566,7 +601,7 @@ def day48(c, t, T):
         p = old_standing(20, TT, v, facing=1, face=dict(lx=0.8, ly=0.5, smile=0.35))
         nod = smooth(125.0, 125.3, TT) * (1 - smooth(125.5, 125.9, TT))
         p.update(lean=p['lean'] + 4, tilt=p['tilt'] + 6 + 10 * nod)
-        draw_old_standing(cc, p, TT, v)
+        draw_old_standing(cc, p, TT, v, stick=False)
         return p
 
     R = Room(light='day', sky='day', curtain=1.0, ambient='#F1E8DC', hero=hero, old=old, back=back, books=True)
@@ -871,7 +906,9 @@ def shots():
         Shot(EV['strike'] - 0.2, 97.0, day_one, cam_day_one, name='day_one'),
         Shot(97.0, 102.0, curtains_shot, cam_curtains, name='curtains'),
         Shot(102.0, EV['out'], stand_shot, cam_stand, name='stand'),
-        Shot(EV['out'], d[0], out_shot, cam_out, name='out'),
+        Shot(EV['out'], CANE_INSERT[0], out_shot, cam_out, name='out'),
+        Shot(CANE_INSERT[0], CANE_INSERT[1], out_shot, cam_cane, name='cane_drop'),
+        Shot(CANE_INSERT[1], d[0], out_shot, cam_out_after, name='out_run'),
         Shot(d[0], d[1], day3, cam_day3, name='day3'),
         Shot(d[1], d[2], day12, cam_day12, name='day12'),
         Shot(d[2], d[3], day30, cam_day30, name='day30'),

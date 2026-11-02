@@ -36,11 +36,13 @@ MUSIC = {
 
 # Calm narrator captions: (text, start, end)
 NARRATOR = [
-    ('Every night, he’s there.', 5.0, 7.4),
-    ('He never looks up.', 7.55, 8.95),
-    ('That’s him. Fifty years from now.', 9.0, 11.9),
-    ('Every day he wastes,', 12.3, 14.0),
-    ('the old man gets weaker.', 14.1, 16.0),
+    ('Every night, he’s there.', 5.0, 7.2),
+    ('He never looks up.', 7.3, 8.75),
+    ('That’s him. Fifty years from now.', 8.85, 11.0),
+    ('Everything he does today,', 11.15, 12.75),            # why he weakens: the old man is made of these days
+    ('the old man has to live with.', 12.85, 14.6),
+    ('Every day he wastes,', 14.75, 15.95),
+    ('the old man gets weaker.', 16.05, 17.45),
     ('Every day he shows up,', 115.5, 117.3),
     ('the old man gets stronger.', 117.4, 119.4),
     ('One day you’ll meet him.', 195.6, 199.0),
@@ -49,9 +51,9 @@ NARRATOR = [
 
 # The shadow's whispers: (text, start, end, voice style)
 WHISPERS = [
-    ('you have time.', 16.8, 18.4, 'soft'),
+    ('you have time.', 17.6, 19.15, 'soft'),
     ('one more video.', 24.0, 25.7, 'close'),
-    ('start tomorrow.', 29.6, 31.2, 'close'),
+    ('start tomorrow.', 30.1, 31.6, 'close'),
     ('you’re still young.', 33.9, 35.6, 'close'),
     ('you’re just tired.', 54.2, 56.0, 'close'),
     ('you have all the time in the world.', 58.2, 61.4, 'soft'),
@@ -77,7 +79,7 @@ SPEECH = [
 COUNTERS = [
     ('2:47 AM', 0.9, 7.6),
     ('TUE 3:12 AM', 23.2, 27.5),
-    ('1:04 PM', 27.6, 29.0),
+    ('6:00 AM', 27.6, 29.0),
     ('WED 3:40 AM', 29.1, 32.0),
     ('5:52 PM', 32.1, 33.5),
     ('THU 4:05 AM', 33.6, 36.5),
@@ -118,12 +120,13 @@ EV = {
     'chuckle': 12.6,            # the boy laughs at something on the phone
     'drain': [12.7, 14.4, 15.4],  # each laugh and swipe pulls a little light out of the old man
     'cough': 15.0,
-    'eyes_open': 16.2,          # red eyes in the corner behind the headboard
+    'eyes_open': 16.9,          # red eyes in the corner behind the headboard
     'title': 19.4,
     # the loop
     'nights': [23.0, 29.0, 33.5],
     'coughs': [26.4, 31.4, 35.9],
-    'snooze': 28.0,             # he slaps the alarm and turns over
+    'snooze': 28.0,             # 6:00 AM, RUN 5K: he slaps SNOOZE...
+    'cane': 29.0,               # ...and the next night the old man needs a cane
     'note_falls': 32.6,         # a goal sticky note drops off the wall
     'timelapse': (36.5, 42.0),
     'stop': 42.0,               # the time-lapse slams to a halt
@@ -169,6 +172,7 @@ EV = {
     'rise': 105.2,              # he stands, and the old man stands with him, a little straighter
     'out': 107.0,
     'door_open': 107.6,
+    'cane_drop': 109.55,        # the boy runs, and the old man lets go of his cane for good
     # the climb
     'days': [111.0, 115.0, 119.0, 123.0, 127.0],
     'drawer': 120.4,            # the phone goes in the drawer
