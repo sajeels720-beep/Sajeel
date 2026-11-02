@@ -63,7 +63,8 @@ SFX = {  # sfx_name: [(time s, level dB against the voice[, until s[, fade s]]),
     "sfx_whoosh_fast": [(4.50, -8), (7.12, -8), (10.57, -8), (15.68, -8), (23.20, -12)],  # crash zooms; the toss
     "sfx_boom": [(7.22, -6), (10.68, -6)],                    # under "nerves" and "squeeze"
     "sfx_alert_pop": [(5.90, -6), (16.80, -6)],               # his red "?"
-    "sfx_sigh": [(24.50, -6)],                                # he leans back at sunset (after "tyres")
+    "sfx_sigh": [(24.50, -6, 25.00, 0.35)],                   # he leans back at sunset (after "tyres"); the video
+                                                              # ends 0.5 s in, so it fades out on the last frame
     "sfx_crinkle": [(3.73, -10, 4.75), (13.20, -12, 14.10), (14.43, -10, 15.70)],   # the skin puckers
     "sfx_drop_plink": [(5.30, -8), (5.43, -10), (5.57, -8), (5.70, -10)],          # drops land on his fingertips
     "sfx_seep": [(8.07, -12, 9.00)],                          # drops drain into the pores
