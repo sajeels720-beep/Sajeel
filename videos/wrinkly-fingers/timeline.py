@@ -72,7 +72,9 @@ SFX = {  # sfx_name: [(time s, level dB against the voice[, until s[, fade s]]),
     "sfx_seep": [(8.07, -12, 9.00)],                          # drops drain into the pores
     "sfx_xray_scan": [(6.30, -10)],                           # the x-ray reveal: it leads the cut, so it peaks (0.6 s
                                                               # in) as the scan line reaches the fingertips (6.9 s)
-    "sfx_zap": [(6.75, -12), (9.37, -6), (10.47, -10)],       # nerves light; the ending sparks; the fibres light
+    "sfx_zap": [(6.75, -5, 7.15, 0.1), (9.37, -6, 9.75, 0.12), (10.47, -10, 10.80, 0.1)],   # nerves light; the
+                                                              # ending sparks; the fibres light (each trimmed to its
+                                                              # sparks: the file crackles for 0.9 s)
     "sfx_signal": [(7.20, -12), (9.40, -10)],                 # pulses race along the nerves
     "sfx_squeeze": [(10.60, -6)],                             # the vessels clamp down
     "sfx_heartbeat": [(11.05, -10), (11.55, -12)],            # the blood slows
