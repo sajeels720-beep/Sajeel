@@ -32,6 +32,8 @@ Animated in Blender by Jay3Dfilms. Character made with MakeHuman (CC0); pool, te
 
 Only if the voice, sounds or music were made on ElevenLabs' free plan, add this line (and note that the video can't be monetized then): `Voice, sound and music: ElevenLabs (elevenlabs.io)`
 
+The sound effects and music were made on a paid ElevenLabs plan (confirmed by the user), so they need no credit line and the video can be monetized.
+
 ## Tags
 
 wrinkly fingers, why do fingers wrinkle in water, pruney fingers, fingers wrinkle in water, human body, human body facts, science, 3d animation, blender animation, swimming pool
