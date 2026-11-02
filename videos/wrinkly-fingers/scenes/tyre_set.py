@@ -217,6 +217,11 @@ def spray(x_at, frames, col=None, seed=11, side=24, rear=14):
     col = col or V.collection("SPRAY")
     mat = V.principled("Spray_Water", H("#F2FAFF"), rough=0.04, spec=0.9, transmission=0.55, ior=1.33,
                        emission=H("#FFFFFF"), emission_strength=0.35)               # white water: reads on the blue
+    if hasattr(mat, "surface_render_method"):
+        # ~3000 drops: EEVEE sorts and draws "blended" objects one by one, every sample (a frame
+        # took over 11 minutes here, and a laptop GPU gave up and rendered black frames);
+        # "dithered" goes through EEVEE's fast path. Cycles looks the same either way.
+        mat.surface_render_method = "DITHERED"
     fps = bpy.context.scene.render.fps
     f0, f1 = frames[0], frames[-1]
     n = 0

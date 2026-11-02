@@ -57,6 +57,14 @@ def setup_shot(seconds, fps=30, res=(1080, 1920), engine="EEVEE", samples=48, sc
         except Exception:
             continue
     vs.exposure = exposure
+    if os.environ.get("SHOT_CYCLES") == "1" and engine.upper().startswith("EEVEE"):
+        # a fallback for a shot a laptop GPU can't render in EEVEE (black frames): Cycles on the
+        # CPU, denoised, with shorter light paths. Set SHOT_CYCLES=1 (and SHOT_CYCLES_SAMPLES).
+        set_engine("CYCLES", int(os.environ.get("SHOT_CYCLES_SAMPLES", "24")))
+        cy = sc.cycles
+        cy.max_bounces, cy.diffuse_bounces, cy.glossy_bounces, cy.transmission_bounces = 6, 3, 3, 6
+        cy.transparent_max_bounces = 8
+        return sc
     set_engine(engine, samples)
     return sc
 

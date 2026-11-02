@@ -41,6 +41,14 @@ All shots in a loop:
 Get-ChildItem videos\wrinkly-fingers\shots\shot*.py | ForEach-Object { & "C:\Program Files\Blender Foundation\Blender 5.2\blender.exe" -b -P $_.FullName -a }
 ```
 
+If a shot comes out as black frames (your laptop's graphics gave up on it), render that shot with Cycles on the processor instead: slower, but it doesn't use the graphics chip. Move its black frames aside first (for example `Rename-Item videos\wrinkly-fingers\renders\shot14 shot14_black`), then:
+
+```powershell
+$env:SHOT_CYCLES = "1"
+& "C:\Program Files\Blender Foundation\Blender 5.2\blender.exe" -b -P videos\wrinkly-fingers\shots\shot14_tyre.py -a
+Remove-Item Env:SHOT_CYCLES
+```
+
 To look at a shot in Blender instead: start a new file (File > New > General), then in the Python Console:
 
 ```python
